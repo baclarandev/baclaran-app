@@ -1,0 +1,294 @@
+generator client {
+provider = "prisma-client-js"
+engineType = "library"
+}
+
+
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CHAIRMAN
+  ADMIN
+  VOLUNTEER
+}
+
+
+
+model User {
+  id          Int       @id @default(autoincrement())
+  name        String
+  email       String    @unique
+  password    String
+  role        Role      @default(VOLUNTEER)
+  ministry    Ministry? @relation(fields: [ministryId], references: [id])
+  ministryId  Int?
+  refreshTokens  RefreshToken[]
+
+  updatedAt DateTime @default(now())
+
+  createdAt   DateTime  @default(now())
+
+}
+
+model RefreshToken {
+
+  id          Int      @id @default(autoincrement())
+  token       String   @unique
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  revoked     Boolean  @default(false) // Allows you to kill a token without deleting it
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  expiresAt   DateTime // Vital for knowing when the token is dead
+}
+
+model Volunteer {
+
+  id                Int                     @id @default(autoincrement())
+
+  full_name         String
+
+  volunteer_status  String?
+
+  profile_picture   String?
+
+
+
+  // Relations
+
+  details           VolunteerDetail?
+
+  sacraments        VolunteerSacrament[]
+
+  formations        VolunteerFormation[]
+
+  timeline          VolunteerTimeline[]
+
+  attendance        VolunteerAttendance[]
+
+
+
+  // ADD THESE 2 →
+
+  eventVolunteers   EventVolunteer[]
+
+  eventAttendance   EventAttendance[]
+
+}
+
+
+
+model VolunteerDetail {
+
+  id                    Int     @id @default(autoincrement())
+
+  volunteer_id          Int     @unique
+
+  ministry_id           Int
+
+  line_group            String?
+
+  applied_month_year    String?
+
+  regular_years_month   String?
+
+
+
+  volunteer Volunteer @relation(fields: [volunteer_id], references: [id])
+
+  ministry  Ministry  @relation(fields: [ministry_id], references: [id])
+
+}
+
+
+
+model VolunteerSacrament {
+
+  id             Int    @id @default(autoincrement())
+
+  volunteer_id   Int
+
+  sacrament_name String
+
+
+
+  volunteer Volunteer @relation(fields: [volunteer_id], references: [id])
+
+}
+
+
+
+model VolunteerFormation {
+
+  id             Int    @id @default(autoincrement())
+
+  volunteer_id   Int
+
+  formation_name String
+
+  year           Int?
+
+
+
+  volunteer Volunteer @relation(fields: [volunteer_id], references: [id])
+
+}
+
+
+
+model VolunteerTimeline {
+
+  id                Int     @id @default(autoincrement())
+
+  volunteer_id      Int
+
+  organization_name String
+
+  year_started      Int
+
+  year_ended        Int?
+
+  total_years       Int?
+
+  is_active         Boolean @default(false)
+
+
+
+  volunteer Volunteer @relation(fields: [volunteer_id], references: [id])
+
+}
+
+
+
+model VolunteerAttendance {
+
+  id                      Int     @id @default(autoincrement())
+
+  volunteer_id            Int
+
+  ministry_id             Int
+
+  total_service_hours     Int?
+
+  meeting_attendance_count Int?
+
+  absent_count            Int?
+
+  remarks                 String?
+
+
+
+  volunteer Volunteer @relation(fields: [volunteer_id], references: [id])
+
+  ministry  Ministry  @relation(fields: [ministry_id], references: [id])
+
+}
+
+
+
+//
+
+// ─── MINISTRY ─────────────────────────────────────────────────────────────
+
+//
+
+
+
+model Ministry {
+
+  id          Int     @id @default(autoincrement())
+
+  name        String
+
+  parent_id   Int?
+
+
+
+  parent      Ministry? @relation("MinistryParent", fields: [parent_id], references: [id])
+
+  children    Ministry[] @relation("MinistryParent")
+
+
+
+  volunteers  VolunteerDetail[]
+
+
+
+  // ADD THIS →
+
+  volunteerAttendance VolunteerAttendance[]
+
+  // **FIX** Added the missing relation field for User
+
+  users       User[]
+
+}
+
+
+
+//
+
+// ─── EVENTS ─────────────────────────────────────────────────────────────
+
+//
+
+
+
+model Event {
+
+  id         Int                 @id @default(autoincrement())
+
+  name       String
+
+  date       DateTime
+
+  archived   Boolean             @default(false)
+
+
+
+  volunteers EventVolunteer[]
+
+  attendance EventAttendance[]
+
+}
+
+
+
+model EventVolunteer {
+
+  id             Int @id @default(autoincrement())
+
+  event_id       Int
+
+  volunteer_id   Int
+
+
+
+  event          Event     @relation(fields: [event_id], references: [id])
+
+  volunteer      Volunteer @relation(fields: [volunteer_id], references: [id])
+
+}
+
+
+
+model EventAttendance {
+
+  id             Int    @id @default(autoincrement())
+
+  event_id       Int
+
+  volunteer_id   Int
+
+  status         String // present / absent
+
+
+
+  event          Event     @relation(fields: [event_id], references: [id])
+
+  volunteer      Volunteer @relation(fields: [volunteer_id], references: [id])
+
+}
