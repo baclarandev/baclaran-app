@@ -38,7 +38,7 @@ function getClientIP(req: Request): string {
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "superrefreshkey";
 
-const ACCESS_EXPIRES = "15m"; // access token life
+const ACCESS_EXPIRES = "55m"; // access token life
 const REFRESH_EXPIRES = "7d"; // refresh token life in JWT (not DB exp)
 
 // ================= LOGIN ROUTE ================= //
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 15, // 15 min
+      maxAge: 60 * 60 * 24, // 1 day
     });
 
     // ----- SET REFRESH TOKEN COOKIE -----

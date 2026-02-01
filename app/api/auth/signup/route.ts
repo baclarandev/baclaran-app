@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: "Internal server error",
-        details: err.message, // <- TEMP: show actual problem
+        details: err.message,
       },
       { status: 500 }
     );
