@@ -90,25 +90,25 @@ export async function DELETE(req: NextRequest, context: any) {
   }
 }
 
-export async function GET(
-  _: NextRequest,
-  { params }: { params: { id: string } },
-) {
-  const volunteer = await prisma.volunteer.findUnique({
-    where: { id: Number(params.id) },
-    include: {
-      formations: true,
-      timelines: true,
-      ministryHistories: {
-        where: { status: "ACTIVE" },
-        include: { ministry: true },
-      },
-    },
-  });
+// export async function GET(
+//   _: NextRequest,
+//   { params }: { params: { id: string } },
+// ) {
+//   const volunteer = await prisma.volunteer.findUnique({
+//     where: { id: Number(params.id) },
+//     include: {
+//       formations: true,
+//       timelines: true,
+//       ministryHistories: {
+//         where: { status: "ACTIVE" },
+//         include: { ministry: true },
+//       },
+//     },
+//   });
 
-  if (!volunteer) {
-    return NextResponse.json({ error: "Volunteer not found" }, { status: 404 });
-  }
+//   if (!volunteer) {
+//     return NextResponse.json({ error: "Volunteer not found" }, { status: 404 });
+//   }
 
-  return NextResponse.json(volunteer);
-}
+//   return NextResponse.json(volunteer);
+// }
