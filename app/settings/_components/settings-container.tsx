@@ -37,7 +37,8 @@ const createUserSchema = z
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
     role: z.enum(["ADMIN", "CHAIRMAN", "STAFF"]),
-    ministryId: z.string().optional(),
+
+    ministryId: z.coerce.number().nullable().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -52,6 +53,10 @@ interface User {
   email: string;
   role: string;
   ministryId: number | null;
+  ministry: {
+    id: number;
+    name: string;
+  } | null;
   createdAt: string;
 }
 
@@ -73,12 +78,13 @@ export default function RoleManagement({ user }: any) {
   const [showAddForm, setShowAddForm] = useState(true);
   const [loading, setLoading] = useState(false);
   console.log(users);
+  console.log(ministries, "ministries");
   const [form, setForm] = useState<CreateUserInput>({
     email: "",
     password: "",
     confirmPassword: "",
     role: "STAFF",
-    ministryId: undefined,
+    ministryId: null,
   });
 
   /* ───────────────────────── FETCH DATA ───────────────────────── */
@@ -103,8 +109,7 @@ export default function RoleManagement({ user }: any) {
           email: form.email,
           password: form.password,
           role: form.role,
-
-          ministryId: form.ministryId || null,
+          ministryId: form.ministryId ? Number(form.ministryId) : null,
         }),
       });
 
@@ -276,13 +281,14 @@ export default function RoleManagement({ user }: any) {
                           ...form,
                           ministryId:
                             e.target.value === "none"
-                              ? undefined
-                              : e.target.value,
+                              ? null
+                              : Number(e.target.value),
                         })
                       }
-                      className="bg-gray-700 border-gray-600 text-gray-100"
                     >
-                      <NativeSelectOption value="none">None</NativeSelectOption>
+                      <NativeSelectOption className="bg-gray-700" value="none">
+                        None
+                      </NativeSelectOption>
                       {ministries.map((ministry: Ministry) =>
                         ministry.children && ministry.children.length > 0 ? (
                           <NativeSelectOptGroup
@@ -291,6 +297,7 @@ export default function RoleManagement({ user }: any) {
                           >
                             {ministry.children.map((child) => (
                               <NativeSelectOption
+                                className="bg-gray-700"
                                 key={child.id}
                                 value={child.id}
                               >
@@ -302,6 +309,7 @@ export default function RoleManagement({ user }: any) {
                           <NativeSelectOption
                             key={ministry.id}
                             value={ministry.id}
+                            className="bg-gray-700"
                           >
                             {ministry.name}
                           </NativeSelectOption>
@@ -374,7 +382,7 @@ export default function RoleManagement({ user }: any) {
                             </span>
                           </TableCell>
                           <TableCell className="text-gray-300">
-                            {u.ministryId ? "Assigned" : "—"}
+                            {u.ministry?.name ?? "—"}
                           </TableCell>
                           <TableCell className="text-gray-400 text-sm">
                             {new Date(u.createdAt).toLocaleDateString()}

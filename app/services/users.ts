@@ -38,6 +38,10 @@ export interface User {
   email: string;
   role: string;
   ministryId: number | null;
+  ministry: {
+    id: number;
+    name: string;
+  } | null;
   createdAt: string;
 }
 

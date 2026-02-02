@@ -1,14 +1,13 @@
-"use server";
-
 import { getSession } from "@/lib/auth";
-import Role from "./_components/roles-container";
+import React from "react";
+import Archives from "./_components/archives-container";
 
 export default async function page() {
   const session = await getSession();
   const user = session;
   return (
     <div>
-      <Role user={user} />
+      <Archives user={user} />
     </div>
   );
 }

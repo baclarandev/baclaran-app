@@ -168,9 +168,8 @@ export default function MinistriesClient({ user }: any) {
   const { data: ministries = [], isLoading, error } = useMinistries();
   const { data: volunteers = [] } = useVolunteers();
 
-  const isChairman = user?.role === "CHAIRMAN";
   const isAdmin = user?.role === "ADMIN";
-  const canManage = isChairman || isAdmin;
+  const canManage = isAdmin;
 
   const [view, setView] = useState<"grid" | "table">("grid");
   const [search, setSearch] = useState("");
@@ -200,6 +199,20 @@ export default function MinistriesClient({ user }: any) {
     });
     return map;
   }, [volunteers]);
+
+  const isChairman = user?.role === "CHAIRMAN";
+  const isStaff = user?.role === "STAFF";
+  const canViewMembers = (ministry: any) => {
+    // Admin can view all
+    if (user?.role === "ADMIN") return true;
+
+    // Staff or Chairman can only view ministries with the same type
+    if (user?.role === "STAFF" || user?.role === "CHAIRMAN") {
+      return user.ministryType === ministry.type;
+    }
+
+    return false;
+  };
 
   /* ───────────── CRUD ───────────── */
   async function createMinistry() {
@@ -292,15 +305,15 @@ export default function MinistriesClient({ user }: any) {
         <Header user={user} />
 
         {/* PAGE HEADER */}
-        <div className="flex items-center justify-between p-4">
+        <div className="flex items-center justify-between  p-4">
           <div>
             <h1 className="text-xl font-semibold text-white">Ministries</h1>
             <p className="text-gray-400">Manage church ministries</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex py-4 items-center gap-3">
             {/* VIEW TOGGLE */}
-            <div className="hidden md:flex bg-gray-800 border border-white/10 rounded-lg p-1">
+            <div className="hidden md:flex bg-gray-800  border border-white/10 rounded-lg p-1">
               <Button
                 variant={view === "grid" ? "secondary" : "ghost"}
                 size="icon"
@@ -514,15 +527,17 @@ export default function MinistriesClient({ user }: any) {
                       <div className="flex justify-between items-start">
                         <IconComp className="w-10 h-10 text-yellow-400 mb-2" />
                         <td className="px-4 py-3">
-                          <Link href={`/ministries/${ministry.id}`}>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10"
-                            >
-                              View Members
-                            </Button>
-                          </Link>
+                          {canViewMembers(ministry) && (
+                            <Link href={`/ministries/${ministry.id}`}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10"
+                              >
+                                View Members
+                              </Button>
+                            </Link>
+                          )}
                         </td>
                       </div>
                       <Link href={`/ministries/${ministry.id}`}>

@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,13 +43,19 @@ import { cn } from "@/lib/utils";
 import { useMinistries } from "@/app/services/ministries";
 import { useCreateVolunteer, useVolunteers } from "@/app/services/volunteer";
 import { Volunteer } from "@/app/types/volunteer";
+import { Card, CardContent } from "@/components/ui/card";
 
 const steps = [
   { id: 1, name: "Personal", icon: User },
   { id: 2, name: "Ministry", icon: Briefcase },
   { id: 3, name: "Review", icon: FileCheck },
 ];
+const CURRENT_YEAR = new Date().getFullYear();
 
+const YEARS = Array.from(
+  { length: CURRENT_YEAR - 1900 + 1 },
+  (_, i) => CURRENT_YEAR - i,
+);
 interface FormData {
   lastName: string;
   firstName: string;
@@ -60,12 +68,23 @@ interface FormData {
   ministryIds: number[];
   sacraments: string[];
   profilePicture: string;
+  civilStatus: string;
+  occupation: string;
 }
 interface AddVolunteerDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
 
   onSuccess?: () => void;
+}
+type TimelineType = "SHRINE" | "OUTSIDE";
+
+interface Timeline {
+  organization: string; // Name of the organization or ministry
+  startYear: number; // Starting year, can be empty initially
+  endYear?: number; // Ending year, optional (empty if present)
+  totalYears: number; // Computed total years
+  type: TimelineType; // "SHRINE" or "OUTSIDE"
 }
 export function AddVolunteerDialog({
   open,
@@ -77,18 +96,21 @@ export function AddVolunteerDialog({
   const { data: volunteers = [] } = useVolunteers();
   const createVolunteer = useCreateVolunteer();
   const [updateVolunteerId, setUpdateVolunteerId] = useState<number | null>(
-    null
+    null,
   );
-const [openMinistryBox, setOpenMinistryBox] = useState(false);
+  const [timelines, setTimelines] = useState<Timeline[]>([]);
+
+  const [openMinistryBox, setOpenMinistryBox] = useState(false);
 
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [isExistingVolunteer, setIsExistingVolunteer] = useState(false);
   const [selectedVolunteer, setSelectedVolunteer] = useState<Volunteer | null>(
-    null
+    null,
   );
   const [openCombobox, setOpenCombobox] = useState(false);
-
+  const [shrineTimelines, setShrineTimelines] = useState<Timeline[]>([]);
+  const [outsideTimelines, setOutsideTimelines] = useState<Timeline[]>([]);
   const [formData, setFormData] = useState<FormData>({
     lastName: "",
     firstName: "",
@@ -98,6 +120,8 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
     address: "",
     dob: "",
     sex: "",
+    civilStatus: "",
+    occupation: "",
     ministryIds: [],
     sacraments: [],
     profilePicture: "",
@@ -130,6 +154,8 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
         address: "",
         dob: "",
         sex: "",
+        civilStatus: "",
+        occupation: "",
         ministryIds: [],
         sacraments: [],
         profilePicture: "",
@@ -150,17 +176,17 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
       dob: volunteer.dateOfBirth
         ? new Date(volunteer.dateOfBirth).toISOString().split("T")[0]
         : "",
+      civilStatus: volunteer.civilStatus || "",
+      occupation: volunteer.occupation || "",
       sex: volunteer.sex.toLowerCase(),
-      ministryIds: [], // will select in step 2
+      ministryIds: [],
       sacraments: volunteer.sacraments.map((s) => {
         const reverseMap: Record<string, string> = {
           BAPTISM: "Baptism",
           EUCHARIST: "First Communion",
           CONFIRMATION: "Confirmation",
-          RECONCILIATION: "Reconciliation",
+
           ANOINTING_OF_THE_SICK: "Anointing of the Sick",
-          HOLY_ORDERS: "Holy Orders",
-          MATRIMONY: "Marriage",
         };
         return reverseMap[s] || s;
       }),
@@ -192,14 +218,46 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
     "First Communion": "EUCHARIST",
     Confirmation: "CONFIRMATION",
     Reconciliation: "RECONCILIATION",
-    "Anointing of the Sick": "ANOINTING_OF_THE_SICK",
-    "Holy Orders": "HOLY_ORDERS",
-    Marriage: "MATRIMONY",
   };
   // Fixes included: updateVolunteerId properly set, form reset works, handleSubmit clean
+  const DEFAULT_FORMATIONS = [
+    "Basic Orientation Seminar (BOS)",
+    "Diocesan Basic Formation",
+    "Safeguarding Policy",
+  ];
+
+  const [formations, setFormations] = useState(
+    DEFAULT_FORMATIONS.map((f) => ({ name: f, year: "" })),
+  );
+
+  const computeTotal = (start: number, end?: number) =>
+    end ? end - start + 1 : new Date().getFullYear() - start + 1;
+  const addFormation = () =>
+    setFormations([...formations, { name: "", year: "" }]);
+  const isValidYear = (year: any) =>
+    Number.isInteger(Number(year)) &&
+    Number(year) >= 1900 &&
+    Number(year) <= new Date().getFullYear();
+
+  const validFormations = formations.filter(
+    (f) => f.name.trim() !== "" && isValidYear(f.year),
+  );
+
+  const validTimelines = [...shrineTimelines, ...outsideTimelines].filter(
+    (t) =>
+      t.organization.trim() !== "" &&
+      isValidYear(t.startYear) &&
+      (!t.endYear || isValidYear(t.endYear)) &&
+      (!t.endYear || t.endYear >= t.startYear),
+  );
 
   const handleSubmit = async () => {
-    const payload = {
+    // if (validFormations.length === 0) {
+    //   alert("Please add at least one valid formation with a year.");
+    //   return;
+    // }
+
+    const payload: any = {
       firstName: formData.firstName,
       lastName: formData.lastName,
       middleInitial: formData.middleInitial || undefined,
@@ -208,9 +266,10 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
         formData.sex === "male"
           ? "Male"
           : formData.sex === "female"
-          ? "Female"
-          : "Other",
-      civilStatus: "Single",
+            ? "Female"
+            : "Other",
+      civilStatus: formData.civilStatus,
+      occupation: formData.occupation || undefined,
       status: "ACTIVE",
       phone: formData.phone || undefined,
       address: formData.address || undefined,
@@ -223,21 +282,42 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
       profilePicture: formData.profilePicture || undefined,
     };
 
+    // Only add formations if there are any valid ones
+    if (validFormations.length > 0) {
+      payload.formations = validFormations.map((f) => ({
+        name: f.name.trim(),
+        year: Number(f.year),
+      }));
+    }
+
+    // Only add timelines if there are any valid ones
+    if (validTimelines.length > 0) {
+      payload.timelines = validTimelines.map((t) => ({
+        organization: t.organization.trim(),
+        startYear: Number(t.startYear),
+        endYear: t.endYear ? Number(t.endYear) : undefined,
+        totalYears: computeTotal(t.startYear, t.endYear),
+        type: t.type,
+      }));
+    }
+
     try {
       if (updateVolunteerId) {
+        // 🔜 future: update flow
         return;
-      } else {
-        // Create new volunteer
-        createVolunteer.mutate(payload, {
-          onSuccess: () => {
-            setIsOpen(false);
-            resetForm();
-            onSuccess?.();
-          },
-          onError: (err: any) =>
-            alert(err.message || "Failed to create volunteer"),
-        });
       }
+
+      createVolunteer.mutate(payload, {
+        onSuccess: () => {
+          setIsOpen(false);
+          resetForm();
+          setTimelines([]);
+          setFormations(DEFAULT_FORMATIONS.map((f) => ({ name: f, year: "" })));
+          onSuccess?.();
+        },
+        onError: (err: any) =>
+          alert(err.message || "Failed to create volunteer"),
+      });
     } catch (err: any) {
       console.error(err);
       alert(err.message);
@@ -259,6 +339,8 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
       address: "",
       dob: "",
       sex: "",
+      civilStatus: "",
+      occupation: "",
       ministryIds: [],
       sacraments: [],
       profilePicture: "",
@@ -287,7 +369,9 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
         formData.email.trim() !== ""
       );
     }
-    if (currentStep === 2) return formData.ministryIds.length > 0;
+    if (currentStep === 2) {
+      return formData.ministryIds.length > 0;
+    }
     return true;
   }, [currentStep, formData, isExistingVolunteer, selectedVolunteer]);
 
@@ -322,8 +406,8 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                     currentStep > step.id
                       ? "bg-green-600 border-green-600 text-white"
                       : currentStep === step.id
-                      ? "bg-yellow-500 border-yellow-500 text-gray-900"
-                      : "bg-gray-700 border-gray-600 text-gray-400"
+                        ? "bg-yellow-500 border-yellow-500 text-gray-900"
+                        : "bg-gray-700 border-gray-600 text-gray-400",
                   )}
                 >
                   {currentStep > step.id ? (
@@ -335,7 +419,7 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                 <span
                   className={cn(
                     "text-xs mt-2 font-medium",
-                    currentStep >= step.id ? "text-gray-100" : "text-gray-500"
+                    currentStep >= step.id ? "text-gray-100" : "text-gray-500",
                   )}
                 >
                   {step.name}
@@ -345,7 +429,7 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                 <div
                   className={cn(
                     "h-0.5 flex-1 mx-2 mb-6",
-                    currentStep > step.id ? "bg-green-600" : "bg-gray-600"
+                    currentStep > step.id ? "bg-green-600" : "bg-gray-600",
                   )}
                 />
               )}
@@ -391,7 +475,7 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                               <AvatarFallback className="text-xs bg-gray-600">
                                 {getInitials(
                                   selectedVolunteer.firstName,
-                                  selectedVolunteer.lastName
+                                  selectedVolunteer.lastName,
                                 )}
                               </AvatarFallback>
                             </Avatar>
@@ -435,7 +519,7 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                                     <AvatarFallback className="text-xs bg-gray-600">
                                       {getInitials(
                                         volunteer.firstName,
-                                        volunteer.lastName
+                                        volunteer.lastName,
                                       )}
                                     </AvatarFallback>
                                   </Avatar>
@@ -453,7 +537,7 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                                       "ml-auto h-4 w-4",
                                       selectedVolunteer?.id === volunteer.id
                                         ? "opacity-100"
-                                        : "opacity-0"
+                                        : "opacity-0",
                                     )}
                                   />
                                 </div>
@@ -476,7 +560,7 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                           <AvatarFallback className="bg-gray-600">
                             {getInitials(
                               selectedVolunteer.firstName,
-                              selectedVolunteer.lastName
+                              selectedVolunteer.lastName,
                             )}
                           </AvatarFallback>
                         </Avatar>
@@ -629,7 +713,18 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                         className="bg-gray-700 border-gray-600 text-gray-100"
                       />
                     </div>
-
+                    <div className="space-y-2">
+                      <Label htmlFor="occupation">Occupation</Label>
+                      <Input
+                        id="occupation"
+                        placeholder="Teacher, Engineer, Student..."
+                        value={formData.occupation}
+                        onChange={(e) =>
+                          updateFormData("occupation", e.target.value)
+                        }
+                        className="bg-gray-700 border-gray-600 text-gray-100"
+                      />
+                    </div>
                     <div className="space-y-2">
                       <Label>Sex</Label>
                       <div className="flex gap-4 pt-2">
@@ -653,6 +748,22 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                         ))}
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <Label>Civil Status</Label>
+                      <select
+                        value={formData.civilStatus}
+                        onChange={(e) =>
+                          updateFormData("civilStatus", e.target.value)
+                        }
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
+                      >
+                        <option value="">Select status</option>
+                        <option value="Single">Single</option>
+                        <option value="Married">Married</option>
+                        <option value="Widowed">Widowed</option>
+                        <option value="Separated">Separated</option>
+                      </select>
+                    </div>
                   </div>
                 </>
               )}
@@ -660,66 +771,73 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
           )}
 
           {/* Step 2: Ministry & Sacraments */}
+          {/* Step 2: Ministry & Timelines */}
           {currentStep === 2 && (
             <div className="space-y-4 animate-in fade-in duration-300">
+              {/* Ministries */}
               <div className="space-y-2">
                 <Label>Ministries</Label>
-               <Popover open={openMinistryBox} onOpenChange={setOpenMinistryBox}>
-    <PopoverTrigger asChild>
-      <Button
-        variant="outline"
-        role="combobox"
-        className="w-full justify-between bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600"
-      >
-        {formData.ministryIds.length > 0
-          ? getMinistryNames(formData.ministryIds)
-          : "Select ministries..."}
-        <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
-      </Button>
-    </PopoverTrigger>
-
-    <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
-      <Command className="bg-gray-800">
-        <CommandInput
-          placeholder="Search ministries..."
-          className="text-gray-100"
-        />
-        <CommandList>
-          <CommandEmpty>No ministry found.</CommandEmpty>
-
-          <CommandGroup>
-            {ministries.map((m: any) => {
-              const selected = formData.ministryIds.includes(m.id);
-
-              return (
-                <CommandItem
-                  key={m.id}
-                  value={m.name}
-                  onSelect={() => {
-                    updateFormData(
-                      "ministryIds",
-                      selected
-                        ? formData.ministryIds.filter((id) => id !== m.id)
-                        : [...formData.ministryIds, m.id]
-                    );
-                  }}
-                  className="text-gray-100 hover:bg-gray-700"
+                <Popover
+                  open={openMinistryBox}
+                  onOpenChange={setOpenMinistryBox}
                 >
-                  <Check
-                    className={cn(
-                      "mr-2 h-4 w-4",
-                      selected ? "opacity-100" : "opacity-0"
-                    )}
-                  />
-                  {m.name}
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    </PopoverContent>
-  </Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600"
+                    >
+                      {formData.ministryIds.length > 0
+                        ? getMinistryNames(formData.ministryIds)
+                        : "Select ministries..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+
+                  <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
+                    <Command className="bg-gray-800">
+                      <CommandInput
+                        placeholder="Search ministries..."
+                        className="text-gray-100"
+                      />
+                      <CommandList>
+                        <CommandEmpty>No ministry found.</CommandEmpty>
+                        <CommandGroup>
+                          {ministries.map((m: any) => {
+                            const selected = formData.ministryIds.includes(
+                              m.id,
+                            );
+                            return (
+                              <CommandItem
+                                key={m.id}
+                                value={m.name}
+                                onSelect={() => {
+                                  updateFormData(
+                                    "ministryIds",
+                                    selected
+                                      ? formData.ministryIds.filter(
+                                          (id) => id !== m.id,
+                                        )
+                                      : [...formData.ministryIds, m.id],
+                                  );
+                                }}
+                                className="text-gray-100 hover:bg-gray-700"
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selected ? "opacity-100" : "opacity-0",
+                                  )}
+                                />
+                                {m.name}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {!isExistingVolunteer && (
@@ -743,6 +861,224 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                   </div>
                 </div>
               )}
+              {/* Formations */}
+              <Card>
+                <CardContent className="space-y-4">
+                  <h3 className="font-semibold">Formation Received</h3>
+                  {formations.map((f, i) => (
+                    <div key={i} className="grid grid-cols-2 gap-3">
+                      <Input
+                        placeholder="Formation Name"
+                        value={f.name}
+                        onChange={(e) => {
+                          const copy = [...formations];
+                          copy[i].name = e.target.value;
+                          setFormations(copy);
+                        }}
+                      />
+                      <select
+                        value={f.year ?? ""}
+                        onChange={(e) => {
+                          const copy = [...formations];
+                          copy[i].year = e.target.value;
+                          setFormations(copy);
+                        }}
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                      >
+                        <option value="">Select Year</option>
+                        {YEARS.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+
+                  <Button variant="outline" onClick={addFormation}>
+                    <Plus className="w-4 h-4 mr-2" /> Add Other Formation
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Shrine Timelines */}
+              <Card>
+                <CardContent className="space-y-4">
+                  <h3 className="font-semibold">Volunteer Timeline (Shrine)</h3>
+                  <p>
+                    Please indicate all Organization/Ministry you belong to in
+                    the Shrine
+                  </p>
+                  {shrineTimelines.map((t, i) => (
+                    <div key={i} className="grid grid-cols-4 gap-3">
+                      <Input
+                        placeholder="Organization / Ministry"
+                        value={t.organization}
+                        onChange={(e) => {
+                          const copy = [...shrineTimelines];
+                          copy[i].organization = e.target.value;
+                          setShrineTimelines(copy);
+                        }}
+                      />
+                      <select
+                        value={t.startYear ?? ""}
+                        onChange={(e) => {
+                          const copy = [...shrineTimelines];
+                          copy[i].startYear = Number(e.target.value);
+                          copy[i].totalYears = computeTotal(
+                            copy[i].startYear,
+                            copy[i].endYear,
+                          );
+                          setShrineTimelines(copy);
+                        }}
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                      >
+                        <option value="">Present</option>
+                        {YEARS.map((year) => (
+                          <option
+                            key={year}
+                            value={year}
+                            disabled={!!(t.startYear && year < t.startYear)}
+                          >
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={t.endYear ?? ""}
+                        onChange={(e) => {
+                          const copy = [...shrineTimelines];
+                          copy[i].endYear = e.target.value
+                            ? Number(e.target.value)
+                            : undefined;
+                          copy[i].totalYears = computeTotal(
+                            copy[i].startYear,
+                            copy[i].endYear,
+                          );
+                          setShrineTimelines(copy);
+                        }}
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                      >
+                        <option value="">Present</option>
+                        {YEARS.map((year) => (
+                          <option
+                            key={year}
+                            value={year}
+                            disabled={!!(t.startYear && year < t.startYear)}
+                          >
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                      <Input disabled value={t.totalYears} />
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setShrineTimelines([
+                        ...shrineTimelines,
+                        {
+                          organization: "",
+                          startYear: new Date().getFullYear(),
+                          endYear: undefined,
+                          totalYears: 1,
+                          type: "SHRINE",
+                        },
+                      ])
+                    }
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Add Another Timeline Entry
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Outside Affiliations */}
+              <Card>
+                <CardContent className="space-y-4">
+                  <h3 className="font-semibold">Other Affiliations</h3>
+                  <p>
+                    Please indicate any Organization/Ministry outside the Shrine
+                  </p>
+                  {outsideTimelines.map((t, i) => (
+                    <div key={i} className="grid grid-cols-4 gap-3">
+                      <Input
+                        placeholder="Organization / Ministry"
+                        value={t.organization}
+                        onChange={(e) => {
+                          const copy = [...outsideTimelines];
+                          copy[i].organization = e.target.value;
+                          setOutsideTimelines(copy);
+                        }}
+                      />
+                      <select
+                        value={t.startYear ?? ""}
+                        onChange={(e) => {
+                          const copy = [...outsideTimelines];
+                          copy[i].startYear = Number(e.target.value);
+                          copy[i].totalYears = computeTotal(
+                            copy[i].startYear,
+                            copy[i].endYear,
+                          );
+                          setOutsideTimelines(copy);
+                        }}
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                      >
+                        <option value="">Start Year</option>
+                        {YEARS.map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={t.endYear ?? ""}
+                        onChange={(e) => {
+                          const copy = [...outsideTimelines];
+                          copy[i].endYear = e.target.value
+                            ? Number(e.target.value)
+                            : undefined;
+                          copy[i].totalYears = computeTotal(
+                            copy[i].startYear,
+                            copy[i].endYear,
+                          );
+                          setOutsideTimelines(copy);
+                        }}
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                      >
+                        <option value="">Present</option>
+                        {YEARS.map((year) => (
+                          <option
+                            key={year}
+                            value={year}
+                            disabled={!!(t.startYear && year < t.startYear)}
+                          >
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                      <Input disabled value={t.totalYears} />
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setOutsideTimelines([
+                        ...outsideTimelines,
+                        {
+                          organization: "",
+                          startYear: new Date().getFullYear(),
+                          endYear: undefined,
+                          totalYears: 1,
+                          type: "OUTSIDE",
+                        },
+                      ])
+                    }
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Add Another Timeline Entry
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -793,6 +1129,19 @@ const [openMinistryBox, setOpenMinistryBox] = useState(false);
                         <p className="text-gray-100 capitalize">
                           {formData.sex || "—"}
                         </p>
+                        <div>
+                          <span className="text-gray-400">Civil Status:</span>
+                          <p className="text-gray-100">
+                            {formData.civilStatus || "—"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <span className="text-gray-400">Occupation:</span>
+                          <p className="text-gray-100">
+                            {formData.occupation || "—"}
+                          </p>
+                        </div>
                       </div>
                     </>
                   )}

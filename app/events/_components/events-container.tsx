@@ -56,7 +56,7 @@ export default function Events({ user }: any) {
     startTime: "",
     endTime: "",
   });
-
+  const isAdmin = user?.role === "ADMIN";
   const now = new Date();
 
   const filteredEvents = useMemo(() => {
@@ -203,12 +203,14 @@ export default function Events({ user }: any) {
                     open={isAddDialogOpen}
                     onOpenChange={setIsAddDialogOpen}
                   >
-                    <DialogTrigger asChild>
-                      <Button className="flex items-center gap-2 bg-white text-black border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]">
-                        <Plus className="w-4 h-4 " />
-                        <span className="">Add Event</span>
-                      </Button>
-                    </DialogTrigger>
+                    {isAdmin && (
+                      <DialogTrigger asChild>
+                        <Button className="flex items-center gap-2 bg-white text-black border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]">
+                          <Plus className="w-4 h-4 " />
+                          <span className="">Add Event</span>
+                        </Button>
+                      </DialogTrigger>
+                    )}
 
                     <DialogContent className="max-w-lg bg-[#1b1c1f] border-white/6 text-gray-100">
                       <DialogHeader>

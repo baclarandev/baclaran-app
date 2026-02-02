@@ -51,11 +51,11 @@ enum MinistryType {
  * ─── USERS ────────────────────────────────────
  */
 model User {
-  id       Int    @id @default(autoincrement())
+  id       Int     @id @default(autoincrement())
   name     String?
-  email    String @unique
+  email    String  @unique
   password String
-  role     Role   @default(VOLUNTEER)
+  role     Role    @default(VOLUNTEER)
 
   ministryId Int?
   ministry   Ministry? @relation(fields: [ministryId], references: [id])
@@ -84,29 +84,32 @@ model RefreshToken {
  * ─── VOLUNTEERS ──────────────────────────────
  */
 model Volunteer {
-  id                Int               @id @default(autoincrement())
-  volunteerCode     String            @unique
+  id                Int                        @id @default(autoincrement())
+  volunteerCode     String                     @unique
   firstName         String
   lastName          String
   middleInitial     String?
   nickname          String?
-  email             String            @unique
+  email             String                     @unique
   phone             String?
   address           String?
   dateOfBirth       DateTime?
   sex               String
   civilStatus       String
   occupation        String?
-  status            String
+ status String @default("ACTIVE")
+
   profilePicture    String?
-  applicationStatus ApplicationStatus @default(PENDING)
-  createdAt         DateTime          @default(now())
+  applicationStatus ApplicationStatus          @default(PENDING)
+  createdAt         DateTime                   @default(now())
   eventLinks        EventVolunteer[]
   eventAttendance   EventAttendance[]
   attendances       VolunteerAttendance[]
   sacraments        SacramentName[]
   ministryHistories VolunteerMinistryHistory[]
   massBookings      MassBooking[]
+  formations        VolunteerFormation[]
+  timelines         VolunteerTimeline[]
 }
 
 /**
@@ -130,14 +133,14 @@ model VolunteerMinistryHistory {
  * ─── MINISTRY ─────────────────────────────────
  */
 model Ministry {
-  id         Int                        @id @default(autoincrement())
-  name       String                     @unique
-  icon       String                     @default("Church")
-  type       MinistryType?
-  
-  volunteers VolunteerMinistryHistory[]
-  attendance VolunteerAttendance[]
-  users      User[]
+  id   Int           @id @default(autoincrement())
+  name String        @unique
+  icon String        @default("Church")
+  type MinistryType?
+
+  volunteers   VolunteerMinistryHistory[]
+  attendance   VolunteerAttendance[]
+  users        User[]
   massBookings MassBooking[]
 }
 
@@ -170,7 +173,7 @@ model Mass {
   category String // SUNDAY | WEDNESDAY | ORDINARY
 
   slots     Int
-  qrOpenAt  DateTime 
+  qrOpenAt  DateTime
   createdAt DateTime @default(now())
 
   bookings MassBooking[]
@@ -182,35 +185,37 @@ model MassBooking {
   volunteerId Int
   ministryId  Int
 
-  status AttendanceStatus @default(PENDING)
+  status      AttendanceStatus @default(PENDING)
   servedAt    DateTime? // actual check-in time (QR or manual)
-  qrToken     String?   @unique
+  qrToken     String?          @unique
   confirmedBy Int? // admin user id
-  createdAt DateTime @default(now())
+  createdAt   DateTime         @default(now())
 
   mass      Mass      @relation(fields: [massId], references: [id])
   volunteer Volunteer @relation(fields: [volunteerId], references: [id])
   ministry  Ministry  @relation(fields: [ministryId], references: [id])
 }
+
 enum EventStatus {
   UPCOMING
   ONGOING
   COMPLETED
   CANCELLED
 }
+
 model Event {
-  id                      Int      @id @default(autoincrement())
-  title                  String
-   status      EventStatus @default(UPCOMING)
+  id     Int         @id @default(autoincrement())
+  title  String
+  status EventStatus @default(UPCOMING)
 
-  description             String?
-  startDate               DateTime
-  endDate                 DateTime
-  startTime               String
-  endTime                 String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  startTime   String
+  endTime     String
 
-  archived                Boolean  @default(false)
-  createdAt               DateTime @default(now())
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
 
   volunteers EventVolunteer[]
   attendance EventAttendance[]
@@ -226,11 +231,36 @@ model EventVolunteer {
 }
 
 model EventAttendance {
-  id          Int    @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   eventId     Int
   volunteerId Int
   status      AttendanceStatus @default(PENDING)
 
   event     Event     @relation(fields: [eventId], references: [id])
   volunteer Volunteer @relation(fields: [volunteerId], references: [id])
+}
+
+model VolunteerFormation {
+  id          Int    @id @default(autoincrement())
+  volunteerId Int
+  name        String
+  year        Int
+
+  volunteer Volunteer @relation(fields: [volunteerId], references: [id])
+
+  @@index([volunteerId])
+}
+
+model VolunteerTimeline {
+  id           Int    @id @default(autoincrement())
+  volunteerId  Int
+  organization String
+  startYear    Int
+  endYear      Int?
+  totalYears   Int
+  type         String // SHRINE | OUTSIDE
+
+  volunteer Volunteer @relation(fields: [volunteerId], references: [id])
+
+  @@index([volunteerId])
 }

@@ -90,46 +90,25 @@ export async function DELETE(req: NextRequest, context: any) {
   }
 }
 
-export async function GET(req: NextRequest, context: any) {
-  try {
-    const params = await context.params; // ✅ unwrap the Promise
-    const id = Number(params.id);
-
-    if (!id || isNaN(id)) {
-      return NextResponse.json(
-        { error: "Invalid volunteer ID" },
-        { status: 400 },
-      );
-    }
-
-    const volunteer = await prisma.volunteer.findUnique({
-      where: { id },
-      include: {
-        ministryHistories: {
-          orderBy: { joinedAt: "desc" },
-          take: 1,
-          include: { ministry: true },
-        },
+export async function GET(
+  _: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const volunteer = await prisma.volunteer.findUnique({
+    where: { id: Number(params.id) },
+    include: {
+      formations: true,
+      timelines: true,
+      ministryHistories: {
+        where: { status: "ACTIVE" },
+        include: { ministry: true },
       },
-    });
+    },
+  });
 
-    if (!volunteer) {
-      return NextResponse.json(
-        { error: "Volunteer not found" },
-        { status: 404 },
-      );
-    }
-
-    return NextResponse.json({
-      ...volunteer,
-      ministryName:
-        volunteer.ministryHistories[0]?.ministry?.name || "No Ministry",
-    });
-  } catch (error) {
-    console.error("[GET_VOLUNTEER_ERROR]", error);
-    return NextResponse.json(
-      { error: "Failed to fetch volunteer" },
-      { status: 500 },
-    );
+  if (!volunteer) {
+    return NextResponse.json({ error: "Volunteer not found" }, { status: 404 });
   }
+
+  return NextResponse.json(volunteer);
 }

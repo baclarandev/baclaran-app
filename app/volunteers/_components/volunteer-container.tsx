@@ -61,7 +61,17 @@ export default function Volunteer({ user }: any) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const filteredVolunteers = useMemo(() => {
-    return volunteers.filter((v: any) => {
+    // Step 1: Start with role-based filtering
+    let visibleVolunteers = volunteers;
+
+    if (user.role === "STAFF" || user.role === "CHAIRMAN") {
+      visibleVolunteers = volunteers.filter(
+        (v: any) => v.ministryId === user.ministryId,
+      );
+    }
+
+    // Step 2: Apply search and status filters
+    return visibleVolunteers.filter((v: any) => {
       const matchesSearch =
         searchQuery === "" ||
         `${v.firstName} ${v.lastName}`
@@ -71,9 +81,10 @@ export default function Volunteer({ user }: any) {
         v.ministryName?.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = statusFilter === "all" || v.status === statusFilter;
+
       return matchesSearch && matchesStatus;
     });
-  }, [volunteers, searchQuery, statusFilter]);
+  }, [volunteers, searchQuery, statusFilter, user]);
 
   const handleEdit = (volunteer: any) => {
     setSelectedVolunteer(volunteer);

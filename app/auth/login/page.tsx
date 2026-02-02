@@ -31,7 +31,7 @@ const Page = () => {
     mutationFn: ({ email, password }: { email: string; password: string }) =>
       loginUser(email, password),
     onSuccess: (data) => {
-      toast("Welcome!");
+      toast("Welcome back!");
       router.push("/dashboard");
     },
     onError: (error: any) => {
@@ -98,7 +98,7 @@ const Page = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-300"
+                className="absolute right-3 top-11 -translate-y-1/2 text-stone-400 hover:text-amber-300"
               >
                 {showPassword ? (
                   <EyeOff className="w-5 h-5" />

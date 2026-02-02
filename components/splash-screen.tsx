@@ -130,12 +130,8 @@ export default function SplashScreen() {
 
           <div className="w-full space-y-6">
             <div className="space-y-2">
-              <Progress
-                value={progress}
-                className="h-2 bg-white rounded-full"
-              />
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-stone-500 tracking-wide">
+              <div className="flex justify-center items-center">
+                <span className="text-xs text-center text-stone-500 tracking-wide">
                   {Math.round(progress)}%
                 </span>
                 <span className="text-xs text-stone-500 tracking-wide">

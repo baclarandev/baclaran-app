@@ -102,7 +102,7 @@ export default function Dashboard({ user }: any) {
               {/* Top Section: Stats + QR */}
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 flex-1">
+                <div className="grid grid-cols-1 w-full md:grid-cols-2 lg:grid-cols-4 gap-6 flex-1">
                   <StatCard
                     label="Total Volunteers"
                     value={metrics.totalVolunteers}
@@ -175,7 +175,7 @@ export default function Dashboard({ user }: any) {
                       <CardContent className="space-y-3">
                         <Link href="/volunteers">
                           <Button className="w-full justify-between">
-                            Add Volunteer <ChevronRight />
+                            View Volunteer <ChevronRight />
                           </Button>
                         </Link>
                       </CardContent>
@@ -207,7 +207,7 @@ export default function Dashboard({ user }: any) {
                             </div>
                           ))}
                           <Link href="/ministries">
-                            <div className="bg-gray-700/40 border border-dashed border-gray-600 h-32 lg:w-60 rounded-xl p-4 flex flex-col items-center justify-center hover:bg-gray-700 transition cursor-pointer">
+                            <div className="bg-gray-700/40 border border-dashed border-gray-600 h-full  w-full h-32 lg:w-60 rounded-xl p-4 flex flex-col items-center justify-center hover:bg-gray-700 transition cursor-pointer">
                               <ChevronRight className="w-6 h-6 text-yellow-400 mb-2" />
                               <p className="text-sm text-yellow-400">
                                 See all ministries
