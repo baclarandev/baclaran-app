@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "./prisma";
-import { Role } from "@prisma/client";
 
+type Role = "ADMIN" | "CHAIRMAN" | "STAFF" | "VOLUNTEER";
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 export interface SessionUser {
   id: number;
