@@ -5,12 +5,10 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  
+   url      = env("DATABASE_URL")
 }
 
-/**
- * ─── ENUMS ───────────────────────────────────
- */
+
 enum Role {
   ADMIN
   CHAIRMAN
@@ -48,9 +46,7 @@ enum MinistryType {
   PASTORAL
 }
 
-/**
- * ─── USERS ────────────────────────────────────
- */
+
 model User {
   id       Int     @id @default(autoincrement())
   name     String?
@@ -67,9 +63,7 @@ model User {
   updatedAt DateTime @updatedAt
 }
 
-/**
- * ─── AUTH ─────────────────────────────────────
- */
+
 model RefreshToken {
   id        Int      @id @default(autoincrement())
   token     String   @unique
@@ -81,9 +75,7 @@ model RefreshToken {
   updatedAt DateTime @updatedAt
 }
 
-/**
- * ─── VOLUNTEERS ──────────────────────────────
- */
+
 model Volunteer {
   id                Int                        @id @default(autoincrement())
   volunteerCode     String                     @unique
@@ -113,9 +105,7 @@ model Volunteer {
   timelines         VolunteerTimeline[]
 }
 
-/**
- * ─── VOLUNTEER MINISTRY HISTORY ─────────────
- */
+
 model VolunteerMinistryHistory {
   id          Int       @id @default(autoincrement())
   volunteerId Int
@@ -130,9 +120,7 @@ model VolunteerMinistryHistory {
   @@index([volunteerId])
 }
 
-/**
- * ─── MINISTRY ─────────────────────────────────
- */
+
 model Ministry {
   id   Int           @id @default(autoincrement())
   name String        @unique
@@ -145,9 +133,7 @@ model Ministry {
   massBookings MassBooking[]
 }
 
-/**
- * ─── VOLUNTEER ATTENDANCE ────────────────────
- */
+
 model VolunteerAttendance {
   id           Int     @id @default(autoincrement())
   volunteerId  Int
@@ -162,9 +148,7 @@ model VolunteerAttendance {
   ministry  Ministry  @relation(fields: [ministryId], references: [id])
 }
 
-/**
- * ─── MASS ────────────────────────────────────
- */
+
 model Mass {
   id       Int      @id @default(autoincrement())
   date     DateTime
