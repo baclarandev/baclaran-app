@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
-import { User } from "@prisma/client";
+import { User } from "@/app/services/users";
 
 interface AppLayoutProps {
   children: React.ReactNode;

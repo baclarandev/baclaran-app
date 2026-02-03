@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { IconTrack } from "@tabler/icons-react";
-import { User } from "@prisma/client";
+import { User } from "@/app/services/users";
 
 interface SidebarProps {
   user: User;

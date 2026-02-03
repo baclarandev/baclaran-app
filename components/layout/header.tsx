@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 
 import Link from "next/link";
-import { User } from "@prisma/client";
+import { User } from "@/app/services/users";
 
 interface HeaderProps {
   user: User;
