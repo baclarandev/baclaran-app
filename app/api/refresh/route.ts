@@ -23,15 +23,15 @@ export async function POST(req: NextRequest) {
       },
     });
     const isValidToken = user?.refreshTokens.some(
-      (tokenRecord) =>
-        tokenRecord.token === refreshToken && !tokenRecord.revoked
+      (tokenRecord: any) =>
+        tokenRecord.token === refreshToken && !tokenRecord.revoked,
     );
 
     if (!user || !isValidToken) {
       // Check if user is null OR the token is invalid/missing
       return NextResponse.json(
         { error: "Invalid refresh token" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     const newAccessToken = jwt.sign(
       { id: user.id, role: user.role },
       JWT_SECRET,
-      { expiresIn: ACCESS_EXPIRES }
+      { expiresIn: ACCESS_EXPIRES },
     );
 
     const response = NextResponse.json({ message: "Access token refreshed" });
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     console.error("[REFRESH_ERROR]", err);
     return NextResponse.json(
       { error: "Invalid refresh token" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 }
