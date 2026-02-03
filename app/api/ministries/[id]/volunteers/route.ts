@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 
 export async function GET(
   _req: Request,
-  context: { params: Promise<{ id: string }> } // <-- params is a Promise
+  context: { params: Promise<{ id: string }> }, // <-- params is a Promise
 ) {
   const sessionUser = await getSession();
   if (!sessionUser) {
@@ -49,7 +49,7 @@ export async function GET(
       },
     });
 
-    const transformed = volunteers.map((v) => ({
+    const transformed = volunteers.map((v: any) => ({
       id: v.id,
       volunteerCode: v.volunteerCode,
       firstName: v.firstName,
@@ -64,7 +64,7 @@ export async function GET(
     console.error("[GET_MINISTRY_VOLUNTEERS_ERROR]", error);
     return NextResponse.json(
       { error: "Failed to fetch ministry volunteers" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
