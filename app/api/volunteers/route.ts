@@ -75,7 +75,7 @@ export async function GET() {
       },
     });
 
-    const transformedVolunteers = volunteers.map((volunteer) => ({
+    const transformedVolunteers = volunteers.map((volunteer: any) => ({
       id: volunteer.id,
       volunteerCode: volunteer.volunteerCode,
       firstName: volunteer.firstName,
