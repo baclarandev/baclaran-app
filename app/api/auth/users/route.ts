@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
+
 export async function GET(req: Request) {
   const session = await getSession();
 
