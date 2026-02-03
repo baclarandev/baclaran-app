@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import bcrypt from "bcryptjs";
-import { Role } from "@prisma/client";
+import { $Enums } from "@prisma/client";
 
+/* =========================
+   GET USERS
+========================= */
 export async function GET(req: Request) {
   const session = await getSession();
 
@@ -39,22 +42,27 @@ export async function GET(req: Request) {
   }
 }
 
+/* =========================
+   CREATE USER
+========================= */
 export async function POST(req: NextRequest) {
   const session = await getSession();
 
-  if (!session || session.role !== "ADMIN") {
+  if (!session || session.role !== $Enums.Role.ADMIN) {
     return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
   }
 
   const body = await req.json();
+
   const { email, password, role, ministryId } = body as {
     email: string;
     password: string;
-    role: Role;
+    role: $Enums.Role;
     ministryId?: number | null;
   };
 
-  if (!["ADMIN", "CHAIRMAN", "STAFF"].includes(role)) {
+  // ✅ Enum-safe validation
+  if (!Object.values($Enums.Role).includes(role)) {
     return NextResponse.json({ message: "Invalid role" }, { status: 400 });
   }
 
@@ -65,7 +73,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (role === "STAFF" && ministryId == null) {
+  if (role === $Enums.Role.STAFF && ministryId == null) {
     return NextResponse.json(
       { message: "Staff must be assigned to a ministry" },
       { status: 400 },
@@ -88,8 +96,8 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.create({
     data: {
       email,
-      role,
       password: hashedPassword,
+      role,
       ministryId: ministryId ?? null,
     },
   });
