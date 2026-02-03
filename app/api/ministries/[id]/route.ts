@@ -107,7 +107,7 @@ export async function GET(
     });
 
     // flatten response
-    const volunteers = members.map((m) => m.volunteer);
+    const volunteers = members.map((m: any) => m.volunteer);
 
     return NextResponse.json(volunteers);
   } catch (err) {
