@@ -1,37 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
 
-const PROTECTED_PATHS = [
-  "/dashboard",
-  "/settings",
-  "/volunteers",
-  "/events",
-  "/schedule",
-  "/ministries",
-];
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+const PUBLIC_PATHS = ["/auth/login"];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Check if the path starts with a protected route
-  const isProtected = PROTECTED_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
+  const accessToken = req.cookies.get("access_token")?.value;
 
-  if (!isProtected) {
+  // ✅ If user is logged in and tries to visit /auth/login → kick to dashboard
+  if (PUBLIC_PATHS.includes(pathname)) {
+    if (accessToken) {
+      try {
+        jwt.verify(accessToken, JWT_SECRET);
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      } catch {
+        // token invalid → allow login
+        return NextResponse.next();
+      }
+    }
     return NextResponse.next();
   }
 
-  // Read auth cookie
-  const token = req.cookies.get("access_token")?.value;
-
-  // Not authenticated → redirect to login
-  if (!token) {
-    const loginUrl = new URL("/auth/login", req.url);
-    return NextResponse.redirect(loginUrl);
+  // 🔒 Any other route is protected
+  if (!accessToken) {
+    return NextResponse.redirect(new URL("/auth/login", req.url));
   }
 
-  // Authenticated
-  return NextResponse.next();
+  try {
+    jwt.verify(accessToken, JWT_SECRET);
+    return NextResponse.next();
+  } catch {
+    return NextResponse.redirect(new URL("/auth/login", req.url));
+  }
 }
 
 export const config = {
@@ -42,5 +45,6 @@ export const config = {
     "/events/:path*",
     "/schedule/:path*",
     "/ministries/:path*",
+    "/auth/login",
   ],
 };

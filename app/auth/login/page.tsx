@@ -31,11 +31,15 @@ const Page = () => {
     mutationFn: ({ email, password }: { email: string; password: string }) =>
       loginUser(email, password),
     onSuccess: (data) => {
-      toast("Welcome back!");
-      router.push("/dashboard");
+      const email = data?.user?.email;
+
+      toast.success(email ? `Welcome back, ${email}! 🙏` : "Welcome back! 🙏");
+
+      setTimeout(() => router.push("/dashboard"), 800);
     },
+
     onError: (error: any) => {
-      toast("Login Failed");
+      toast.error("Login Failed");
     },
   });
 
@@ -47,6 +51,11 @@ const Page = () => {
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 1500);
     return () => clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    fetch("/api/auth/me").then((res) => {
+      if (res.ok) router.replace("/dashboard");
+    });
   }, []);
 
   if (isLoading) return <SplashScreen />;

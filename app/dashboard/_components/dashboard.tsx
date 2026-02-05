@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import QRCode from "react-qr-code";
 import {
@@ -27,7 +27,7 @@ import { useMinistries } from "@/app/services/ministries";
 export default function Dashboard({ user }: any) {
   const { data: volunteers, isLoading: loadingVolunteers } = useVolunteers();
   const { data: ministries, isLoading: loadingMinistries } = useMinistries();
-
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const isLoading = loadingVolunteers || loadingMinistries;
 
   // Metrics calculation
@@ -90,9 +90,9 @@ export default function Dashboard({ user }: any) {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
-      <Sidebar user={user} />
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
       <div className="flex-1 flex flex-col md:ml-64">
-        <Header user={user} />
+        <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         <main className="flex-1 p-4 md:p-6 space-y-6">
           {isLoading || !metrics ? (

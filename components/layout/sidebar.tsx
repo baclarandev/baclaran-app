@@ -1,4 +1,6 @@
 "use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -12,49 +14,49 @@ import {
   Shield,
   Archive,
   X,
+  Menu,
 } from "lucide-react";
-
-import { IconTrack } from "@tabler/icons-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/app/services/users";
 
 interface SidebarProps {
   user: User;
+  isLoading?: boolean;
   isOpen?: boolean;
-  onClose?: () => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
-// ✅ Added Attendance item
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/volunteers", label: "Volunteers", icon: Users },
-  { href: "/ministries", label: "Ministries", icon: Church },
-  { href: "/events", label: "Events", icon: Calendar },
-  // { href: "/tasks", label: "Tasks", icon: IconTrack },
-  { href: "/attendance", label: "Attendance", icon: ListChecks },
-];
-
-const settingsItems = [
-  {
-    href: "/settings",
-    label: "Account Settings",
-    icon: Settings,
-    adminOnly: true,
-  },
-  {
-    href: "/settings/roles",
-    label: "Role Management",
-    icon: Shield,
-    adminOnly: true,
-  },
-  {
-    href: "/settings/archives",
-    label: "Archives",
-    icon: Archive,
-  },
-];
-
-export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
+export function Sidebar({
+  user,
+  isLoading = false,
+  isOpen: externalIsOpen,
+  onOpenChange,
+}: SidebarProps) {
   const pathname = usePathname();
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
+
+  const setIsOpen = (value: boolean | ((prev: boolean) => boolean)) => {
+    if (onOpenChange) {
+      const newValue = typeof value === "function" ? value(isOpen) : value;
+      onOpenChange(newValue);
+    } else {
+      setInternalIsOpen(value);
+    }
+  };
+
+  const navItems = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/volunteers", label: "Volunteers", icon: Users },
+    { href: "/ministries", label: "Ministries", icon: Church },
+    { href: "/events", label: "Events", icon: Calendar },
+    { href: "/attendance", label: "Attendance", icon: ListChecks },
+  ];
+
+  // Toggle for mobile
+  const toggleSidebar = () => setIsOpen((prev) => !prev);
 
   const sidebarContent = (
     <>
@@ -67,7 +69,7 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             <Church className="w-5 h-5 text-gray-900" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold text-gray-100">
+            <span className="lg:text-lg font-bold text-gray-100">
               Baclaran Church
             </span>
             <span className="text-xs font-medium text-gray-400 -mt-0.5">
@@ -75,77 +77,61 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
             </span>
           </div>
         </Link>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="ml-auto md:hidden p-2 hover:bg-gray-800 rounded-lg"
-          >
+
+        {/* Mobile burger - fixed z-index to ensure it's clickable */}
+        <button
+          onClick={toggleSidebar}
+          className="relative z-10 ml-auto md:hidden p-2 hover:bg-gray-800 rounded-lg transition-colors"
+          aria-label="Toggle sidebar"
+        >
+          {isOpen ? (
             <X className="w-5 h-5 text-gray-400" />
-          </button>
-        )}
+          ) : (
+            <Menu className="w-5 h-5 text-gray-400" />
+          )}
+        </button>
       </div>
 
+      {/* Navigation links */}
       <nav className="flex-1 overflow-auto py-6 px-4 scrollbar-thin">
         <div className="space-y-1">
-          {navItems.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onClose}
-                className={cn(
-                  "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
-                  isActive
-                    ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-yellow-400",
-                )}
-              >
-                <item.icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-
-        <div className="mt-8">
-          <p className="px-4 text-xs font-semibold text-gray-400 uppercase mb-2">
-            Settings
-          </p>
-
-          <div className="space-y-1">
-            {settingsItems
-              .filter((item) => !item.adminOnly || user?.role === "ADMIN")
-              .map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    className={cn(
-                      "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
-                      isActive
-                        ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-yellow-400",
-                    )}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </Link>
-                );
-              })}
-          </div>
+          {isLoading ? (
+            // Loading skeleton
+            <>
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-xl px-4 py-3"
+                >
+                  <Skeleton className="w-5 h-5 rounded" />
+                  <Skeleton className="h-4 flex-1" />
+                </div>
+              ))}
+            </>
+          ) : (
+            navItems.map((item) => {
+              const isActive =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)} // close on click
+                  className={cn(
+                    "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
+                    isActive
+                      ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
+                      : "text-gray-300 hover:bg-gray-800 hover:text-yellow-400",
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              );
+            })
+          )}
         </div>
       </nav>
-
-      <div className="border-t border-gray-700 p-4">
-        <div className="flex items-center gap-3 text-gray-400 text-sm">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span>System Online</span>
-        </div>
-      </div>
     </>
   );
 
@@ -155,7 +141,8 @@ export function Sidebar({ user, isOpen, onClose }: SidebarProps) {
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={onClose}
+          onClick={toggleSidebar}
+          role="presentation"
         />
       )}
 

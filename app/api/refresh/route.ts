@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "superrefreshkey";
-const ACCESS_EXPIRES = "15m";
+const ACCESS_EXPIRES = "45m";
 
 export async function POST(req: NextRequest) {
   try {
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       { expiresIn: ACCESS_EXPIRES },
     );
 
-    const response = NextResponse.json({ message: "Access token refreshed" });
+    const response = NextResponse.json({ ok: true });
     response.cookies.set({
       name: "access_token",
       value: newAccessToken,

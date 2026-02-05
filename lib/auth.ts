@@ -14,13 +14,11 @@ export interface SessionUser {
   createdAt: Date;
 }
 
-export async function getSession(): Promise<SessionUser> {
+export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get("access_token")?.value;
 
-  if (!accessToken) {
-    throw new Error("NO_TOKEN");
-  }
+  if (!accessToken) return null;
 
   try {
     const decoded = jwt.verify(accessToken, JWT_SECRET) as { id: number };
@@ -36,15 +34,8 @@ export async function getSession(): Promise<SessionUser> {
       },
     });
 
-    if (!user) {
-      throw new Error("USER_NOT_FOUND");
-    }
-
-    return user;
-  } catch (err: any) {
-    if (err instanceof TokenExpiredError) {
-      throw new Error("TOKEN_EXPIRED");
-    }
-    throw new Error("INVALID_TOKEN");
+    return user ?? null;
+  } catch {
+    return null;
   }
 }

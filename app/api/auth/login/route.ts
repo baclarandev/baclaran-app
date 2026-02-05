@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     if (rateLimit(ip)) {
       return NextResponse.json(
         { error: "Too many login attempts. Please try again later." },
-        { status: 429 }
+        { status: 429 },
       );
     }
 
@@ -60,10 +60,9 @@ export async function POST(req: NextRequest) {
     const parsed = LoginSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.flatten().fieldErrors },
-        { status: 400 }
-      );
+      const firstError = parsed.error ?? "Invalid input";
+
+      return NextResponse.json({ error: firstError }, { status: 400 });
     }
 
     const { email, password } = parsed.data;
@@ -71,10 +70,18 @@ export async function POST(req: NextRequest) {
     // ----- FIND USER -----
     const user = await prisma.user.findUnique({ where: { email } });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user) {
       return NextResponse.json(
-        { error: "Invalid email or password" },
-        { status: 401 }
+        { error: "Email does not exist" },
+        { status: 401 },
+      );
+    }
+    const isValid = await bcrypt.compare(password, user.password);
+
+    if (!isValid) {
+      return NextResponse.json(
+        { error: "Incorrect password" },
+        { status: 401 },
       );
     }
 
@@ -136,7 +143,7 @@ export async function POST(req: NextRequest) {
     console.error("[LOGIN_ERROR]", err);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

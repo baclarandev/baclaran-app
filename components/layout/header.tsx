@@ -63,15 +63,14 @@ export function Header({ user, onMenuClick }: HeaderProps) {
   };
 
   return (
-    <header className="sticky w-full top-0 z-40 flex h-16 items-center gap-4 bg-gray-900/95 backdrop-blur-md border-b border-gray-700 px-6 shadow-sm ">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="md:hidden text-yellow-400"
+    <header className="sticky w-full top-0 z-40 flex h-16 items-center gap-4 bg-gray-900/95 backdrop-blur-md border-b border-gray-700 px-6 shadow-sm">
+      <button
+        className="md:hidden p-2 hover:bg-gray-800 rounded-lg transition-colors pointer-events-auto"
         onClick={onMenuClick}
+        aria-label="Toggle menu"
       >
-        <Menu className="w-5 h-5" />
-      </Button>
+        <Menu className="w-5 h-5 text-yellow-400" />
+      </button>
 
       <div className="flex items-center gap-2 text-sm text-gray-300">
         <span className="font-semibold text-yellow-400">{pageTitle}</span>
