@@ -57,7 +57,7 @@ export default function Volunteer({ user }: any) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [openAddDialog, setOpenAddDialog] = useState(false);
-
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const filteredVolunteers = useMemo(() => {
@@ -112,9 +112,9 @@ export default function Volunteer({ user }: any) {
 
   return (
     <>
-      <Sidebar user={user} />
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
       <div className="flex-1 flex flex-col md:ml-64">
-        <Header user={user} />
+        <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         <div className="bg-gray-900 text-gray-100 p-4">
           {/* Header + Actions */}

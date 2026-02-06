@@ -34,8 +34,7 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const [internalIsOpen, setInternalIsOpen] = useState(false);
-
-  // Use external state if provided, otherwise use internal state
+  const isAdmin = user.role === "ADMIN";
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
 
   const setIsOpen = (value: boolean | ((prev: boolean) => boolean)) => {
@@ -55,7 +54,16 @@ export function Sidebar({
     { href: "/attendance", label: "Attendance", icon: ListChecks },
   ];
 
-  // Toggle for mobile
+  const settingsItems = [
+    {
+      href: "/settings",
+      label: "Account Settings",
+      icon: Settings,
+      isAdmin: true,
+    },
+    { href: "/settings/archives", label: "Archives", icon: Archive },
+  ];
+
   const toggleSidebar = () => setIsOpen((prev) => !prev);
 
   const sidebarContent = (
@@ -78,7 +86,6 @@ export function Sidebar({
           </div>
         </Link>
 
-        {/* Mobile burger - fixed z-index to ensure it's clickable */}
         <button
           onClick={toggleSidebar}
           className="relative z-10 ml-auto md:hidden p-2 hover:bg-gray-800 rounded-lg transition-colors"
@@ -96,7 +103,6 @@ export function Sidebar({
       <nav className="flex-1 overflow-auto py-6 px-4 scrollbar-thin">
         <div className="space-y-1">
           {isLoading ? (
-            // Loading skeleton
             <>
               {[...Array(5)].map((_, i) => (
                 <div
@@ -109,26 +115,57 @@ export function Sidebar({
               ))}
             </>
           ) : (
-            navItems.map((item) => {
-              const isActive =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)} // close on click
-                  className={cn(
-                    "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
-                    isActive
-                      ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
-                      : "text-gray-300 hover:bg-gray-800 hover:text-yellow-400",
-                  )}
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              );
-            })
+            <>
+              {/* Main nav items */}
+              {navItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
+                      isActive
+                        ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-yellow-400",
+                    )}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+
+              {/* Divider */}
+              <div className="my-4 h-px bg-gray-700" />
+
+              {/* Settings items */}
+              {settingsItems.map((item) => {
+                if (item.isAdmin && !isAdmin) return null;
+                const isActive =
+                  pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
+                      isActive
+                        ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-yellow-400",
+                    )}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </>
           )}
         </div>
       </nav>
@@ -137,7 +174,6 @@ export function Sidebar({
 
   return (
     <>
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"

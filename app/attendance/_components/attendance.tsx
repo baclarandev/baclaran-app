@@ -28,7 +28,7 @@ export default function Attendance({ user }: any) {
   const [bookings, setBookings] = useState<any[]>([]);
   const [selectedVolunteerMinistryId, setSelectedVolunteerMinistryId] =
     useState<number | null>(null);
-
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: volunteerMinistries = [], isLoading: loadingMinistries } =
     useVolunteerMinistries(user?.id);
   const [isAdmin, setIsAdmin] = useState(
@@ -115,9 +115,9 @@ export default function Attendance({ user }: any) {
 
   return (
     <>
-      <Sidebar user={user} />
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
       <div className="flex-1 flex flex-col md:ml-64">
-        <Header user={user} />
+        <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         <header className="py-10 px-4 text-center">
           <h1 className="font-serif text-4xl md:text-5xl font-bold text-yellow-400 mb-3">

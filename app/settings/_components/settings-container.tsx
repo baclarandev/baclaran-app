@@ -75,6 +75,7 @@ export default function RoleManagement({ user }: any) {
     isLoading: usersLoading,
     refetch: refetchUsers,
   } = useUsers();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(true);
   const [loading, setLoading] = useState(false);
   console.log(users);
@@ -163,10 +164,9 @@ export default function RoleManagement({ user }: any) {
 
   return (
     <>
-      <Sidebar user={user} />
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
       <div className="flex-1 flex flex-col md:ml-64">
-        <Header user={user} />
-
+        <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <div className="p-6 space-y-6 min-h-screen">
           {/* Header */}
           <div>

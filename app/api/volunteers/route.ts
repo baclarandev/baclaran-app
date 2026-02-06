@@ -142,7 +142,6 @@ export async function POST(request: NextRequest) {
       ...data
     } = parsed.data;
 
-    // 🔢 Volunteer Code
     const lastVolunteer = await prisma.volunteer.findFirst({
       orderBy: { id: "desc" },
     });
@@ -151,13 +150,26 @@ export async function POST(request: NextRequest) {
       ? String(parseInt(lastVolunteer.volunteerCode) + 1).padStart(6, "0")
       : "100000";
 
+    // ✅ Check for duplicate email BEFORE creating
+    const existing = await prisma.volunteer.findUnique({
+      where: { email: data.email },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "A volunteer with this email already exists." },
+        { status: 400 },
+      );
+    }
+
+    // ✅ Create new volunteer
     const volunteer = await prisma.volunteer.create({
       data: {
         volunteerCode: nextCode,
         ...data,
         dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
 
-        // ✅ Ministries
+        // Ministries
         ministryHistories:
           ministryIds && ministryIds.length > 0
             ? {
@@ -170,7 +182,7 @@ export async function POST(request: NextRequest) {
               }
             : undefined,
 
-        // ✅ Formations
+        // Formations
         ...(formations.length > 0 && {
           formations: {
             createMany: {
@@ -182,7 +194,7 @@ export async function POST(request: NextRequest) {
           },
         }),
 
-        // ✅ Timelines
+        // Timelines
         ...(timelines.length > 0 && {
           timelines: {
             createMany: {
@@ -198,7 +210,6 @@ export async function POST(request: NextRequest) {
         }),
       },
     });
-
     return NextResponse.json(
       {
         message: "Volunteer created successfully",

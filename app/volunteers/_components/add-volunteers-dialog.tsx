@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
+import { z } from "zod";
 import {
   Command,
   CommandEmpty,
@@ -44,6 +44,7 @@ import { useMinistries } from "@/app/services/ministries";
 import { useCreateVolunteer, useVolunteers } from "@/app/services/volunteer";
 import { Volunteer } from "@/app/types/volunteer";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner";
 
 const steps = [
   { id: 1, name: "Personal", icon: User },
@@ -86,6 +87,28 @@ interface Timeline {
   totalYears: number; // Computed total years
   type: TimelineType; // "SHRINE" or "OUTSIDE"
 }
+const FormDataSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email"),
+  sex: z.enum(["male", "female", "other"], "Please select sex"),
+  civilStatus: z.string().min(1, "Civil status is required"),
+  ministryIds: z.array(z.number()).min(1, "Select at least one ministry"),
+  formations: z.array(
+    z.object({
+      name: z.string().min(1, "Formation name required"),
+      year: z.number().int().min(1900).max(CURRENT_YEAR),
+    }),
+  ),
+  timelines: z.array(
+    z.object({
+      organization: z.string().min(1, "Organization required"),
+      startYear: z.number().min(1900).max(CURRENT_YEAR),
+      endYear: z.number().min(1900).max(CURRENT_YEAR).optional(),
+      type: z.enum(["SHRINE", "OUTSIDE"]),
+    }),
+  ),
+});
 export function AddVolunteerDialog({
   open,
   setOpen,
@@ -108,6 +131,8 @@ export function AddVolunteerDialog({
   const [selectedVolunteer, setSelectedVolunteer] = useState<Volunteer | null>(
     null,
   );
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [openCombobox, setOpenCombobox] = useState(false);
   const [shrineTimelines, setShrineTimelines] = useState<Timeline[]>([]);
   const [outsideTimelines, setOutsideTimelines] = useState<Timeline[]>([]);
@@ -195,18 +220,58 @@ export function AddVolunteerDialog({
     setOpenCombobox(false);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        updateFormData("profilePicture", reader.result as string);
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Show preview immediately
+    setPreviewImage(URL.createObjectURL(file));
+
+    const formData = new FormData();
+    formData.append("profilePicture", file);
+
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/volunteers/upload");
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percent);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          updateFormData("profilePicture", data.url);
+          setUploadProgress(0); // reset
+        } else {
+          console.error("Upload failed", xhr.responseText);
+          alert("Failed to upload image");
+          setUploadProgress(0);
+        }
+      };
+
+      xhr.onerror = () => {
+        toast("Upload failed");
+        setUploadProgress(0);
+      };
+
+      xhr.send(formData);
+    } catch (err: any) {
+      console.error("[IMAGE_UPLOAD_ERROR]", err);
+      toast(err.message || "Failed to upload image");
+      setUploadProgress(0);
     }
   };
 
   const handleNext = () => {
     if (currentStep < 3) setCurrentStep(currentStep + 1);
+    if (!isStepValid) {
+      toast.warning("Please complete required fields first");
+      return;
+    }
   };
 
   const handleBack = () => {
@@ -226,9 +291,9 @@ export function AddVolunteerDialog({
     "Safeguarding Policy",
   ];
 
-  const [formations, setFormations] = useState(
-    DEFAULT_FORMATIONS.map((f) => ({ name: f, year: "" })),
-  );
+  const [formations, setFormations] = useState<
+    { name: string; year: number | "" }[]
+  >(DEFAULT_FORMATIONS.map((f) => ({ name: f, year: "" })));
 
   const computeTotal = (start: number, end?: number) =>
     end ? end - start + 1 : new Date().getFullYear() - start + 1;
@@ -260,7 +325,7 @@ export function AddVolunteerDialog({
     const payload: any = {
       firstName: formData.firstName,
       lastName: formData.lastName,
-      middleInitial: formData.middleInitial || undefined,
+      middleInitial: formData.middleInitial || null,
       email: formData.email,
       sex:
         formData.sex === "male"
@@ -269,19 +334,36 @@ export function AddVolunteerDialog({
             ? "Female"
             : "Other",
       civilStatus: formData.civilStatus,
-      occupation: formData.occupation || undefined,
+      occupation: formData.occupation || null,
       status: "ACTIVE",
-      phone: formData.phone || undefined,
-      address: formData.address || undefined,
-      dateOfBirth: formData.dob || undefined,
+      phone: formData.phone || null,
+      address: formData.address || null,
+      dateOfBirth: formData.dob ? new Date(formData.dob) : null,
       ministryIds:
         formData.ministryIds.length > 0 ? formData.ministryIds : undefined,
       sacraments: formData.sacraments
         .map((s) => sacramentMap[s])
         .filter(Boolean),
-      profilePicture: formData.profilePicture || undefined,
+      profilePicture: formData.profilePicture || "",
     };
+    payload.formations = validFormations.map((f) => ({
+      name: f.name.trim(),
+      year: Number(f.year),
+    }));
 
+    payload.timelines = validTimelines.map((t) => ({
+      organization: t.organization.trim(),
+      startYear: Number(t.startYear),
+      endYear: t.endYear ? Number(t.endYear) : null,
+      totalYears: computeTotal(t.startYear, t.endYear),
+      type: t.type,
+    }));
+    console.group("🚀 CREATE VOLUNTEER PAYLOAD");
+    console.log("RAW payload:", payload);
+    console.log("FormData:", formData);
+    console.log("Valid formations:", validFormations);
+    console.log("Valid timelines:", validTimelines);
+    console.groupEnd();
     // Only add formations if there are any valid ones
     if (validFormations.length > 0) {
       payload.formations = validFormations.map((f) => ({
@@ -309,6 +391,7 @@ export function AddVolunteerDialog({
 
       createVolunteer.mutate(payload, {
         onSuccess: () => {
+          toast.success("Volunteer saved successfully");
           setIsOpen(false);
           resetForm();
           setTimelines([]);
@@ -316,11 +399,11 @@ export function AddVolunteerDialog({
           onSuccess?.();
         },
         onError: (err: any) =>
-          alert(err.message || "Failed to create volunteer"),
+          toast(err.message || "Failed to create volunteer"),
       });
     } catch (err: any) {
       console.error(err);
-      alert(err.message);
+      toast(err.message);
     }
   };
 
@@ -597,7 +680,11 @@ export function AddVolunteerDialog({
                 <>
                   <div className="flex flex-col items-center gap-3 p-4 bg-gray-700 rounded-lg border border-gray-600">
                     <Avatar className="w-24 h-24">
-                      <AvatarImage src={formData.profilePicture || undefined} />
+                      <AvatarImage
+                        src={
+                          previewImage || formData.profilePicture || undefined
+                        }
+                      />
                       <AvatarFallback className="bg-gray-600">
                         {formData.firstName && formData.lastName ? (
                           getInitials(formData.firstName, formData.lastName)
@@ -606,6 +693,7 @@ export function AddVolunteerDialog({
                         )}
                       </AvatarFallback>
                     </Avatar>
+
                     <Label
                       htmlFor="avatar-upload"
                       className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors"
@@ -620,6 +708,15 @@ export function AddVolunteerDialog({
                       onChange={handleImageUpload}
                       className="hidden"
                     />
+
+                    {uploadProgress > 0 && (
+                      <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-yellow-500 h-2 rounded-full transition-all"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
@@ -880,7 +977,8 @@ export function AddVolunteerDialog({
                         value={f.year ?? ""}
                         onChange={(e) => {
                           const copy = [...formations];
-                          copy[i].year = e.target.value;
+                          copy[i].year =
+                            e.target.value === "" ? "" : Number(e.target.value);
                           setFormations(copy);
                         }}
                         className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"

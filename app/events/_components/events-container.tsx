@@ -47,7 +47,7 @@ export default function Events({ user }: any) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
-
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -152,9 +152,16 @@ export default function Events({ user }: any) {
   return (
     <>
       <div>
-        <Sidebar user={user} />
+        <Sidebar
+          user={user}
+          isOpen={sidebarOpen}
+          onOpenChange={setSidebarOpen}
+        />
         <div className="flex-1 flex flex-col md:ml-64">
-          <Header user={user} />
+          <Header
+            user={user}
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          />
 
           {/* Header / Add */}
           <Card className="bg-gray-800 m-6 border-white/6">
@@ -167,51 +174,57 @@ export default function Events({ user }: any) {
                 </div>
 
                 <div className="flex gap-3 items-center">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <Input
-                      placeholder="Search events..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-gray-700 text-gray-100 placeholder-gray-400"
-                    />
+                  <div className="flex flex-col">
+                    <div className="flex flex-col lg:flex-row gap-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                          placeholder="Search events..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-10 bg-gray-700 text-gray-100 placeholder-gray-400"
+                        />
+                      </div>
+
+                      <NativeSelect
+                        className="w-40  bg-gray-700 text-gray-100"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                      >
+                        <NativeSelectOption value="all">
+                          All Events
+                        </NativeSelectOption>
+                        <NativeSelectOption value="upcoming">
+                          Upcoming
+                        </NativeSelectOption>
+                        <NativeSelectOption value="past">
+                          Past
+                        </NativeSelectOption>
+                      </NativeSelect>
+                    </div>
+                    <div className="flex flex-row gap-4 pt-4 lg:justify-end">
+                      <Link href="/events/archived">
+                        <Button className="flex items-center gap-2 bg-stone-900 border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]">
+                          <BoxArchive className="w-4 h-4 " />
+                          <span className="text-gray-100">Archived</span>
+                        </Button>
+                      </Link>
+                      {isAdmin && (
+                        <Button
+                          onClick={() => setIsAddDialogOpen(true)}
+                          className="flex items-center gap-2 bg-white text-black border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]"
+                        >
+                          <Plus className="w-4 h-4 " />
+                          <span className="">Add Event</span>
+                        </Button>
+                      )}
+                    </div>
                   </div>
-
-                  <NativeSelect
-                    className="w-40 bg-gray-700 text-gray-100"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    <NativeSelectOption value="all">
-                      All Events
-                    </NativeSelectOption>
-                    <NativeSelectOption value="upcoming">
-                      Upcoming
-                    </NativeSelectOption>
-                    <NativeSelectOption value="past">Past</NativeSelectOption>
-                  </NativeSelect>
-
-                  <Link href="/events/archived">
-                    <Button className="flex items-center gap-2 bg-stone-900 border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]">
-                      <BoxArchive className="w-4 h-4 " />
-                      <span className="text-gray-100">Archived</span>
-                    </Button>
-                  </Link>
-
                   {/* Create Dialog */}
                   <Dialog
                     open={isAddDialogOpen}
                     onOpenChange={setIsAddDialogOpen}
                   >
-                    {isAdmin && (
-                      <DialogTrigger asChild>
-                        <Button className="flex items-center gap-2 bg-white text-black border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]">
-                          <Plus className="w-4 h-4 " />
-                          <span className="">Add Event</span>
-                        </Button>
-                      </DialogTrigger>
-                    )}
-
                     <DialogContent className="max-w-lg bg-[#1b1c1f] border-white/6 text-gray-100">
                       <DialogHeader>
                         <DialogTitle className="text-white">
