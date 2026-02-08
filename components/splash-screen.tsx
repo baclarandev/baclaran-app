@@ -108,7 +108,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
               <div className="absolute inset-0 bg-gradient-to-b from-amber-100 to-amber-50 rounded-full opacity-20 blur-2xl" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div
-                  className="text-6xl text-amber-100 animate-rotate-cross"
+                  className="text-6xl text-amber-100 animate-in"
                   style={{ transformOrigin: "center" }}
                 >
                   ✝

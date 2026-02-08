@@ -207,7 +207,7 @@ export default function Dashboard({ user }: any) {
                             </div>
                           ))}
                           <Link href="/ministries">
-                            <div className="bg-gray-700/40 border border-dashed border-gray-600 h-full  w-full h-32 lg:w-60 rounded-xl p-4 flex flex-col items-center justify-center hover:bg-gray-700 transition cursor-pointer">
+                            <div className="bg-gray-700/40 border border-dashed border-gray-600 h-full  w-full h-32 lg:w-44 rounded-xl p-4 flex flex-col items-center justify-center hover:bg-gray-700 transition cursor-pointer">
                               <ChevronRight className="w-6 h-6 text-yellow-400 mb-2" />
                               <p className="text-sm text-yellow-400">
                                 See all ministries
