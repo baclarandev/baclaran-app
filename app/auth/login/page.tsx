@@ -26,7 +26,12 @@ const Page = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 6000); // splash shows 6s
+    return () => clearTimeout(timer);
+  }, []);
   const staffLoginMutation = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>
       loginUser(email, password),
@@ -58,7 +63,8 @@ const Page = () => {
     });
   }, []);
 
-  if (isLoading) return <SplashScreen />;
+  if (showSplash)
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 flex items-center justify-center px-4 text-white">

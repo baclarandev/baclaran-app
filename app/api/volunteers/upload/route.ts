@@ -1,69 +1,57 @@
-import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
-import os from "os";
 import { cloudinary } from "@/app/lib/cloudinary";
+import { NextResponse } from "next/server";
+import sharp from "sharp";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  console.log("[UPLOAD] POST request received");
+
   try {
-    console.log("[UPLOAD] Received upload request");
+    const form = await req.formData();
+    const file = form.get("file");
 
-    const formData = await req.formData();
-    const file = formData.get("profilePicture") as File | null;
-
-    if (!file) {
-      console.log("[UPLOAD] No file in request");
+    if (!file || !(file instanceof File)) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    console.log(
-      `[UPLOAD] File received: ${file.name}, size: ${file.size} bytes, type: ${file.type}`,
-    );
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
-    if (file.size > MAX_SIZE) {
-      console.log(`[UPLOAD] File too large: ${file.size} bytes`);
-      return NextResponse.json(
-        { error: "File too large. Max 10 MB." },
-        { status: 400 },
+    // Resize & compress with Sharp
+    const resizedBuffer = await sharp(buffer)
+      .resize({ width: 512, height: 512, fit: "inside" })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    return await new Promise((resolve) => {
+      const upload = cloudinary.uploader.upload_stream(
+        {
+          transformation: [
+            { width: 512, height: 512, crop: "limit" },
+            { quality: "auto" },
+            { fetch_format: "auto" },
+          ],
+        },
+        (error, result) => {
+          if (error) {
+            resolve(
+              NextResponse.json(
+                { error: "Cloudinary upload failed", details: error },
+                { status: 500 },
+              ),
+            );
+          } else {
+            resolve(NextResponse.json({ url: result?.secure_url }));
+          }
+        },
       );
-    }
 
-    // Convert File → Buffer
-    const buffer = Buffer.from(await file.arrayBuffer());
-    console.log("[UPLOAD] Converted file to buffer");
-
-    // Save temporarily (Cloudinary uploader needs a file path)
-    const tempPath = path.join(os.tmpdir(), file.name);
-    await fs.writeFile(tempPath, buffer);
-    console.log(`[UPLOAD] File written temporarily at: ${tempPath}`);
-
-    // Upload: ✅ Strict-safe
-    console.log("[UPLOAD] Uploading to Cloudinary...");
-    const upload = await cloudinary.uploader.upload(tempPath, {
-      folder: "volunteers",
-      use_filename: true,
-      unique_filename: false,
-      overwrite: true,
-      resource_type: "image",
-      transformation: [
-        { width: 2000, crop: "limit" }, // resize to max 2000px width
-        { quality: "auto" }, // compress automatically
-      ],
+      upload.end(resizedBuffer);
     });
-    console.log("[UPLOAD] Upload successful:", upload.secure_url);
-
-    // Cleanup
-    await fs.unlink(tempPath);
-    console.log("[UPLOAD] Temporary file removed");
-
-    return NextResponse.json({ url: upload.secure_url });
   } catch (err) {
-    console.error("[UPLOAD_ERROR]", err);
     return NextResponse.json(
-      { error: "Image upload failed", details: err },
+      { error: "Unexpected upload error", details: err },
       { status: 500 },
     );
   }

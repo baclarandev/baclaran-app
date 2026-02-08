@@ -200,18 +200,23 @@ export default function MinistriesClient({ user }: any) {
     return map;
   }, [volunteers]);
 
-  const isChairman = user?.role === "CHAIRMAN";
-  const isStaff = user?.role === "STAFF";
+  
   const canViewMembers = (ministry: any) => {
-    // Admin can view all
+    // Admin can view all ministries
     if (user?.role === "ADMIN") return true;
 
-    // Staff or Chairman can only view ministries with the same type
-    if (user?.role === "STAFF" || user?.role === "CHAIRMAN") {
-      return user.ministryType === ministry.type;
+    // Staff can only view their own ministry
+    if (user?.role === "STAFF") {
+      return user?.ministry?.id === ministry.id;
     }
 
-    return false;
+    // Chairman or other roles logic if needed
+    if (user?.role === "CHAIRMAN") {
+      // Example: Chairman can view ministries of the same type
+      return user?.ministry?.type === ministry.type;
+    }
+
+    return false; // default deny
   };
 
   /* ───────────── CRUD ───────────── */

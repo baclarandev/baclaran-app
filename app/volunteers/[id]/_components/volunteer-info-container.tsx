@@ -32,22 +32,20 @@ export default function VolunteerProfile({ user }: { user: any }) {
     error,
   } = useVolunteerById(volunteerId);
 
-  if (isLoading) {
+  if (isLoading)
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
-  }
 
-  if (isError) {
+  if (isError)
     return (
       <div className="p-6 text-destructive flex items-center gap-2">
         <Award className="h-5 w-5" />
         {error?.message || "Volunteer not found"}
       </div>
     );
-  }
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -59,35 +57,43 @@ export default function VolunteerProfile({ user }: { user: any }) {
         return "bg-slate-500/10 text-slate-500 hover:bg-slate-500/20";
     }
   };
-
+  if (!volunteer) {
+    return (
+      <p className="text-center text-muted-foreground">Volunteer not found</p>
+    );
+  }
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar user={user} />
       <div className="flex-1 flex flex-col w-full md:ml-64 transition-all duration-300">
         <Header user={user} />
-        <main className="p-4 md:p-8  mx-auto w-full space-y-8">
-          {/* Hero Section */}
+        <main className="p-4 md:p-8 mx-auto w-full space-y-8">
           {/* Back Button */}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.back()} // ✅ navigate back
+            onClick={() => router.back()}
             className="flex items-center gap-2 mb-4"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
           </Button>
+
+          {/* Hero Section */}
           <div className="relative w-full rounded-3xl overflow-hidden bg-card border shadow-sm p-6 md:p-10 flex flex-col md:flex-row items-center gap-8">
             <div className="absolute top-0 right-0 p-4">
-              {/* <Badge className={getStatusColor(volunteer?.status)}>
-                {volunteer?.status || "Unknown Status"}
-              </Badge> */}
+              <Badge className={getStatusColor(volunteer.status)}>
+                {volunteer?.status || "Unknown"}
+              </Badge>
             </div>
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full -z-10 animate-pulse"></div>
               <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-background shadow-xl ring-1 ring-border">
                 <AvatarImage
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${volunteer?.email}`}
+                  src={
+                    volunteer?.profilePicture ||
+                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${volunteer?.email}`
+                  }
                 />
                 <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
                   {volunteer?.firstName?.[0]}
@@ -126,6 +132,7 @@ export default function VolunteerProfile({ user }: { user: any }) {
 
           {/* Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Contact Details */}
             <Card className="rounded-2xl border-none shadow-sm bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -134,23 +141,20 @@ export default function VolunteerProfile({ user }: { user: any }) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-2">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Phone Number
-                  </p>
-                  <p className="font-medium text-foreground">
-                    {volunteer?.phone || "Not provided"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">Address</p>
-                  <p className="font-medium text-foreground leading-relaxed italic">
-                    {volunteer?.address || "No address recorded"}
-                  </p>
-                </div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Phone Number
+                </p>
+                <p className="font-medium text-foreground">
+                  {volunteer?.phone || "Not provided"}
+                </p>
+                <p className="text-xs text-muted-foreground mb-1">Address</p>
+                <p className="font-medium text-foreground italic">
+                  {volunteer?.address || "No address recorded"}
+                </p>
               </CardContent>
             </Card>
 
+            {/* Important Dates */}
             <Card className="rounded-2xl border-none shadow-sm bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -159,43 +163,32 @@ export default function VolunteerProfile({ user }: { user: any }) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-2">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Date of Birth
-                  </p>
-                  <p className="font-medium text-foreground">
-                    {volunteer?.dateOfBirth
-                      ? new Date(volunteer.dateOfBirth).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "long",
-                            day: "numeric",
-                            year: "numeric",
-                          },
-                        )
-                      : "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    Joined Ministry
-                  </p>
-                  <p className="font-medium text-foreground">
-                    {volunteer?.createdAt
-                      ? new Date(volunteer.createdAt).toLocaleDateString(
-                          "en-US",
-                          {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          },
-                        )
-                      : "N/A"}
-                  </p>
-                </div>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Date of Birth
+                </p>
+                <p className="font-medium text-foreground">
+                  {volunteer?.dateOfBirth
+                    ? new Date(volunteer.dateOfBirth).toLocaleDateString(
+                        "en-US",
+                        { month: "long", day: "numeric", year: "numeric" },
+                      )
+                    : "N/A"}
+                </p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  Joined Ministry
+                </p>
+                <p className="font-medium text-foreground">
+                  {volunteer?.createdAt
+                    ? new Date(volunteer.createdAt).toLocaleDateString(
+                        "en-US",
+                        { year: "numeric", month: "long", day: "numeric" },
+                      )
+                    : "N/A"}
+                </p>
               </CardContent>
             </Card>
 
+            {/* Sacraments */}
             <Card className="rounded-2xl border-none shadow-sm bg-card/50 backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -203,10 +196,10 @@ export default function VolunteerProfile({ user }: { user: any }) {
                   Sacraments
                 </CardTitle>
               </CardHeader>
-              {/* <CardContent className="pt-2">
-                {volunteer?.sacraments?.length > 0 ? (
+              <CardContent className="pt-2">
+                {(volunteer?.sacraments ?? []).length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {volunteer?.sacraments.map((s: string) => (
+                    {(volunteer?.sacraments ?? []).map((s: string) => (
                       <Badge
                         key={s}
                         variant="secondary"
@@ -221,25 +214,73 @@ export default function VolunteerProfile({ user }: { user: any }) {
                     No records found
                   </p>
                 )}
-              </CardContent> */}
+              </CardContent>
             </Card>
           </div>
 
-          {/* Bio/Additional Info Mockup */}
+          {/* Formations */}
           <Card className="rounded-2xl border-none shadow-sm bg-card/50 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="text-lg font-bold flex items-center gap-2">
                 <User className="h-5 w-5 text-primary" />
-                Volunteer Journey
+                Formations
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground leading-relaxed">
-                Dedicated volunteer focused on community building and ministry
-                growth. Passionate about contributing to local outreach programs
-                and supporting the {volunteer?.ministryName || "ministry"}{" "}
-                mission through active engagement and leadership.
-              </p>
+              {(volunteer?.formations ?? []).length > 0 ? (
+                <ul className="list-disc pl-5 space-y-1">
+                  {(volunteer?.formations ?? []).map((f: any) => (
+                    <li key={f.id}>
+                      {f.name} ({f.year})
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground italic">
+                  No formations recorded
+                </p>
+              )}
+
+              {(volunteer?.timelines ?? []).length > 0 ? (
+                <ul className="list-disc pl-5 space-y-1">
+                  {(volunteer?.timelines ?? []).map((t: any) => (
+                    <li key={t.id}>
+                      {t.organization}: {t.startYear} - {t.endYear ?? "Present"}{" "}
+                      ({t.type})
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground italic">
+                  No timelines recorded
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Timelines */}
+          <Card className="rounded-2xl border-none shadow-sm bg-card/50 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Timelines
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {volunteer?.timelines?.length > 0 ? (
+                <ul className="list-disc pl-5 space-y-1">
+                  {volunteer?.timelines.map((t: any) => (
+                    <li key={t.id}>
+                      {t.organization}: {t.startYear} - {t.endYear ?? "Present"}{" "}
+                      ({t.type})
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground italic">
+                  No timelines recorded
+                </p>
+              )}
             </CardContent>
           </Card>
         </main>

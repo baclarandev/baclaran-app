@@ -16,7 +16,20 @@ export interface MassBooking {
   mass: Mass;
   ministry: Ministry;
 }
+export interface Formation {
+  id: number;
+  name: string;
+  year: number;
+}
 
+export interface Timeline {
+  id: number;
+  organization: string;
+  startYear: number;
+  endYear?: number | null;
+  totalYears: number;
+  type: string; // "SHRINE" | "OUTSIDE"
+}
 export interface Volunteer {
   id: number;
   volunteerCode: string;
@@ -36,6 +49,8 @@ export interface Volunteer {
   createdAt: Date;
   sacraments: string[];
   ministryName: string;
+  formations: Formation[];
+  timelines: Timeline[];
 }
 
 export interface VolunteerWithBookings extends Volunteer {

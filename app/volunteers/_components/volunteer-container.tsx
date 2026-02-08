@@ -61,17 +61,7 @@ export default function Volunteer({ user }: any) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const filteredVolunteers = useMemo(() => {
-    // Step 1: Start with role-based filtering
-    let visibleVolunteers = volunteers;
-
-    if (user.role === "STAFF" || user.role === "CHAIRMAN") {
-      visibleVolunteers = volunteers.filter(
-        (v: any) => v.ministryId === user.ministryId,
-      );
-    }
-
-    // Step 2: Apply search and status filters
-    return visibleVolunteers.filter((v: any) => {
+    return volunteers.filter((v) => {
       const matchesSearch =
         searchQuery === "" ||
         `${v.firstName} ${v.lastName}`
@@ -84,7 +74,7 @@ export default function Volunteer({ user }: any) {
 
       return matchesSearch && matchesStatus;
     });
-  }, [volunteers, searchQuery, statusFilter, user]);
+  }, [volunteers, searchQuery, statusFilter]);
 
   const handleEdit = (volunteer: any) => {
     setSelectedVolunteer(volunteer);
@@ -211,9 +201,13 @@ export default function Volunteer({ user }: any) {
                   >
                     <Card className="bg-gray-800 border-gray-700 p-4 flex flex-col items-center gap-3 hover:bg-gray-700 transition-colors cursor-pointer">
                       <Avatar className="h-20 w-20">
-                        <AvatarImage
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${v.email}`}
-                        />
+                        {v.profilePicture ? (
+                          <AvatarImage src={v.profilePicture} />
+                        ) : (
+                          <AvatarImage
+                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${v.email}`}
+                          />
+                        )}
                         <AvatarFallback>
                           {v.firstName[0]}
                           {v.lastName[0]}

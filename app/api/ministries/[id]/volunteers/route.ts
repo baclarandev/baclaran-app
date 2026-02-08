@@ -4,14 +4,15 @@ import { getSession } from "@/lib/auth";
 
 export async function GET(
   _req: Request,
-  context: { params: Promise<{ id: string }> }, // <-- params is a Promise
+  context: { params: Promise<{ id: string }> }, // params is a Promise
 ) {
+  // 1️⃣ Check session
   const sessionUser = await getSession();
   if (!sessionUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Await the params before using
+  // 2️⃣ Get ministry ID from params
   const { id } = await context.params;
   const ministryId = Number(id);
 
@@ -20,36 +21,34 @@ export async function GET(
   }
 
   try {
+    // 3️⃣ Fetch volunteers for this ministry
     const volunteers = await prisma.volunteer.findMany({
       where: {
         status: "ACTIVE",
-        ministryHistories: {
-          some: {
-            ministryId,
-            status: "ACTIVE",
-          },
-        },
+        ministryHistories: { some: { ministryId, status: "ACTIVE" } },
       },
       include: {
         ministryHistories: {
-          where: {
-            status: "ACTIVE",
-          },
-          include: {
-            ministry: true,
-          },
-          orderBy: {
-            joinedAt: "desc",
-          },
+          where: { status: "ACTIVE" },
+          include: { ministry: true },
+          orderBy: { joinedAt: "desc" },
           take: 1,
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
 
-    const transformed = volunteers.map((v: any) => ({
+    // 4️⃣ Fetch staff for this ministry (from User table)
+    const staffMembers = await prisma.user.findMany({
+      where: {
+        role: "STAFF",
+        ministryId: ministryId,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // 5️⃣ Transform volunteers
+    const transformedVolunteers = volunteers.map((v) => ({
       id: v.id,
       volunteerCode: v.volunteerCode,
       firstName: v.firstName,
@@ -59,11 +58,25 @@ export async function GET(
       ministryName: v.ministryHistories[0]?.ministry?.name ?? "No Ministry",
     }));
 
-    return NextResponse.json(transformed);
+    // 6️⃣ Transform staff
+    const transformedStaff = staffMembers.map((s) => ({
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      role: s.role,
+      ministryId: s.ministryId,
+    }));
+
+    // 7️⃣ Return both
+    return NextResponse.json({
+      staffCount: transformedStaff.length,
+      staff: transformedStaff,
+      volunteers: transformedVolunteers,
+    });
   } catch (error) {
-    console.error("[GET_MINISTRY_VOLUNTEERS_ERROR]", error);
+    console.error("[GET_MINISTRY_MEMBERS_ERROR]", error);
     return NextResponse.json(
-      { error: "Failed to fetch ministry volunteers" },
+      { error: "Failed to fetch ministry members" },
       { status: 500 },
     );
   }

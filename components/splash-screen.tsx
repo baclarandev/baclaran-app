@@ -50,29 +50,40 @@ const BIBLE_VERSES: BibleVerse[] = [
     reference: "1 Peter 5:7",
   },
 ];
-
-export default function SplashScreen() {
+interface SplashScreenProps {
+  onComplete?: () => void; // callback when splash finishes
+}
+export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [progress, setProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentVerse] = useState<BibleVerse>(() => {
-    return BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)];
-  });
+  const [currentVerse, setCurrentVerse] = useState<BibleVerse | null>(null);
 
+  // pick a random verse only on the client
+  useEffect(() => {
+    setCurrentVerse(
+      BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)],
+    );
+  }, []);
+
+  // simulate progress
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress((prev) => {
-        const increment = 2.5 + Math.random() * 1; // ~2.5% ±1% for natural feel
+        const increment = 2 + Math.random() * 1; // slower progress
         if (prev + increment >= 100) {
+          setProgress(100);
           setIsLoading(false);
           clearInterval(interval);
-          return 100;
+          if (onComplete) onComplete(); // notify parent
         }
         return prev + increment;
       });
-    }, 200); // update every 0.2s -> 5 updates/sec, ~7s total
+    }, 300); // slower updates for longer read time
 
     return () => clearInterval(interval);
-  }, []);
+  }, [onComplete]);
+
+  if (!currentVerse) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 flex items-center justify-center px-4 overflow-hidden">

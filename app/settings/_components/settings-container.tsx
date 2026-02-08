@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { z } from "zod";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronDown, ChevronUp, Plus, Trash2, Loader2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash2,
+  Loader2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -21,24 +29,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-
 import { useMinistries } from "@/app/services/ministries";
-import { toast } from "sonner";
 import { useUsers } from "@/app/services/users";
+import { toast } from "sonner";
 
 /* ───────────────────────── ZOD SCHEMA ───────────────────────── */
-
 const createUserSchema = z
   .object({
     email: z.string().email("Invalid email"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).+$/,
+        "Password must contain uppercase, lowercase, number, and special character",
+      ),
     confirmPassword: z.string(),
     role: z.enum(["ADMIN", "CHAIRMAN", "STAFF"]),
-
-    ministryId: z.coerce.number().nullable().optional(),
+    ministryId: z.number().nullable().optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -47,23 +57,19 @@ const createUserSchema = z
 
 type CreateUserInput = z.infer<typeof createUserSchema>;
 
-interface User {
-  id: number;
-  name: string | null;
-  email: string;
-  role: string;
-  ministryId: number | null;
-  ministry: {
-    id: number;
-    name: string;
-  } | null;
-  createdAt: string;
-}
-
 interface Ministry {
   id: string;
   name: string;
   children?: Ministry[];
+}
+
+interface User {
+  id: number;
+  email: string;
+  role: string;
+  ministryId: number | null;
+  ministry: { id: number; name: string } | null;
+  createdAt: string;
 }
 
 /* ───────────────────────── COMPONENT ───────────────────────── */
@@ -75,11 +81,14 @@ export default function RoleManagement({ user }: any) {
     isLoading: usersLoading,
     refetch: refetchUsers,
   } = useUsers();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showAddForm, setShowAddForm] = useState(true);
   const [loading, setLoading] = useState(false);
-  console.log(users);
-  console.log(ministries, "ministries");
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [form, setForm] = useState<CreateUserInput>({
     email: "",
     password: "",
@@ -88,21 +97,21 @@ export default function RoleManagement({ user }: any) {
     ministryId: null,
   });
 
-  /* ───────────────────────── FETCH DATA ───────────────────────── */
-
   /* ───────────────────────── CREATE USER ───────────────────────── */
-
   const handleAddUser = async () => {
-    const parsed = createUserSchema.safeParse(form);
+    const parsed = createUserSchema.safeParse({
+      ...form,
+      ministryId: form.ministryId ?? null,
+    });
 
     if (!parsed.success) {
-      toast("Validation error");
+      console.log(parsed.error.format());
+      toast("Validation error. Check console for details.");
       return;
     }
 
     try {
       setLoading(true);
-
       const res = await fetch("/api/auth/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,26 +119,19 @@ export default function RoleManagement({ user }: any) {
           email: form.email,
           password: form.password,
           role: form.role,
-          ministryId: form.ministryId ? Number(form.ministryId) : null,
+          ministryId: form.ministryId ?? null,
         }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to create user");
-      }
-
+      if (!res.ok) throw new Error(data.error || "Failed to create user");
       toast("User Created");
-
       setForm({
         email: "",
         password: "",
         confirmPassword: "",
         role: "STAFF",
-        ministryId: undefined,
+        ministryId: null,
       });
-
       refetchUsers();
     } catch (err: any) {
       toast("Error creating user");
@@ -139,21 +141,14 @@ export default function RoleManagement({ user }: any) {
   };
 
   /* ───────────────────────── DELETE USER ───────────────────────── */
-
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteUser = async (userId: number) => {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
-
     try {
       const res = await fetch(`/api/auth/users/${userId}`, {
         method: "DELETE",
       });
-
-      if (!res.ok) {
-        throw new Error("Failed to delete user");
-      }
-
+      if (!res.ok) throw new Error("Failed to delete user");
       toast("User deleted");
-
       refetchUsers();
     } catch (err: any) {
       toast("Error deleting user");
@@ -168,7 +163,6 @@ export default function RoleManagement({ user }: any) {
       <div className="flex-1 flex flex-col md:ml-64">
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <div className="p-6 space-y-6 min-h-screen">
-          {/* Header */}
           <div>
             <h1 className="text-2xl font-semibold text-white">
               Role Management
@@ -176,9 +170,9 @@ export default function RoleManagement({ user }: any) {
             <p className="text-gray-400">Manage user accounts and ministries</p>
           </div>
 
-          {/* Add User Card */}
+          {/* ─── ADD USER CARD ─── */}
           <Card className="bg-gray-800 border-gray-700">
-            <CardHeader className="flex flex-row justify-between items-center">
+            <CardHeader className="flex justify-between items-center">
               <CardTitle className="text-white">Add New User</CardTitle>
               <Button
                 variant="ghost"
@@ -203,7 +197,7 @@ export default function RoleManagement({ user }: any) {
                   <div className="md:col-span-2">
                     <Label>Email</Label>
                     <Input
-                      placeholder="Enter your email here.."
+                      placeholder="Enter email"
                       className="bg-gray-700 border-gray-600"
                       value={form.email}
                       onChange={(e) =>
@@ -213,34 +207,49 @@ export default function RoleManagement({ user }: any) {
                   </div>
 
                   {/* Password */}
-                  <div>
+                  <div className="relative">
                     <Label>Password</Label>
                     <Input
-                      type="password"
-                      placeholder="Enter your password here..."
-                      className="bg-gray-700 border-gray-600"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter password"
+                      className="bg-gray-700 border-gray-600 pr-10"
                       value={form.password}
                       onChange={(e) =>
                         setForm({ ...form, password: e.target.value })
                       }
                     />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-4"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                    </Button>
                   </div>
 
                   {/* Confirm Password */}
-                  <div>
+                  <div className="relative">
                     <Label>Confirm Password</Label>
                     <Input
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       placeholder="Confirm password"
-                      className="bg-gray-700 border-gray-600"
+                      className="bg-gray-700 border-gray-600 pr-10"
                       value={form.confirmPassword}
                       onChange={(e) =>
-                        setForm({
-                          ...form,
-                          confirmPassword: e.target.value,
-                        })
+                        setForm({ ...form, confirmPassword: e.target.value })
                       }
                     />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-2 top-4"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                    >
+                      {showConfirmPassword ? <EyeOff /> : <Eye />}
+                    </Button>
                   </div>
 
                   {/* Role */}
@@ -275,6 +284,7 @@ export default function RoleManagement({ user }: any) {
                   <div>
                     <Label>Ministry</Label>
                     <NativeSelect
+                      className="bg-gray-700"
                       value={form.ministryId ?? "none"}
                       onChange={(e) =>
                         setForm({
@@ -286,32 +296,19 @@ export default function RoleManagement({ user }: any) {
                         })
                       }
                     >
-                      <NativeSelectOption className="bg-gray-700" value="none">
-                        None
-                      </NativeSelectOption>
-                      {ministries.map((ministry: Ministry) =>
-                        ministry.children && ministry.children.length > 0 ? (
-                          <NativeSelectOptGroup
-                            key={ministry.id}
-                            label={ministry.name}
-                          >
-                            {ministry.children.map((child) => (
-                              <NativeSelectOption
-                                className="bg-gray-700"
-                                key={child.id}
-                                value={child.id}
-                              >
-                                {child.name}
+                      <NativeSelectOption value="none">None</NativeSelectOption>
+                      {ministries.map((m: any) =>
+                        m.children && m.children.length > 0 ? (
+                          <NativeSelectOptGroup key={m.id} label={m.name}>
+                            {m.children.map((c: any) => (
+                              <NativeSelectOption key={c.id} value={c.id}>
+                                {c.name}
                               </NativeSelectOption>
                             ))}
                           </NativeSelectOptGroup>
                         ) : (
-                          <NativeSelectOption
-                            key={ministry.id}
-                            value={ministry.id}
-                            className="bg-gray-700"
-                          >
-                            {ministry.name}
+                          <NativeSelectOption key={m.id} value={m.id}>
+                            {m.name}
                           </NativeSelectOption>
                         ),
                       )}
@@ -326,13 +323,12 @@ export default function RoleManagement({ user }: any) {
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
                       Creating...
                     </>
                   ) : (
                     <>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create User
+                      <Plus className="mr-2 h-4 w-4" /> Create User
                     </>
                   )}
                 </Button>
@@ -340,7 +336,7 @@ export default function RoleManagement({ user }: any) {
             )}
           </Card>
 
-          {/* Users List Card */}
+          {/* ─── USERS LIST CARD ─── */}
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white">Users</CardTitle>
@@ -371,7 +367,7 @@ export default function RoleManagement({ user }: any) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users?.map((u) => (
+                      {users?.map((u: User) => (
                         <TableRow key={u.id} className="border-gray-700">
                           <TableCell className="text-gray-200">
                             {u.email}
@@ -391,8 +387,8 @@ export default function RoleManagement({ user }: any) {
                             <Button
                               variant="ghost"
                               size="sm"
-                              // onClick={() => handleDeleteUser(u.id)}
                               className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                              onClick={() => handleDeleteUser(u.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>

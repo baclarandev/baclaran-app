@@ -45,6 +45,9 @@ import { useCreateVolunteer, useVolunteers } from "@/app/services/volunteer";
 import { Volunteer } from "@/app/types/volunteer";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useUploadImage } from "@/app/services/upload";
+import imageCompression from "browser-image-compression";
+import { getSession } from "@/lib/auth";
 
 const steps = [
   { id: 1, name: "Personal", icon: User },
@@ -75,11 +78,23 @@ interface FormData {
 interface AddVolunteerDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
-
+  user?: Staff;
   onSuccess?: () => void;
 }
 type TimelineType = "SHRINE" | "OUTSIDE";
+export interface Ministry {
+  id: number;
+  name: string;
+}
 
+export interface Staff {
+  id: number;
+  name: string | null;
+  email: string;
+  role: "STAFF" | "ADMIN";
+  createdAt: string;
+  ministry: Ministry | null;
+}
 interface Timeline {
   organization: string; // Name of the organization or ministry
   startYear: number; // Starting year, can be empty initially
@@ -112,7 +127,7 @@ const FormDataSchema = z.object({
 export function AddVolunteerDialog({
   open,
   setOpen,
-
+  user,
   onSuccess,
 }: AddVolunteerDialogProps) {
   const { data: ministries = [] } = useMinistries();
@@ -136,6 +151,8 @@ export function AddVolunteerDialog({
   const [openCombobox, setOpenCombobox] = useState(false);
   const [shrineTimelines, setShrineTimelines] = useState<Timeline[]>([]);
   const [outsideTimelines, setOutsideTimelines] = useState<Timeline[]>([]);
+  const { mutate: uploadImage } = useUploadImage();
+
   const [formData, setFormData] = useState<FormData>({
     lastName: "",
     firstName: "",
@@ -151,7 +168,7 @@ export function AddVolunteerDialog({
     sacraments: [],
     profilePicture: "",
   });
-
+  const staffMinistryIds = user?.ministry ? [user.ministry.id] : [];
   const updateFormData = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -164,7 +181,11 @@ export function AddVolunteerDialog({
         : [...prev.sacraments, sacrament],
     }));
   };
+  // const isAdmin = user.role === "ADMIN";
 
+  // const selectableMinistries = isAdmin
+  //   ? ministries
+  //   : ministries.filter((m: any) => m.id === user?.ministryId);
   const handleModeToggle = (checked: boolean) => {
     setIsExistingVolunteer(checked);
     if (!checked) {
@@ -219,50 +240,37 @@ export function AddVolunteerDialog({
     });
     setOpenCombobox(false);
   };
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show preview immediately
-    setPreviewImage(URL.createObjectURL(file));
-
-    const formData = new FormData();
-    formData.append("profilePicture", file);
-
     try {
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/volunteers/upload");
+      // Compress / resize the image client-side
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 2, // target size ~2MB
+        maxWidthOrHeight: 512, // max width/height 512px
+        useWebWorker: true,
+      });
 
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(percent);
-        }
-      };
+      // instant preview
+      setPreviewImage(URL.createObjectURL(compressedFile));
 
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          const data = JSON.parse(xhr.responseText);
+      uploadImage(compressedFile, {
+        onSuccess: (data) => {
+          console.log("[UPLOAD SUCCESS]", data.url);
           updateFormData("profilePicture", data.url);
-          setUploadProgress(0); // reset
-        } else {
-          console.error("Upload failed", xhr.responseText);
-          alert("Failed to upload image");
+          setUploadProgress(100);
+          setTimeout(() => setUploadProgress(0), 500);
+        },
+        onError: (err: any) => {
+          console.error("[UPLOAD ERROR]", err);
+          toast.error(err?.error || "Image upload failed");
           setUploadProgress(0);
-        }
-      };
-
-      xhr.onerror = () => {
-        toast("Upload failed");
-        setUploadProgress(0);
-      };
-
-      xhr.send(formData);
-    } catch (err: any) {
-      console.error("[IMAGE_UPLOAD_ERROR]", err);
-      toast(err.message || "Failed to upload image");
-      setUploadProgress(0);
+        },
+      });
+    } catch (err) {
+      console.error("[UPLOAD ERROR]", err);
+      toast.error("Failed to process image");
     }
   };
 
@@ -460,7 +468,14 @@ export function AddVolunteerDialog({
 
   const getInitials = (firstName: string, lastName: string) =>
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-
+  useEffect(() => {
+    if (staffMinistryIds.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        ministryIds: [...new Set([...prev.ministryIds, ...staffMinistryIds])],
+      }));
+    }
+  }, [staffMinistryIds]);
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -719,7 +734,7 @@ export function AddVolunteerDialog({
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="lastName">Last Name</Label>
                       <Input
@@ -758,7 +773,7 @@ export function AddVolunteerDialog({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
                       <Input
@@ -799,7 +814,7 @@ export function AddVolunteerDialog({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="dob">Date of Birth</Label>
                       <Input
@@ -901,6 +916,9 @@ export function AddVolunteerDialog({
                         <CommandEmpty>No ministry found.</CommandEmpty>
                         <CommandGroup>
                           {ministries.map((m: any) => {
+                            const isStaffMinistry = staffMinistryIds.includes(
+                              m.id,
+                            );
                             const selected = formData.ministryIds.includes(
                               m.id,
                             );
@@ -909,6 +927,7 @@ export function AddVolunteerDialog({
                                 key={m.id}
                                 value={m.name}
                                 onSelect={() => {
+                                  if (isStaffMinistry) return; // cannot deselect staff's ministry
                                   updateFormData(
                                     "ministryIds",
                                     selected
@@ -918,7 +937,12 @@ export function AddVolunteerDialog({
                                       : [...formData.ministryIds, m.id],
                                   );
                                 }}
-                                className="text-gray-100 hover:bg-gray-700"
+                                className={cn(
+                                  "text-gray-100 hover:bg-gray-700",
+                                  isStaffMinistry
+                                    ? "opacity-50 cursor-not-allowed"
+                                    : "",
+                                )}
                               >
                                 <Check
                                   className={cn(
@@ -927,6 +951,11 @@ export function AddVolunteerDialog({
                                   )}
                                 />
                                 {m.name}
+                                {isStaffMinistry && (
+                                  <span className="text-xs text-gray-400 ml-2">
+                                    (Assigned)
+                                  </span>
+                                )}
                               </CommandItem>
                             );
                           })}
