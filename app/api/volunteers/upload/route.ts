@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       .jpeg({ quality: 80 })
       .toBuffer();
 
-    return await new Promise((resolve) => {
+    return await new Promise<Response>((resolve) => {
       const upload = cloudinary.uploader.upload_stream(
         {
           transformation: [
