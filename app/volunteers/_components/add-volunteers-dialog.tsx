@@ -327,12 +327,6 @@ export function AddVolunteerDialog({
       (!t.endYear || isValidYear(t.endYear)) &&
       (!t.endYear || t.endYear >= t.startYear),
   );
-
-  const handleSubmit = async () => {
-    // if (validFormations.length === 0) {
-    //   alert("Please add at least one valid formation with a year.");
-    //   return;
-    // }
 useEffect(() => {
   if (formData.civilStatus === "Married") {
     if (!formData.sacraments.includes("Matrimony")) {
@@ -348,6 +342,12 @@ useEffect(() => {
     );
   }
 }, [formData.civilStatus]);
+  const handleSubmit = async () => {
+    // if (validFormations.length === 0) {
+    //   alert("Please add at least one valid formation with a year.");
+    //   return;
+    // }
+
 
 
     const payload: any = {
