@@ -38,7 +38,6 @@ import {
   useUpdateVolunteer,
 } from "@/app/services/volunteer";
 
-import { UpdateVolunteerDialog } from "./update-volunteer-dialog";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -405,14 +404,7 @@ const goToPage = (page: number) => {
     </Button>
   </div>
 )}
-          {selectedVolunteer && (
-            <UpdateVolunteerDialog
-              open={updateDialogOpen}
-              setOpen={setUpdateDialogOpen}
-              volunteer={selectedVolunteer}
-              onSuccess={() => setSelectedVolunteer(null)}
-            />
-          )}
+      
           {/* Delete Dialog */}
           <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <DialogContent className="bg-gray-800 text-gray-100 border-gray-700">

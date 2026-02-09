@@ -75,6 +75,7 @@ interface FormData {
   profilePicture: string;
   civilStatus: string;
   occupation: string;
+  marriageType?: "CHURCH" | "CIVIL" | "";
 }
 interface AddVolunteerDialogProps {
   open: boolean;
@@ -168,6 +169,7 @@ export function AddVolunteerDialog({
     ministryIds: [],
     sacraments: [],
     profilePicture: "",
+      marriageType: "",
   });
   const staffMinistryIds = user?.ministry ? [user.ministry.id] : [];
   const updateFormData = (field: keyof FormData, value: any) => {
@@ -291,7 +293,8 @@ export function AddVolunteerDialog({
     Baptism: "BAPTISM",
     "First Communion": "EUCHARIST",
     Confirmation: "CONFIRMATION",
-    Reconciliation: "RECONCILIATION",
+
+     Matrimony: "MATRIMONY",
   };
   // Fixes included: updateVolunteerId properly set, form reset works, handleSubmit clean
   const DEFAULT_FORMATIONS = [
@@ -330,6 +333,22 @@ export function AddVolunteerDialog({
     //   alert("Please add at least one valid formation with a year.");
     //   return;
     // }
+useEffect(() => {
+  if (formData.civilStatus === "Married") {
+    if (!formData.sacraments.includes("Matrimony")) {
+      updateFormData("sacraments", [
+        ...formData.sacraments,
+        "Matrimony",
+      ]);
+    }
+  } else {
+    updateFormData(
+      "sacraments",
+      formData.sacraments.filter((s) => s !== "Matrimony"),
+    );
+  }
+}, [formData.civilStatus]);
+
 
     const payload: any = {
       firstName: formData.firstName,
@@ -877,6 +896,32 @@ export function AddVolunteerDialog({
                         <option value="Separated">Separated</option>
                       </select>
                     </div>
+                    {formData.civilStatus === "Married" && (
+  <div className="space-y-2">
+    <Label>Marriage Type</Label>
+    <div className="flex gap-4 pt-2">
+      {[
+        { label: "Church", value: "CHURCH" },
+        { label: "Civil", value: "CIVIL" },
+      ].map((m) => (
+        <label key={m.value} className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="radio"
+            name="marriageType"
+            value={m.value}
+            checked={formData.marriageType === m.value}
+            onChange={(e) =>
+              updateFormData("marriageType", e.target.value)
+            }
+            className="text-yellow-500 focus:ring-yellow-500"
+          />
+          {m.label}
+        </label>
+      ))}
+    </div>
+  </div>
+)}
+
                   </div>
                 </>
               )}
@@ -971,20 +1016,29 @@ export function AddVolunteerDialog({
                 <div className="space-y-2">
                   <Label>Sacraments Received</Label>
                   <div className="flex flex-wrap gap-4 pt-2">
-                    {Object.keys(sacramentMap).map((s) => (
-                      <label
-                        key={s}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          className="rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
-                          checked={formData.sacraments.includes(s)}
-                          onChange={() => toggleSacrament(s)}
-                        />
-                        {s}
-                      </label>
-                    ))}
+               {Object.keys(sacramentMap).map((s) => {
+  const isMatrimony = s === "Matrimony";
+
+  return (
+    <label
+      key={s}
+      className={cn(
+        "flex items-center gap-2",
+        isMatrimony && "opacity-50 cursor-not-allowed",
+      )}
+    >
+      <input
+        type="checkbox"
+        className="rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
+        checked={formData.sacraments.includes(s)}
+        disabled={isMatrimony}
+        onChange={() => toggleSacrament(s)}
+      />
+      {s}
+    </label>
+  );
+})}
+
                   </div>
                 </div>
               )}

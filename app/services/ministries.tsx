@@ -1,5 +1,6 @@
+import { Volunteer } from "@/lib/data";
 import { useQuery } from "@tanstack/react-query";
-import { Volunteer } from "../types/volunteer";
+
 
 export function useMinistries() {
   return useQuery({
