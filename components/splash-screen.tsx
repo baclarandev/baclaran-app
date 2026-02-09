@@ -128,11 +128,11 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
           <div className="w-full max-w-sm animate-fade-in-up">
             <div className="bg-gradient-to-br from-amber-50/10 to-amber-100/5 backdrop-blur-sm border border-amber-100/20 rounded-lg p-6 space-y-4">
-              <p className="text-sm text-amber-50/80 leading-relaxed italic">
+              <p className="text-sm text-center text-amber-50/80 leading-relaxed italic">
                 "{currentVerse.text}"
               </p>
               <div className="flex items-center justify-center">
-                <p className="text-xs text-amber-100/60 tracking-wide uppercase font-medium">
+                <p className="text-xs text-amber-100/60 text-center tracking-wide uppercase font-medium">
                   — {currentVerse.reference}
                 </p>
               </div>

@@ -195,7 +195,7 @@ export default function RoleManagement({ user }: any) {
                 <div className="grid md:grid-cols-2 gap-4">
                   {/* Email */}
                   <div className="md:col-span-2">
-                    <Label>Email</Label>
+                    <Label className="mb-2">Email</Label>
                     <Input
                       placeholder="Enter email"
                       className="bg-gray-700 border-gray-600"
@@ -208,7 +208,7 @@ export default function RoleManagement({ user }: any) {
 
                   {/* Password */}
                   <div className="relative">
-                    <Label>Password</Label>
+                    <Label className="mb-2">Password</Label>
                     <Input
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter password"
@@ -221,7 +221,7 @@ export default function RoleManagement({ user }: any) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="absolute right-2 top-4"
+                      className="absolute right-2 top-6"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <EyeOff /> : <Eye />}
@@ -230,7 +230,7 @@ export default function RoleManagement({ user }: any) {
 
                   {/* Confirm Password */}
                   <div className="relative">
-                    <Label>Confirm Password</Label>
+                    <Label className="mb-2"> Confirm Password</Label>
                     <Input
                       type={showConfirmPassword ? "text" : "password"}
                       placeholder="Confirm password"
@@ -243,7 +243,7 @@ export default function RoleManagement({ user }: any) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="absolute right-2 top-4"
+                      className="absolute right-2 top-6"
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
@@ -254,7 +254,7 @@ export default function RoleManagement({ user }: any) {
 
                   {/* Role */}
                   <div>
-                    <Label>Role</Label>
+                    <Label className="mb-2">Role</Label>
                     <NativeSelect
                       value={form.role}
                       onChange={(e) =>
@@ -266,7 +266,7 @@ export default function RoleManagement({ user }: any) {
                             | "STAFF",
                         })
                       }
-                      className="bg-gray-700 border-gray-600 text-gray-100"
+                      className="bg-gray-700 w-full  border-gray-600 text-gray-100"
                     >
                       <NativeSelectOption value="ADMIN">
                         Admin
@@ -282,7 +282,7 @@ export default function RoleManagement({ user }: any) {
 
                   {/* Ministry */}
                   <div>
-                    <Label>Ministry</Label>
+                    <Label className="mb-2">Ministry</Label>
                     <NativeSelect
                       className="bg-gray-700"
                       value={form.ministryId ?? "none"}

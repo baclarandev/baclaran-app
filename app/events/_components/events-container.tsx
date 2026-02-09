@@ -37,11 +37,12 @@ import {
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { useEvents } from "@/app/services/event";
+import { useMinistries } from "@/app/services/ministries";
 
 export default function Events({ user }: any) {
   const { events, createEvent, updateEvent, deleteEvent, archiveEvent } =
     useEvents();
-
+  const { data: ministries = [], isLoading, error } = useMinistries();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -156,6 +157,7 @@ export default function Events({ user }: any) {
           user={user}
           isOpen={sidebarOpen}
           onOpenChange={setSidebarOpen}
+       
         />
         <div className="flex-1 flex flex-col md:ml-64">
           <Header

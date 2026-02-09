@@ -90,6 +90,91 @@ export async function GET(
     );
   }
 }
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const sessionUser = await getSession();
+
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const params = await context.params;
+    const volunteerId = Number(params.id);
+
+    if (!volunteerId || isNaN(volunteerId)) {
+      return NextResponse.json(
+        { error: "Invalid volunteer ID" },
+        { status: 400 }
+      );
+    }
+
+    // 🔍 Fetch volunteer + active ministry
+    const volunteer = await prisma.volunteer.findUnique({
+      where: { id: volunteerId },
+      include: {
+        ministryHistories: {
+          where: { status: "ACTIVE" },
+          include: { ministry: true },
+        },
+      },
+    });
+
+    if (!volunteer) {
+      return NextResponse.json(
+        { error: "Volunteer not found" },
+        { status: 404 }
+      );
+    }
+
+    const volunteerMinistryId =
+      volunteer.ministryHistories[0]?.ministryId;
+
+    // 🔐 AUTHORIZATION
+    const isAdmin = sessionUser.role === "ADMIN";
+    const isStaffOfSameMinistry =
+      sessionUser.role === "STAFF" &&
+      sessionUser.ministryId === volunteerMinistryId;
+
+    if (!isAdmin && !isStaffOfSameMinistry) {
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
+    }
+
+    // ✅ Partial update payload
+    const body = await req.json();
+    const data: any = {};
+
+    if (body.firstName !== undefined) data.firstName = body.firstName;
+    if (body.lastName !== undefined) data.lastName = body.lastName;
+    if (body.email !== undefined) data.email = body.email;
+    if (body.phone !== undefined) data.phone = body.phone;
+    if (body.address !== undefined) data.address = body.address;
+    if (body.profilePicture !== undefined)
+      data.profilePicture = body.profilePicture;
+
+    if (body.dateOfBirth) {
+      data.dateOfBirth = new Date(body.dateOfBirth);
+    }
+
+    const updated = await prisma.volunteer.update({
+      where: { id: volunteerId },
+      data,
+    });
+
+    return NextResponse.json(updated);
+  } catch (err: any) {
+    console.error("[PATCH_VOLUNTEER_ERROR]", err);
+    return NextResponse.json(
+      { error: "Failed to update volunteer" },
+      { status: 500 }
+    );
+  }
+}
 
 // ---------------- PUT ----------------
 export async function PUT(

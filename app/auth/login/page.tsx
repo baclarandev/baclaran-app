@@ -76,9 +76,9 @@ const Page = () => {
           <CardTitle className="text-2xl font-light text-amber-200">
             Baclaran Church
           </CardTitle>
-          <CardDescription className="text-stone-400">
-            Staff Login
-          </CardDescription>
+            {/* <CardDescription className="text-[#0a0a84]">
+              Staff Login
+            </CardDescription> */}
         </CardHeader>
 
         <CardContent className="pt-6">

@@ -35,7 +35,7 @@ export default function Dashboard({ user }: any) {
     if (!volunteers || !ministries) return null;
 
     const activeVolunteers = volunteers.filter(
-      (v) => v.status === "ACTIVE",
+      (v) => v.status === "Active",
     ).length;
     const inactiveVolunteers = volunteers.length - activeVolunteers;
 
@@ -90,7 +90,7 @@ export default function Dashboard({ user }: any) {
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100">
-      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen}  />
       <div className="flex-1 flex flex-col md:ml-64">
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
@@ -189,7 +189,7 @@ export default function Dashboard({ user }: any) {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
                           {metrics.ministryData.map((m: any, i: number) => (
                             <div
                               key={i}

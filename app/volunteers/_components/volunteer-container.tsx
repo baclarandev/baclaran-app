@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,9 +40,21 @@ import {
 
 import { UpdateVolunteerDialog } from "./update-volunteer-dialog";
 import Link from "next/link";
+import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type ViewMode = "grid" | "list";
+const cloudinaryOptimized = (url: string) => {
+  if (!url) return url;
 
+  // safety check so it won't break non-Cloudinary URLs
+  return url.includes("/upload/")
+    ? url.replace(
+        "/upload/",
+        "/upload/w_160,h_160,c_fill,f_auto,q_auto/"
+      )
+    : url;
+};
 export default function Volunteer({ user }: any) {
   const {
     data: volunteers = [],
@@ -59,6 +71,10 @@ export default function Volunteer({ user }: any) {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+const [currentPage, setCurrentPage] = useState(1);
+
+const searchParams = useSearchParams();
+const router = useRouter();
 
   const filteredVolunteers = useMemo(() => {
     return volunteers.filter((v) => {
@@ -75,7 +91,22 @@ export default function Volunteer({ user }: any) {
       return matchesSearch && matchesStatus;
     });
   }, [volunteers, searchQuery, statusFilter]);
+  const perPage = 12;
 
+const paginatedVolunteers = useMemo(() => {
+  const start = (currentPage - 1) * perPage;
+  return filteredVolunteers.slice(start, start + perPage);
+}, [filteredVolunteers, currentPage]);
+const totalPages = Math.ceil(filteredVolunteers.length / perPage);
+useEffect(() => {
+  const pageParam = searchParams.get("page");
+  if (pageParam) setCurrentPage(parseInt(pageParam, 10));
+}, [searchParams]);
+
+const goToPage = (page: number) => {
+  setCurrentPage(page);
+  router.push(`/volunteers?page=${page}`, { scroll: false });
+};
   const handleEdit = (volunteer: any) => {
     setSelectedVolunteer(volunteer);
     setOpenAddDialog(true);
@@ -149,22 +180,31 @@ export default function Volunteer({ user }: any) {
                 />
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  variant={viewMode === "grid" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("grid")}
-                >
-                  <LayoutGrid className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === "list" ? "secondary" : "ghost"}
-                  size="icon"
-                  onClick={() => setViewMode("list")}
-                >
-                  <List className="w-4 h-4" />
-                </Button>
-              </div>
+             <div className="flex gap-2">
+  <button
+    onClick={() => setViewMode("grid")}
+    className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
+      viewMode === "grid"
+        ? "bg-yellow-400 text-gray-900"
+        : "bg-gray-700 text-gray-100 hover:bg-gray-600"
+    }`}
+    title="Grid view"
+  >
+    <LayoutGrid className="w-5 h-5" />
+  </button>
+
+  <button
+    onClick={() => setViewMode("list")}
+    className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
+      viewMode === "list"
+        ? "bg-yellow-400 text-gray-900"
+        : "bg-gray-700 text-gray-100 hover:bg-gray-600"
+    }`}
+    title="List view"
+  >
+    <List className="w-5 h-5" />
+  </button>
+</div>
 
               <NativeSelect
                 className="w-[150px] bg-gray-700 text-gray-100"
@@ -193,41 +233,55 @@ export default function Volunteer({ user }: any) {
           ) : filteredVolunteers.length > 0 ? (
             viewMode === "grid" ? (
               <div className="grid mt-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredVolunteers.map((v) => (
+                {paginatedVolunteers.map((v) => (
                   <Link
                     key={v.id}
                     href={`/volunteers/${v.id}`}
                     className="block"
                   >
-                    <Card className="bg-gray-800 border-gray-700 p-4 flex flex-col items-center gap-3 hover:bg-gray-700 transition-colors cursor-pointer">
-                      <Avatar className="h-20 w-20">
-                        {v.profilePicture ? (
-                          <AvatarImage src={v.profilePicture} />
-                        ) : (
-                          <AvatarImage
-                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${v.email}`}
-                          />
-                        )}
-                        <AvatarFallback>
-                          {v.firstName[0]}
-                          {v.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <h3 className="font-semibold text-yellow-400">
-                        {v.firstName} {v.lastName}
-                      </h3>
-                      <Badge
-                        variant="outline"
-                        className={
-                          v.status === "ACTIVE"
-                            ? "border-green-400 bg-green-800 text-green-400"
-                            : "border-red-400 bg-red-800 text-red-400"
-                        }
-                      >
-                        {v.status}
-                      </Badge>
-                      <p className="text-sm text-gray-400">{v.ministryName}</p>
-                    </Card>
+                   <Card className="bg-gray-800 border-gray-700 p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors">
+         <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
+  {v.profilePicture || true ? (
+    <Image
+      src={
+        v.profilePicture
+          ? cloudinaryOptimized(v.profilePicture)
+          : `https://api.dicebear.com/7.x/avataaars/png?size=160&seed=${v.email}`
+      }
+      alt={`${v.firstName} ${v.lastName}`}
+      fill
+      sizes="80px"
+      className="object-cover"
+      placeholder="blur"
+      blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDE2MCAxNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbGw9IiM0MDRiN2YiIC8+PC9zdmc+"
+    />
+  ) : (
+    <span className="text-lg font-semibold text-gray-300">
+      {v.firstName[0]}
+      {v.lastName[0]}
+    </span>
+  )}
+</div>
+          <h3 className="font-semibold text-yellow-400">
+            {v.firstName} {v.lastName}
+          </h3>
+          <Badge
+            variant="outline"
+            className={
+              v.status === "Active"
+                ? "border-green-400 bg-green-800 text-green-400"
+                : "border-red-400 bg-red-800 text-red-400"
+            }
+          >
+            {v.status}
+          </Badge>
+          <p
+            className="text-sm text-center text-gray-400 line-clamp-2"
+            title={v.ministryName}
+          >
+            {v.ministryName}
+          </p>
+        </Card>
                   </Link>
                 ))}
               </div>
@@ -240,27 +294,34 @@ export default function Volunteer({ user }: any) {
                       <th className="py-3 px-4 text-left">Ministry</th>
                       <th className="py-3 px-4 text-left">Email</th>
                       <th className="py-3 px-4 text-left">Status</th>
-                      <th className="py-3 px-4 text-left">Actions</th>
+                       <th className="py-3 px-4 text-left">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {filteredVolunteers.map((v) => (
+                 <tbody>
+                    {paginatedVolunteers.map((v) => (
                       <tr
                         key={v.id}
                         className="border-b border-gray-700 hover:bg-gray-700 transition-colors"
                       >
-                        <td className="py-3 px-4 flex items-center gap-3">
-                          <Avatar className="w-10 h-10">
-                            <AvatarImage
-                              src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${v.email}`}
-                            />
-                            <AvatarFallback>
-                              {v.firstName[0]}
-                              {v.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          {v.firstName} {v.lastName}
-                        </td>
+      <td className="py-3 px-4 flex items-center gap-3">
+  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
+    {v.profilePicture ? (
+      <Image
+        src={cloudinaryOptimized(v.profilePicture)}
+        alt={`${v.firstName} ${v.lastName}`}
+        fill
+        sizes="40px"
+        className="object-cover"
+      />
+    ) : (
+      <span className="text-sm font-semibold text-gray-300">
+        {v.firstName[0]}
+        {v.lastName[0]}
+      </span>
+    )}
+  </div>
+  <span>{v.firstName} {v.lastName}</span>
+</td>
                         <td className="py-3 px-4">{v.ministryName}</td>
                         <td className="py-3 px-4">{v.email}</td>
                         <td className="py-3 px-4">{v.status}</td>
@@ -291,6 +352,59 @@ export default function Volunteer({ user }: any) {
               <p className="text-gray-400">No volunteers found.</p>
             </Card>
           )}
+         {totalPages > 1 && (
+  <div className="flex justify-center mt-6 items-center gap-2 text-gray-100">
+    {/* Previous Button */}
+    <Button
+      size="sm"
+      variant="ghost"
+      disabled={currentPage === 1}
+      onClick={() => goToPage(currentPage - 1)}
+    >
+      &laquo; Prev
+    </Button>
+
+    {/* Page Numbers */}
+    {Array.from({ length: totalPages }).map((_, idx) => {
+      const page = idx + 1;
+
+      // Show only first, last, current, and +/- 1 pages with ellipsis
+      if (
+        page === 1 ||
+        page === totalPages ||
+        (page >= currentPage - 1 && page <= currentPage + 1)
+      ) {
+        return (
+          <Button
+            key={page}
+            size="sm"
+            variant={currentPage === page ? "secondary" : "ghost"}
+            onClick={() => goToPage(page)}
+          >
+            {page}
+          </Button>
+        );
+      } else if (
+        page === currentPage - 2 ||
+        page === currentPage + 2
+      ) {
+        return <span key={page} className="px-2">...</span>;
+      } else {
+        return null;
+      }
+    })}
+
+    {/* Next Button */}
+    <Button
+      size="sm"
+      variant="ghost"
+      disabled={currentPage === totalPages}
+      onClick={() => goToPage(currentPage + 1)}
+    >
+      Next &raquo;
+    </Button>
+  </div>
+)}
           {selectedVolunteer && (
             <UpdateVolunteerDialog
               open={updateDialogOpen}

@@ -1,0 +1,98 @@
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Mail, Phone, Heart, MapPin, Pencil, MessageCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { Volunteer } from "@/lib/data";
+
+
+const statusStyles: Record<string, string> = {
+  active: "bg-success/15 text-success border-success/30",
+  pending: "bg-warning/15 text-warning border-warning/30",
+};
+
+interface HeroSectionProps {
+  volunteer: Volunteer;
+  onEdit: () => void;
+}
+
+export function HeroSection({ volunteer, onEdit }: HeroSectionProps) {
+  const statusClass = statusStyles[volunteer.status.toLowerCase()] ?? "bg-muted text-muted-foreground border-border";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className="relative w-full rounded-2xl overflow-hidden bg-card border shadow-sm"
+    >
+      {/* Decorative top band */}
+      <div className="h-28 bg-gradient-to-r from-primary/80 via-primary/50 to-accent/40" />
+
+      <div className="px-6 pb-6 md:px-10 md:pb-8 -mt-16 flex flex-col md:flex-row items-center md:items-end gap-6">
+        {/* Avatar */}
+        <Avatar className="h-28 w-28 md:h-32 md:w-32 border-4 border-card shadow-lg ring-2 ring-primary/20">
+          <AvatarImage
+            src={
+              volunteer.profilePicture ||
+              `https://api.dicebear.com/7.x/avataaars/svg?seed=${volunteer.email}`
+            }
+          />
+          <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground font-heading">
+            {volunteer.firstName[0]}{volunteer.lastName[0]}
+          </AvatarFallback>
+        </Avatar>
+
+        {/* Info */}
+        <div className="flex-1 text-center md:text-left space-y-2 pt-2">
+          <div className="flex flex-col md:flex-row md:items-center gap-2">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-heading text-card-foreground">
+              {volunteer.firstName} {volunteer.lastName}
+            </h1>
+            <Badge variant="outline" className={`text-xs font-medium ${statusClass}`}>
+              {volunteer.status}
+            </Badge>
+          </div>
+
+          {volunteer.nickname && (
+            <p className="text-sm text-muted-foreground italic">
+              &ldquo;{volunteer.nickname}&rdquo;
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Heart className="h-3.5 w-3.5 text-accent" />
+              {volunteer.ministryName}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Mail className="h-3.5 w-3.5" />
+              {volunteer.email}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Phone className="h-3.5 w-3.5" />
+              {volunteer.phone}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5" />
+              {volunteer?.address.split(",").slice(0, 2).join(",")}
+            </span>
+          </div>
+
+          <Badge variant="secondary" className="text-xs mt-1">
+            {volunteer?.volunteerCode}
+          </Badge>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 shrink-0">
+      
+          <Button size="sm" variant="secondary" className="cursor-pointer rounded-full gap-1.5" onClick={onEdit}>
+            <Pencil className="h-3.5 w-3.5" />
+          Update profile
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  );
+}

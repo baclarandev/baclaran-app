@@ -304,7 +304,7 @@ export default function MinistriesClient({ user }: any) {
 
   return (
     <div className="flex">
-      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen}  />
       <div className="flex-1 flex flex-col md:ml-64">
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 

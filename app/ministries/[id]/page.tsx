@@ -17,13 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 import { Search, Users, UserCircle, Phone, Mail } from "lucide-react";
-import { useVolunteersByMinistry } from "@/app/services/ministries";
+import { useMinistries, useVolunteersByMinistry } from "@/app/services/ministries";
 import { useVolunteers } from "@/app/services/volunteer";
 
 export default function MinistryMembersPage({ user }: any) {
   const params = useParams();
   const ministryId = params.id as string;
-
+  const { data: ministries = [] } = useMinistries();
   const { data: volunteers = [], isLoading } =
     useVolunteersByMinistry(ministryId);
 
@@ -39,7 +39,7 @@ export default function MinistryMembersPage({ user }: any) {
 
   return (
     <div className="flex min-h-screen bg-gray-900">
-      <Sidebar user={user} />
+      <Sidebar user={user}  />
 
       <div className="flex-1 md:ml-64 flex flex-col">
         <Header user={user} />

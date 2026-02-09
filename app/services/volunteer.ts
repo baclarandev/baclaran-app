@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Volunteer, VolunteerWithBookings } from "../types/volunteer";
+import {  VolunteerWithBookings } from "../types/volunteer";
+import { Volunteer } from "@/lib/data";
 
 export function useVolunteers() {
   return useQuery<VolunteerWithBookings[]>({
@@ -31,24 +32,24 @@ export function useCreateVolunteer() {
   });
 }
 
-export function useUpdateVolunteer() {
-  const queryClient = useQueryClient();
+// export function useUpdateVolunteer() {
+//   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async ({ id, payload }: { id: number; payload: any }) => {
-      const res = await fetch(`/api/volunteers/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update volunteer");
-      return data.data;
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["volunteers"] }),
-  });
-}
+//   return useMutation({
+//     mutationFn: async ({ id, payload }: { id: number; payload: any }) => {
+//       const res = await fetch(`/api/volunteers/${id}`, {
+//         method: "PUT",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify(payload),
+//       });
+//       const data = await res.json();
+//       if (!res.ok) throw new Error(data.error || "Failed to update volunteer");
+//       return data.data;
+//     },
+//     onSuccess: () =>
+//       queryClient.invalidateQueries({ queryKey: ["volunteers"] }),
+//   });
+// }
 
 export function useDeleteVolunteer() {
   const queryClient = useQueryClient();
@@ -76,5 +77,34 @@ export function useVolunteerById(id?: string) {
       return data;
     },
     enabled: !!id, // only fetch if id exists
+  });
+}
+export function useUpdateVolunteer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: any;
+    }) => {
+      const res = await fetch(`/api/volunteers/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Update failed");
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["volunteer", variables.id],
+      });
+    },
   });
 }

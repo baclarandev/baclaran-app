@@ -42,12 +42,13 @@ import {
 import { cn } from "@/lib/utils";
 import { useMinistries } from "@/app/services/ministries";
 import { useCreateVolunteer, useVolunteers } from "@/app/services/volunteer";
-import { Volunteer } from "@/app/types/volunteer";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useUploadImage } from "@/app/services/upload";
 import imageCompression from "browser-image-compression";
 import { getSession } from "@/lib/auth";
+import { Volunteer } from "@/lib/data";
 
 const steps = [
   { id: 1, name: "Personal", icon: User },
@@ -589,13 +590,13 @@ export function AddVolunteerDialog({
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[500px] p-0 bg-gray-800 border-gray-700">
+                    <PopoverContent   className="w-full p-0 bg-gray-800 border-gray-700 max-h-[60vh] overflow-hidden">
                       <Command className="bg-gray-800">
                         <CommandInput
                           placeholder="Search volunteers..."
                           className="text-gray-100"
                         />
-                        <CommandList>
+                        <CommandList className="max-h-[50vh] overflow-y-auto overscroll-contain touch-pan-y">
                           <CommandEmpty>No volunteer found.</CommandEmpty>
                           <CommandGroup>
                             {volunteers.map((volunteer) => (
@@ -906,13 +907,13 @@ export function AddVolunteerDialog({
                     </Button>
                   </PopoverTrigger>
 
-                  <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
+                  <PopoverContent   className="w-full p-0 bg-gray-800 border-gray-700 max-h-[60vh] overflow-hidden">
                     <Command className="bg-gray-800">
                       <CommandInput
                         placeholder="Search ministries..."
                         className="text-gray-100"
                       />
-                      <CommandList>
+                      <CommandList className="max-h-[50vh] overflow-y-auto overscroll-contain touch-pan-y">
                         <CommandEmpty>No ministry found.</CommandEmpty>
                         <CommandGroup>
                           {ministries.map((m: any) => {
@@ -938,7 +939,7 @@ export function AddVolunteerDialog({
                                   );
                                 }}
                                 className={cn(
-                                  "text-gray-100 hover:bg-gray-700",
+                                  "text-gray-100 hover:bg-gray-700 ",
                                   isStaffMinistry
                                     ? "opacity-50 cursor-not-allowed"
                                     : "",
