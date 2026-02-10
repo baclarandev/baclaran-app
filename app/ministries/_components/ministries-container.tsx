@@ -343,7 +343,7 @@ export default function MinistriesClient({ user }: any) {
             {canManage && (
               <Button
                 onClick={() => setOpenCreate(true)}
-                className="bg-[#d4af37] hover:bg-[#b8962d] text-black gap-2"
+                className="bg-blue-600 text-black gap-2"
               >
                 <Plus className="w-4 h-4" />
                 Add Ministry
@@ -378,12 +378,12 @@ export default function MinistriesClient({ user }: any) {
                 key={ministry.id}
                 className="relative bg-[#1f2024] border border-white/10"
               >
-                <div className="absolute left-0 top-0 h-full w-1 bg-[#d4af37]" />
+                <div className="absolute left-0 top-0 h-full w-1 bg-blue-600" />
                 <CardHeader className="pb-2 flex flex-row items-center gap-4">
-                  <IconComp className="w-8 h-8 text-yellow-400" />
+                  <IconComp className="w-8 h-8 text-blue-400" />
                   <div className="flex-1">
                     <Link href={`/ministries/${ministry.id}`}>
-                      <CardTitle className="text-white text-lg hover:text-[#d4af37] transition-colors">
+                      <CardTitle className="text-white text-lg hover:text-blue-600 transition-colors">
                         {ministry.name}
                       </CardTitle>
                     </Link>
@@ -456,7 +456,7 @@ export default function MinistriesClient({ user }: any) {
                         className="bg-gray-800 hover:bg-gray-700/40"
                       >
                         <td className="px-4 py-3">
-                          <IconComp className="w-5 h-5 text-yellow-400" />
+                          <IconComp className="w-5 h-5 text-blue-600" />
                         </td>
                         <td className="px-4 py-3">
                           <Link
@@ -526,17 +526,17 @@ export default function MinistriesClient({ user }: any) {
                     key={ministry.id}
                     className="relative bg-gray-800 border border-white/10 hover:border-[#d4af37]/40 transition-all group"
                   >
-                    <div className="absolute left-0 top-0 h-full w-1 bg-[#d4af37]" />
+                    <div className="absolute left-0 top-0 h-full w-1 bg-blue-400" />
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
-                        <IconComp className="w-10 h-10 text-yellow-400 mb-2" />
+                        <IconComp className="w-10 h-10 text-blue-400 mb-2" />
                         <td className="px-4 py-3">
                           {canViewMembers(ministry) && (
                             <Link href={`/ministries/${ministry.id}`}>
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="border-[#d4af37] text-[#d4af37] hover:bg-[#d4af37]/10"
+                                className="border-blue-600 text-blue-600 hover:bg-[#d4af37]/10"
                               >
                                 View Members
                               </Button>
@@ -545,7 +545,7 @@ export default function MinistriesClient({ user }: any) {
                         </td>
                       </div>
                       <Link href={`/ministries/${ministry.id}`}>
-                        <CardTitle className="text-white text-lg group-hover:text-[#d4af37] transition-colors">
+                        <CardTitle className="text-white text-lg group-hover:text-blue-600 transition-colors">
                           {ministry.name}
                         </CardTitle>
                       </Link>

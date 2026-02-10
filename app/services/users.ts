@@ -36,12 +36,13 @@ export interface User {
   id: number;
   name: string | null;
   email: string;
-  role: string;
+    role: "ADMIN" | "VOLUNTEER";
   ministryId: number | null;
   ministry: {
     id: number;
     name: string;
   } | null;
+    ministryType?: "LITURGICAL" | "PASTORAL" | null;
   createdAt: string;
 }
 

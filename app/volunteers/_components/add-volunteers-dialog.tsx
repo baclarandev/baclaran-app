@@ -34,10 +34,9 @@ import {
   Plus,
   Check,
   User,
-  Briefcase,
-  FileCheck,
   ChevronsUpDown,
   Upload,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMinistries } from "@/app/services/ministries";
@@ -49,18 +48,9 @@ import { useUploadImage } from "@/app/services/upload";
 import imageCompression from "browser-image-compression";
 import { getSession } from "@/lib/auth";
 import { Volunteer } from "@/lib/data";
+import { CURRENT_YEAR, DEFAULT_FORMATIONS, sacramentMap, YEARS } from "@/app/utils/helper";
+import { steps, TimelineType } from "@/app/types/volunteer";
 
-const steps = [
-  { id: 1, name: "Personal", icon: User },
-  { id: 2, name: "Ministry", icon: Briefcase },
-  { id: 3, name: "Review", icon: FileCheck },
-];
-const CURRENT_YEAR = new Date().getFullYear();
-
-const YEARS = Array.from(
-  { length: CURRENT_YEAR - 1900 + 1 },
-  (_, i) => CURRENT_YEAR - i,
-);
 interface FormData {
   lastName: string;
   firstName: string;
@@ -83,7 +73,7 @@ interface AddVolunteerDialogProps {
   user?: Staff;
   onSuccess?: () => void;
 }
-type TimelineType = "SHRINE" | "OUTSIDE";
+
 export interface Ministry {
   id: number;
   name: string;
@@ -169,9 +159,13 @@ export function AddVolunteerDialog({
     ministryIds: [],
     sacraments: [],
     profilePicture: "",
-      marriageType: "",
+    marriageType: "",
   });
+
+ 
+  const isAdmin = user?.role === "ADMIN";
   const staffMinistryIds = user?.ministry ? [user.ministry.id] : [];
+
   const updateFormData = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -184,11 +178,7 @@ export function AddVolunteerDialog({
         : [...prev.sacraments, sacrament],
     }));
   };
-  // const isAdmin = user.role === "ADMIN";
 
-  // const selectableMinistries = isAdmin
-  //   ? ministries
-  //   : ministries.filter((m: any) => m.id === user?.ministryId);
   const handleModeToggle = (checked: boolean) => {
     setIsExistingVolunteer(checked);
     if (!checked) {
@@ -212,6 +202,8 @@ export function AddVolunteerDialog({
     }
   };
 
+
+// console.log(ministriesWithStaff);
   const handleVolunteerSelect = (volunteer: Volunteer) => {
     setSelectedVolunteer(volunteer);
     setUpdateVolunteerId(volunteer.id);
@@ -234,8 +226,7 @@ export function AddVolunteerDialog({
           BAPTISM: "Baptism",
           EUCHARIST: "First Communion",
           CONFIRMATION: "Confirmation",
-
-          ANOINTING_OF_THE_SICK: "Anointing of the Sick",
+          MATRIMONY: 'Matrimony',
         };
         return reverseMap[s] || s;
       }),
@@ -243,6 +234,7 @@ export function AddVolunteerDialog({
     });
     setOpenCombobox(false);
   };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -289,19 +281,7 @@ export function AddVolunteerDialog({
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const sacramentMap: Record<string, string> = {
-    Baptism: "BAPTISM",
-    "First Communion": "EUCHARIST",
-    Confirmation: "CONFIRMATION",
 
-     Matrimony: "MATRIMONY",
-  };
-  // Fixes included: updateVolunteerId properly set, form reset works, handleSubmit clean
-  const DEFAULT_FORMATIONS = [
-    "Basic Orientation Seminar (BOS)",
-    "Diocesan Basic Formation",
-    "Safeguarding Policy",
-  ];
 
   const [formations, setFormations] = useState<
     { name: string; year: number | "" }[]
@@ -327,29 +307,24 @@ export function AddVolunteerDialog({
       (!t.endYear || isValidYear(t.endYear)) &&
       (!t.endYear || t.endYear >= t.startYear),
   );
-useEffect(() => {
-  if (formData.civilStatus === "Married") {
-    if (!formData.sacraments.includes("Matrimony")) {
-      updateFormData("sacraments", [
-        ...formData.sacraments,
-        "Matrimony",
-      ]);
+
+  useEffect(() => {
+    if (formData.civilStatus === "Married") {
+      if (!formData.sacraments.includes("Matrimony")) {
+        updateFormData("sacraments", [
+          ...formData.sacraments,
+          "Matrimony",
+        ]);
+      }
+    } else {
+      updateFormData(
+        "sacraments",
+        formData.sacraments.filter((s) => s !== "Matrimony"),
+      );
     }
-  } else {
-    updateFormData(
-      "sacraments",
-      formData.sacraments.filter((s) => s !== "Matrimony"),
-    );
-  }
-}, [formData.civilStatus]);
+  }, [formData.civilStatus]);
+
   const handleSubmit = async () => {
-    // if (validFormations.length === 0) {
-    //   alert("Please add at least one valid formation with a year.");
-    //   return;
-    // }
-
-
-
     const payload: any = {
       firstName: formData.firstName,
       lastName: formData.lastName,
@@ -386,13 +361,9 @@ useEffect(() => {
       totalYears: computeTotal(t.startYear, t.endYear),
       type: t.type,
     }));
-    console.group("🚀 CREATE VOLUNTEER PAYLOAD");
-    console.log("RAW payload:", payload);
-    console.log("FormData:", formData);
-    console.log("Valid formations:", validFormations);
-    console.log("Valid timelines:", validTimelines);
-    console.groupEnd();
-    // Only add formations if there are any valid ones
+
+
+
     if (validFormations.length > 0) {
       payload.formations = validFormations.map((f) => ({
         name: f.name.trim(),
@@ -400,7 +371,7 @@ useEffect(() => {
       }));
     }
 
-    // Only add timelines if there are any valid ones
+
     if (validTimelines.length > 0) {
       payload.timelines = validTimelines.map((t) => ({
         organization: t.organization.trim(),
@@ -413,7 +384,7 @@ useEffect(() => {
 
     try {
       if (updateVolunteerId) {
-        // 🔜 future: update flow
+
         return;
       }
 
@@ -435,7 +406,7 @@ useEffect(() => {
     }
   };
 
-  // Reset form function
+
   const resetForm = () => {
     setCurrentStep(1);
     setIsExistingVolunteer(false);
@@ -458,7 +429,7 @@ useEffect(() => {
     });
   };
 
-  // Handle dialog open/close
+
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) resetForm();
@@ -488,14 +459,17 @@ useEffect(() => {
 
   const getInitials = (firstName: string, lastName: string) =>
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+
   useEffect(() => {
-    if (staffMinistryIds.length > 0) {
+    if (staffMinistryIds.length > 0 && !isAdmin) {
+
       setFormData((prev) => ({
         ...prev,
-        ministryIds: [...new Set([...prev.ministryIds, ...staffMinistryIds])],
+        ministryIds: staffMinistryIds,
       }));
     }
-  }, [staffMinistryIds]);
+  }, [staffMinistryIds, isAdmin]);
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -555,8 +529,8 @@ useEffect(() => {
           ))}
         </div>
 
-        {/* Step Content */}
-        <div className="mt-6 min-h-[300px]">
+
+        <div className="mt-6 min-h-75">
           {/* Step 1: Personal Info */}
           {currentStep === 1 && (
             <div className="space-y-4 animate-in fade-in duration-300">
@@ -609,7 +583,7 @@ useEffect(() => {
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent   className="w-full p-0 bg-gray-800 border-gray-700 max-h-[60vh] overflow-hidden">
+                    <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700 max-h-[60vh] overflow-hidden">
                       <Command className="bg-gray-800">
                         <CommandInput
                           placeholder="Search volunteers..."
@@ -643,7 +617,8 @@ useEffect(() => {
                                   </Avatar>
                                   <div className="flex-1">
                                     <p className="font-medium">
-                                      {volunteer.firstName} {volunteer.lastName}
+                                      {volunteer.firstName}{" "}
+                                      {volunteer.lastName}
                                     </p>
                                     <p className="text-xs text-gray-400">
                                       {volunteer.volunteerCode} •{" "}
@@ -897,53 +872,69 @@ useEffect(() => {
                       </select>
                     </div>
                     {formData.civilStatus === "Married" && (
-  <div className="space-y-2">
-    <Label>Marriage Type</Label>
-    <div className="flex gap-4 pt-2">
-      {[
-        { label: "Church", value: "CHURCH" },
-        { label: "Civil", value: "CIVIL" },
-      ].map((m) => (
-        <label key={m.value} className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="radio"
-            name="marriageType"
-            value={m.value}
-            checked={formData.marriageType === m.value}
-            onChange={(e) =>
-              updateFormData("marriageType", e.target.value)
-            }
-            className="text-yellow-500 focus:ring-yellow-500"
-          />
-          {m.label}
-        </label>
-      ))}
-    </div>
-  </div>
-)}
-
+                      <div className="space-y-2">
+                        <Label>Marriage Type</Label>
+                        <div className="flex gap-4 pt-2">
+                          {[
+                            { label: "Church", value: "CHURCH" },
+                            { label: "Civil", value: "CIVIL" },
+                          ].map((m) => (
+                            <label
+                              key={m.value}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <input
+                                type="radio"
+                                name="marriageType"
+                                value={m.value}
+                                checked={formData.marriageType === m.value}
+                                onChange={(e) =>
+                                  updateFormData("marriageType", e.target.value)
+                                }
+                                className="text-yellow-500 focus:ring-yellow-500"
+                              />
+                              {m.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
             </div>
           )}
 
-          {/* Step 2: Ministry & Sacraments */}
           {/* Step 2: Ministry & Timelines */}
           {currentStep === 2 && (
             <div className="space-y-4 animate-in fade-in duration-300">
               {/* Ministries */}
               <div className="space-y-2">
-                <Label>Ministries</Label>
+                <div className="flex items-center gap-2">
+                  <Label>Ministries</Label>
+                  {!isAdmin && (
+                    <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-600">
+                      <Lock className="w-3 h-3" />
+                      Auto-assigned
+                    </div>
+                  )}
+                </div>
+
                 <Popover
                   open={openMinistryBox}
-                  onOpenChange={setOpenMinistryBox}
+                  onOpenChange={isAdmin ? setOpenMinistryBox : undefined}
                 >
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       role="combobox"
-                      className="w-full justify-between bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600"
+                      className={cn(
+                        "w-full justify-between bg-gray-700 border-gray-600 text-gray-100",
+                        isAdmin
+                          ? "hover:bg-gray-600 cursor-pointer"
+                          : "opacity-60 cursor-not-allowed",
+                      )}
+                      disabled={!isAdmin}
                     >
                       {formData.ministryIds.length > 0
                         ? getMinistryNames(formData.ministryIds)
@@ -952,96 +943,94 @@ useEffect(() => {
                     </Button>
                   </PopoverTrigger>
 
-                  <PopoverContent   className="w-full p-0 bg-gray-800 border-gray-700 max-h-[60vh] overflow-hidden">
-                    <Command className="bg-gray-800">
-                      <CommandInput
-                        placeholder="Search ministries..."
-                        className="text-gray-100"
-                      />
-                      <CommandList className="max-h-[50vh] overflow-y-auto overscroll-contain touch-pan-y">
-                        <CommandEmpty>No ministry found.</CommandEmpty>
-                        <CommandGroup>
-                          {ministries.map((m: any) => {
-                            const isStaffMinistry = staffMinistryIds.includes(
-                              m.id,
-                            );
-                            const selected = formData.ministryIds.includes(
-                              m.id,
-                            );
-                            return (
-                              <CommandItem
-                                key={m.id}
-                                value={m.name}
-                                onSelect={() => {
-                                  if (isStaffMinistry) return; // cannot deselect staff's ministry
-                                  updateFormData(
-                                    "ministryIds",
-                                    selected
-                                      ? formData.ministryIds.filter(
-                                          (id) => id !== m.id,
-                                        )
-                                      : [...formData.ministryIds, m.id],
-                                  );
-                                }}
-                                className={cn(
-                                  "text-gray-100 hover:bg-gray-700 ",
-                                  isStaffMinistry
-                                    ? "opacity-50 cursor-not-allowed"
-                                    : "",
-                                )}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selected ? "opacity-100" : "opacity-0",
-                                  )}
-                                />
-                                {m.name}
-                                {isStaffMinistry && (
-                                  <span className="text-xs text-gray-400 ml-2">
-                                    (Assigned)
-                                  </span>
-                                )}
-                              </CommandItem>
-                            );
-                          })}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
+                  {isAdmin && (
+                    <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700 max-h-[60vh] overflow-hidden">
+                      <Command className="bg-gray-800">
+                        <CommandInput
+                          placeholder="Search ministries..."
+                          className="text-gray-100"
+                        />
+                        <CommandList className="max-h-[50vh] overflow-y-auto overscroll-contain touch-pan-y">
+                          <CommandEmpty>No ministry found.</CommandEmpty>
+                          <CommandGroup>
+                            {ministries.map((m: any) => {
+                              const selected = formData.ministryIds.includes(
+                                m.id,
+                              );
+                              return (
+                                <CommandItem
+                                  key={m.id}
+                                  value={m.name}
+                                  onSelect={() => {
+                                    updateFormData(
+                                      "ministryIds",
+                                      selected
+                                        ? formData.ministryIds.filter(
+                                            (id) => id !== m.id,
+                                          )
+                                        : [...formData.ministryIds, m.id],
+                                    );
+                                  }}
+                                  className="text-gray-100 hover:bg-gray-700"
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selected ? "opacity-100" : "opacity-0",
+                                    )}
+                                  />
+                                  {m.name}
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  )}
                 </Popover>
+
+                {!isAdmin && (
+                  <p className="text-xs text-gray-400">
+                    Ministry is automatically set to:{" "}
+                    <span className="font-medium text-gray-100">
+                      {getMinistryNames(formData.ministryIds) ||
+                        "Not assigned"}
+                    </span>
+                  </p>
+                )}
               </div>
 
               {!isExistingVolunteer && (
                 <div className="space-y-2">
                   <Label>Sacraments Received</Label>
                   <div className="flex flex-wrap gap-4 pt-2">
-               {Object.keys(sacramentMap).map((s) => {
-  const isMatrimony = s === "Matrimony";
+                    {Object.keys(sacramentMap).map((s) => {
+                      const isMatrimony = s === "Matrimony";
 
-  return (
-    <label
-      key={s}
-      className={cn(
-        "flex items-center gap-2",
-        isMatrimony && "opacity-50 cursor-not-allowed",
-      )}
-    >
-      <input
-        type="checkbox"
-        className="rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
-        checked={formData.sacraments.includes(s)}
-        disabled={isMatrimony}
-        onChange={() => toggleSacrament(s)}
-      />
-      {s}
-    </label>
-  );
-})}
-
+                      return (
+                        <label
+                          key={s}
+                          className={cn(
+                            "flex items-center gap-2",
+                            isMatrimony && "opacity-50 cursor-not-allowed",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
+                            checked={formData.sacraments.includes(s)}
+                            disabled={isMatrimony}
+                            onChange={() => toggleSacrament(s)}
+                          />
+                          {s}
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               )}
+
               {/* Formations */}
               <Card>
                 <CardContent className="space-y-4">
@@ -1056,6 +1045,7 @@ useEffect(() => {
                           copy[i].name = e.target.value;
                           setFormations(copy);
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-100"
                       />
                       <select
                         value={f.year ?? ""}
@@ -1077,7 +1067,11 @@ useEffect(() => {
                     </div>
                   ))}
 
-                  <Button variant="outline" onClick={addFormation}>
+                  <Button
+                    variant="outline"
+                    onClick={addFormation}
+                    className="bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600"
+                  >
                     <Plus className="w-4 h-4 mr-2" /> Add Other Formation
                   </Button>
                 </CardContent>
@@ -1087,7 +1081,7 @@ useEffect(() => {
               <Card>
                 <CardContent className="space-y-4">
                   <h3 className="font-semibold">Volunteer Timeline (Shrine)</h3>
-                  <p>
+                  <p className="text-sm text-gray-400">
                     Please indicate all Organization/Ministry you belong to in
                     the Shrine
                   </p>
@@ -1101,6 +1095,7 @@ useEffect(() => {
                           copy[i].organization = e.target.value;
                           setShrineTimelines(copy);
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-100"
                       />
                       <select
                         value={t.startYear ?? ""}
@@ -1115,13 +1110,9 @@ useEffect(() => {
                         }}
                         className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
                       >
-                        <option value="">Present</option>
+                        <option value="">Select Year</option>
                         {YEARS.map((year) => (
-                          <option
-                            key={year}
-                            value={year}
-                            disabled={!!(t.startYear && year < t.startYear)}
-                          >
+                          <option key={year} value={year}>
                             {year}
                           </option>
                         ))}
@@ -1143,16 +1134,16 @@ useEffect(() => {
                       >
                         <option value="">Present</option>
                         {YEARS.map((year) => (
-                          <option
-                            key={year}
-                            value={year}
-                            disabled={!!(t.startYear && year < t.startYear)}
-                          >
+                          <option key={year} value={year}>
                             {year}
                           </option>
                         ))}
                       </select>
-                      <Input disabled value={t.totalYears} />
+                      <Input
+                        disabled
+                        value={t.totalYears}
+                        className="bg-gray-600 border-gray-600 text-gray-400"
+                      />
                     </div>
                   ))}
                   <Button
@@ -1169,6 +1160,7 @@ useEffect(() => {
                         },
                       ])
                     }
+                    className="bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Add Another Timeline Entry
                   </Button>
@@ -1179,7 +1171,7 @@ useEffect(() => {
               <Card>
                 <CardContent className="space-y-4">
                   <h3 className="font-semibold">Other Affiliations</h3>
-                  <p>
+                  <p className="text-sm text-gray-400">
                     Please indicate any Organization/Ministry outside the Shrine
                   </p>
                   {outsideTimelines.map((t, i) => (
@@ -1192,6 +1184,7 @@ useEffect(() => {
                           copy[i].organization = e.target.value;
                           setOutsideTimelines(copy);
                         }}
+                        className="bg-gray-700 border-gray-600 text-gray-100"
                       />
                       <select
                         value={t.startYear ?? ""}
@@ -1230,16 +1223,16 @@ useEffect(() => {
                       >
                         <option value="">Present</option>
                         {YEARS.map((year) => (
-                          <option
-                            key={year}
-                            value={year}
-                            disabled={!!(t.startYear && year < t.startYear)}
-                          >
+                          <option key={year} value={year}>
                             {year}
                           </option>
                         ))}
                       </select>
-                      <Input disabled value={t.totalYears} />
+                      <Input
+                        disabled
+                        value={t.totalYears}
+                        className="bg-gray-600 border-gray-600 text-gray-400"
+                      />
                     </div>
                   ))}
                   <Button
@@ -1256,6 +1249,7 @@ useEffect(() => {
                         },
                       ])
                     }
+                    className="bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Add Another Timeline Entry
                   </Button>
@@ -1311,19 +1305,19 @@ useEffect(() => {
                         <p className="text-gray-100 capitalize">
                           {formData.sex || "—"}
                         </p>
-                        <div>
-                          <span className="text-gray-400">Civil Status:</span>
-                          <p className="text-gray-100">
-                            {formData.civilStatus || "—"}
-                          </p>
-                        </div>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Civil Status:</span>
+                        <p className="text-gray-100">
+                          {formData.civilStatus || "—"}
+                        </p>
+                      </div>
 
-                        <div>
-                          <span className="text-gray-400">Occupation:</span>
-                          <p className="text-gray-100">
-                            {formData.occupation || "—"}
-                          </p>
-                        </div>
+                      <div>
+                        <span className="text-gray-400">Occupation:</span>
+                        <p className="text-gray-100">
+                          {formData.occupation || "—"}
+                        </p>
                       </div>
                     </>
                   )}

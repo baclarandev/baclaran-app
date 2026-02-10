@@ -42,7 +42,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type ViewMode = "grid" | "list";
+
 const cloudinaryOptimized = (url: string) => {
   if (!url) return url;
 
@@ -60,9 +60,9 @@ export default function Volunteer({ user }: any) {
     isLoading: loadingVolunteers,
     refetch,
   } = useVolunteers();
-  const { data: ministries = [] } = useMinistries();
+
   const deleteVolunteer = useDeleteVolunteer();
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+ 
   const [selectedVolunteer, setSelectedVolunteer] = useState<any>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -184,7 +184,7 @@ const goToPage = (page: number) => {
     onClick={() => setViewMode("grid")}
     className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
       viewMode === "grid"
-        ? "bg-yellow-400 text-gray-900"
+        ? "bg-blue-400 text-gray-900"
         : "bg-gray-700 text-gray-100 hover:bg-gray-600"
     }`}
     title="Grid view"
@@ -196,7 +196,7 @@ const goToPage = (page: number) => {
     onClick={() => setViewMode("list")}
     className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
       viewMode === "list"
-        ? "bg-yellow-400 text-gray-900"
+        ? "bg-blue-400 text-gray-900"
         : "bg-gray-700 text-gray-100 hover:bg-gray-600"
     }`}
     title="List view"

@@ -207,7 +207,7 @@ export default function Dashboard({ user }: any) {
                             </div>
                           ))}
                           <Link href="/ministries">
-                            <div className="bg-gray-700/40 border border-dashed border-gray-600 h-full  w-full h-32 lg:w-44 rounded-xl p-4 flex flex-col items-center justify-center hover:bg-gray-700 transition cursor-pointer">
+                            <div className="bg-gray-700/40 border border-dashed border-gray-600   w-full h-44 lg:w-44 rounded-xl p-4 flex flex-col items-center justify-center hover:bg-gray-700 transition cursor-pointer">
                               <ChevronRight className="w-6 h-6 text-yellow-400 mb-2" />
                               <p className="text-sm text-yellow-400">
                                 See all ministries
@@ -277,16 +277,16 @@ function DashboardSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <Card
             key={i}
-            className="bg-gray-800 border-gray-700 animate-pulse h-[120px]"
+            className="bg-gray-800 border-gray-700 animate-pulse h-30"
           />
         ))}
       </div>
-      <Card className="bg-gray-800 border-gray-700 animate-pulse h-[48px]" />
+      <Card className="bg-gray-800 border-gray-700 animate-pulse h-12" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {Array.from({ length: 8 }).map((_, i) => (
           <Card
             key={i}
-            className="bg-gray-800 border-gray-700 animate-pulse h-[320px]"
+            className="bg-gray-800 border-gray-700 animate-pulse h-80"
           />
         ))}
       </div>
@@ -301,7 +301,7 @@ function StatCard({ label, value, sub, icon: Icon, color }: any) {
       <CardContent className="p-6 flex justify-between items-center">
         <div>
           <p className="text-sm text-gray-400">{label}</p>
-          <p className="text-3xl font-bold text-yellow-400">{value}</p>
+          <p className="text-3xl font-bold text-blue-400">{value}</p>
           {sub && <p className="text-sm text-gray-500">{sub}</p>}
         </div>
         <div

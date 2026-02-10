@@ -18,14 +18,15 @@ export default function MinistriesClientBase({ user, ministryType }: any) {
   const [search, setSearch] = useState("");
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const filtered = useMemo(
+    const normalizedType = ministryType.toUpperCase();
+   const filtered = useMemo(
     () =>
       ministries
-        .filter((m: any) => m.type === ministryType)
+        .filter((m: any) => m.type === normalizedType)
         .filter((m: any) =>
           m.name.toLowerCase().includes(search.toLowerCase())
         ),
-    [ministries, search, ministryType]
+    [ministries, search, normalizedType]
   );
 
   const volunteerCountMap = useMemo(() => {

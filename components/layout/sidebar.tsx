@@ -43,7 +43,7 @@ export function Sidebar({
       setInternalIsOpen(value);
     }
   };
- const { data: ministries = [] } = useMinistries();
+ 
   const toggleSidebar = () => setIsOpen((prev) => !prev);
 
   const navItems = [
@@ -58,41 +58,35 @@ export function Sidebar({
     { href: "/settings/archives", label: "Archives", icon: Archive },
   ];
 
-const renderMinistriesMenu = (ministries: { id: number; name: string; type: string }[]) => {
-  if (!user) return null; // safeguard
+const renderMinistriesMenu = () => {
+   if (!user) return null;
 
   const isAdmin = user.role === "ADMIN";
 
-  // ✅ Fixed: Get ministry type from fetched ministries, not user.ministry
-  let ministryTypes: string[] = [];
-
-  if (!isAdmin) {
-    const userMinistryId = user.ministryId;
-    if (userMinistryId) {
-      const userMinistry = ministries.find((m) => m.id === userMinistryId);
-      if (userMinistry) ministryTypes = [userMinistry.type];
-    }
-  } else {
-    ministryTypes = ["LITURGICAL", "PASTORAL"]; // Admin sees all
-  }
-
-  const typeLabels: Record<string, string> = {
-    LITURGICAL: "Liturgical",
-    PASTORAL: "Pastoral",
-  };
+  const ministryLinks = isAdmin
+    ? [
+        { type: "LITURGICAL", label: "Liturgical" },
+        { type: "PASTORAL", label: "Pastoral" },
+      ]
+    : user.ministryType
+    ? [{ type: user.ministryType, label: user.ministryType === "LITURGICAL" ? "Liturgical" : "Pastoral" }]
+    : [];
 
   return (
     <div className="mb-4">
-      <p className="text-xs font-semibold uppercase text-gray-400 mb-1">Ministries</p>
+      <p className="text-xs font-semibold uppercase text-gray-400 mb-1">
+        Ministries
+      </p>
+
       <div className="ml-2 flex flex-col gap-2">
         {isAdmin && (
           <Link
             href="/ministries"
             onClick={() => setIsOpen(false)}
             className={cn(
-              "px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-yellow-400",
+              "px-4 py-2 rounded-lg text-gray-300  ",
               pathname === "/ministries"
-                ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
+                ? "bg-blue-500 text-gray-900 shadow-lg shadow-blue-500/20"
                 : ""
             )}
           >
@@ -100,25 +94,32 @@ const renderMinistriesMenu = (ministries: { id: number; name: string; type: stri
           </Link>
         )}
 
-        {ministryTypes.length === 0 && !isAdmin && (
-          <span className="px-4 py-2 text-gray-500">No ministry assigned</span>
+        {ministryLinks.length === 0 && !isAdmin && (
+          <span className="px-4 py-2 text-gray-500">
+            No ministry assigned
+          </span>
         )}
 
-        {ministryTypes.map((type) => (
-          <Link
-            key={type}
-            href={`/ministries/${type.toLowerCase()}`}
-            onClick={() => setIsOpen(false)}
-            className={cn(
-              "px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-yellow-400",
-              pathname.includes(type.toLowerCase())
-                ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
-                : ""
-            )}
-          >
-            {typeLabels[type]}
-          </Link>
-        ))}
+        {ministryLinks.map(({ type, label }) => {
+          const href = `/ministries/${type.toLowerCase()}`;
+          const isActive = pathname.startsWith(href);
+
+          return (
+            <Link
+              key={type}
+              href={href}
+              onClick={() => setIsOpen(false)}
+              className={cn(
+                "px-4 py-2 rounded-lg transition",
+                isActive
+                  ? "bg-blue-500 text-gray-900 shadow-lg shadow-blue-500/20"
+                  : "text-gray-300 hover:bg-gray-800 hover:text-blue-400"
+              )}
+            >
+              {label}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
@@ -128,11 +129,12 @@ const renderMinistriesMenu = (ministries: { id: number; name: string; type: stri
 
 
 
+
   const sidebarContent = (
     <>
       <div className="flex h-16 items-center border-b border-gray-700 px-6 bg-gray-900">
         <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="w-9 h-9 bg-yellow-500 rounded-xl flex items-center justify-center shadow-md">
+          <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center shadow-md">
             <Church className="w-5 h-5 text-gray-900" />
           </div>
           <div className="flex flex-col">
@@ -164,8 +166,8 @@ const renderMinistriesMenu = (ministries: { id: number; name: string; type: stri
                 className={cn(
                   "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
                   isActive
-                    ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-yellow-400"
+                    ? "bg-blue-500 text-gray-900 shadow-lg shadow-blue-500/20"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-blue-400"
                 )}
               >
                 <item.icon className="w-5 h-5" />
@@ -175,7 +177,7 @@ const renderMinistriesMenu = (ministries: { id: number; name: string; type: stri
           })}
 
           {/* Ministries menu */}
-          {renderMinistriesMenu(ministries)}
+          {renderMinistriesMenu()}
 
           {/* Divider */}
           <div className="my-4 h-px bg-gray-700" />
@@ -192,8 +194,8 @@ const renderMinistriesMenu = (ministries: { id: number; name: string; type: stri
                 className={cn(
                   "group flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-200",
                   isActive
-                    ? "bg-yellow-500 text-gray-900 shadow-lg shadow-yellow-500/20"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-yellow-400"
+                    ? "bg-blue-500 text-gray-900 shadow-lg shadow-blue-500/20"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-blue-400"
                 )}
               >
                 <item.icon className="w-5 h-5" />

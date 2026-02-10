@@ -69,11 +69,11 @@ export function Header({ user, onMenuClick }: HeaderProps) {
         onClick={onMenuClick}
         aria-label="Toggle menu"
       >
-        <Menu className="w-5 h-5 text-yellow-400" />
+        <Menu className="w-5 h-5 text-blue-400" />
       </button>
 
       <div className="flex items-center gap-2 text-sm text-gray-300">
-        <span className="font-semibold text-yellow-400">{pageTitle}</span>
+        <span className="font-semibold text-blue-400">{pageTitle}</span>
       </div>
 
       <div className="flex flex-1 items-center justify-end">
@@ -85,7 +85,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
             >
               <div className="relative">
                 <Avatar className="h-9 w-9 ring-2 ring-gray-800">
-                  <AvatarFallback className="bg-yellow-500 text-gray-900">
+                  <AvatarFallback className="bg-blue-500 text-gray-900">
                     {user?.email[0].toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

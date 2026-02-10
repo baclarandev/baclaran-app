@@ -136,12 +136,12 @@ const Page = () => {
                 "Sign In"
               )}
             </Button>
-            <div className="text-center">
+            {/* <div className="text-center">
               <p>Want to be a volunteer? </p>
               <Button variant="link" className="cursor-pointer underline">
                 Apply here
               </Button>
-            </div>
+            </div> */}
           </form>
         </CardContent>
       </Card>

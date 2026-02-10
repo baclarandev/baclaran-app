@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
-import Dashboard from "./_components/dashboard";
+
 import { redirect } from "next/navigation";
+import Dashboard from "./_components/dashboard";
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) {
@@ -15,4 +16,4 @@ export default async function DashboardPage() {
   );
 }
 
-/* ---------------- Skeleton ---------------- */
+

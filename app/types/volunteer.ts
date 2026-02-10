@@ -1,5 +1,6 @@
 import { Volunteer } from "@/lib/data";
-
+import { Briefcase, FileCheck, User } from "lucide-react";
+export type TimelineType = "SHRINE" | "OUTSIDE";
 // types/volunteer.ts
 export interface Mass {
   id: number;
@@ -37,3 +38,8 @@ export interface Timeline {
 export interface VolunteerWithBookings extends Volunteer {
   bookings: MassBooking[];
 }
+export const steps = [
+  { id: 1, name: "Personal", icon: User },
+  { id: 2, name: "Ministry", icon: Briefcase },
+  { id: 3, name: "Review", icon: FileCheck },
+];
