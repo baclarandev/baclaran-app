@@ -23,19 +23,30 @@ import { Sidebar } from "@/components/layout/sidebar";
 
 import { useVolunteers } from "@/app/services/volunteer";
 import { useMinistries } from "@/app/services/ministries";
+import { User } from "@/app/services/users";
 
-export default function Dashboard({ user }: any) {
+export default function Dashboard({ user }: { user: any }) {
   const { data: volunteers, isLoading: loadingVolunteers } = useVolunteers();
   const { data: ministries, isLoading: loadingMinistries } = useMinistries();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isLoading = loadingVolunteers || loadingMinistries;
-
+  const isAdmin = user?.role === "ADMIN";
+  const isStaff = user?.role === "STAFF";
+  // const currentMinistry = useMemo(() => {
+  //     if (!ministries || !user) return null;
+  //     if (isAdmin) return null; // Admin sees all, so no single ministry
+  //     if (isStaff) {
+  //       return ministries.find((m: any) =>
+  //         m.volunteers?.some((v: any) => v.id === user.id)
+  //       );
+  //     })
   // Metrics calculation
+  const currentMinistry = user.ministry?.name;
   const metrics = useMemo(() => {
     if (!volunteers || !ministries) return null;
 
     const activeVolunteers = volunteers.filter(
-      (v) => v.status === "Active",
+      (v) => v.status === "ACTIVE",
     ).length;
     const inactiveVolunteers = volunteers.length - activeVolunteers;
 
@@ -89,8 +100,8 @@ export default function Dashboard({ user }: any) {
   }, [volunteers, user]);
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
-      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen}  />
+    <div className="min-h-screen  text-gray-100">
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
       <div className="flex-1 flex flex-col md:ml-64">
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
@@ -104,7 +115,7 @@ export default function Dashboard({ user }: any) {
                 {/* Stats */}
                 <div className="grid grid-cols-1 w-full md:grid-cols-2 lg:grid-cols-4 gap-6 flex-1">
                   <StatCard
-                    label="Total Volunteers"
+                    label={`Total volunteers ${isStaff && "on your ministry"}`}
                     value={metrics.totalVolunteers}
                     sub={`${metrics.activeVolunteers} active • ${metrics.inactiveVolunteers} inactive`}
                     icon={Users}
@@ -157,64 +168,101 @@ export default function Dashboard({ user }: any) {
 
               {/* Tabs */}
               <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="bg-gray-800 border border-gray-700">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="volunteers">Volunteers</TabsTrigger>
+                <TabsList className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
+                  <TabsTrigger
+                    value="overview"
+                    className="
+    data-[state=active]:bg-blue-500/10
+    data-[state=active]:text-white
+    text-gray-300
+  "
+                  >
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger
+                    className="
+    data-[state=active]:bg-blue-500/10
+    data-[state=active]:text-black
+    text-gray-300
+  "
+                    value="volunteers"
+                  >
+                    Volunteers
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Overview */}
                 <TabsContent value="overview">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Quick Actions */}
-                    <Card className="bg-gray-800 border-gray-700">
+                    <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
                       <CardHeader>
-                        <CardTitle className="text-yellow-400">
+                        <CardTitle className="text-primary text-base">
                           Quick Actions
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <Link href="/volunteers">
-                          <Button className="w-full justify-between">
-                            View Volunteer <ChevronRight />
+                          <Button
+                            className="w-full justify-between"
+                            variant="secondary"
+                          >
+                            View all members
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </Link>
+                        <Link href="/attendance">
+                          <Button
+                            className="w-full justify-between"
+                            variant="secondary"
+                          >
+                            Manage schedules
+                            <ChevronRight className="w-4 h-4" />
                           </Button>
                         </Link>
                       </CardContent>
                     </Card>
 
                     {/* Ministries */}
-                    <Card className="lg:col-span-2 bg-gray-800 border-gray-700">
+                    <Card className="lg:col-span-2 bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
                       <CardHeader>
                         <CardTitle className="text-yellow-400">
                           Ministries
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                          {metrics.ministryData.map((m: any, i: number) => (
-                            <div
-                              key={i}
-                              className="bg-gray-700 rounded-xl p-4 text-center"
-                            >
+                        {isStaff &&
+                          `Your current ministry is ${currentMinistry}`}
+                        {isAdmin && (
+                          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {metrics.ministryData.map((m: any, i: number) => (
                               <div
-                                className={`w-12 h-12 ${m.color} rounded-full mx-auto mb-3 flex items-center justify-center`}
+                                key={i}
+                                className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md rounded-xl p-4 text-center"
                               >
-                                <Users className="w-5 h-5 text-white" />
+                                <div
+                                  className={`w-12 h-12 ${m.color} rounded-full mx-auto mb-3 flex items-center justify-center`}
+                                >
+                                  <Users className="w-5 h-5 text-white" />
+                                </div>
+                                <p className="text-sm font-medium">{m.name}</p>
+                                <p className="text-xs text-gray-400">
+                                  {m.volunteers} volunteers
+                                </p>
                               </div>
-                              <p className="text-sm font-medium">{m.name}</p>
-                              <p className="text-xs text-gray-400">
-                                {m.volunteers} volunteers
-                              </p>
-                            </div>
-                          ))}
-                          <Link href="/ministries">
-                            <div className="bg-gray-700/40 border border-dashed border-gray-600   w-full h-44 lg:w-44 rounded-xl p-4 flex flex-col items-center justify-center hover:bg-gray-700 transition cursor-pointer">
-                              <ChevronRight className="w-6 h-6 text-yellow-400 mb-2" />
-                              <p className="text-sm text-yellow-400">
-                                See all ministries
-                              </p>
-                            </div>
-                          </Link>
-                        </div>
+                            ))}
+                            <Link href="/ministries">
+                              <div className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md border-dashed w-full min-h-[140px] rounded-xl p-4 flex flex-col items-center justify-center hover:bg-blue-500/20 transition-all cursor-pointer group">
+                                <div className="w-12 h-12 rounded-full mb-3 flex items-center justify-center bg-yellow-400/10 group-hover:scale-110 transition-transform">
+                                  <ChevronRight className="w-6 h-6 text-yellow-400" />
+                                </div>
+                                <p className="text-sm text-yellow-400">
+                                  See all ministries
+                                </p>
+                              </div>
+                            </Link>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
@@ -225,7 +273,7 @@ export default function Dashboard({ user }: any) {
                   <Card className="bg-gray-800 border-gray-700">
                     <CardHeader className="flex flex-row justify-between">
                       <CardTitle className="text-yellow-400">
-                        Recent Volunteers
+                        Recent Volunteers {`${isStaff && "on your ministry"}`}
                       </CardTitle>
                       <Link href="/volunteers">
                         <Button>
@@ -277,16 +325,16 @@ function DashboardSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <Card
             key={i}
-            className="bg-gray-800 border-gray-700 animate-pulse h-30"
+            className="bg-neutral-800 border-neutral-700 animate-pulse h-30"
           />
         ))}
       </div>
-      <Card className="bg-gray-800 border-gray-700 animate-pulse h-12" />
+      <Card className="bg-neutral-800 border-neutral-700 animate-pulse h-12" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {Array.from({ length: 8 }).map((_, i) => (
           <Card
             key={i}
-            className="bg-gray-800 border-gray-700 animate-pulse h-80"
+            className="bg-neutral-800 border-neutral-700 animate-pulse h-80"
           />
         ))}
       </div>
@@ -297,7 +345,7 @@ function DashboardSkeleton() {
 /* ---------------- Reusable ---------------- */
 function StatCard({ label, value, sub, icon: Icon, color }: any) {
   return (
-    <Card className="bg-gray-800 border-gray-700">
+    <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
       <CardContent className="p-6 flex justify-between items-center">
         <div>
           <p className="text-sm text-gray-400">{label}</p>

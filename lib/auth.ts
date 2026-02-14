@@ -29,8 +29,15 @@ export async function getSession(): Promise<SessionUser | null> {
         id: true,
         email: true,
         role: true,
-        ministryId: true,
+        ministryId: true, // current
         createdAt: true,
+        ministry: {
+          // add this
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 

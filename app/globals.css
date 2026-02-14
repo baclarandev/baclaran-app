@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-
+.dark {
+  --foreground: 0 0% 100%; /* light text on dark bg */
+  --primary-foreground: 0 0% 4%; /* dark text if needed */
+}
 @layer base {
   :root {
     --background: 0 0% 4%;
@@ -85,7 +88,9 @@ h6 {
   .membership-card {
     background: var(--card-gradient);
     border: 1px solid hsl(var(--border));
-    box-shadow: var(--gold-glow), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    box-shadow:
+      var(--gold-glow),
+      0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
 
   .gold-text {

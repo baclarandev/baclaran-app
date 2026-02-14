@@ -42,18 +42,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 
-
 const cloudinaryOptimized = (url: string) => {
   if (!url) return url;
 
   // safety check so it won't break non-Cloudinary URLs
   return url.includes("/upload/")
-    ? url.replace(
-        "/upload/",
-        "/upload/w_160,h_160,c_fill,f_auto,q_auto/"
-      )
+    ? url.replace("/upload/", "/upload/w_160,h_160,c_fill,f_auto,q_auto/")
     : url;
 };
+type ViewMode = "grid" | "list";
 export default function Volunteer({ user }: any) {
   const {
     data: volunteers = [],
@@ -62,7 +59,7 @@ export default function Volunteer({ user }: any) {
   } = useVolunteers();
 
   const deleteVolunteer = useDeleteVolunteer();
- 
+
   const [selectedVolunteer, setSelectedVolunteer] = useState<any>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,10 +67,10 @@ export default function Volunteer({ user }: any) {
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
 
-const searchParams = useSearchParams();
-const router = useRouter();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const filteredVolunteers = useMemo(() => {
     return volunteers.filter((v) => {
@@ -92,20 +89,20 @@ const router = useRouter();
   }, [volunteers, searchQuery, statusFilter]);
   const perPage = 12;
 
-const paginatedVolunteers = useMemo(() => {
-  const start = (currentPage - 1) * perPage;
-  return filteredVolunteers.slice(start, start + perPage);
-}, [filteredVolunteers, currentPage]);
-const totalPages = Math.ceil(filteredVolunteers.length / perPage);
-useEffect(() => {
-  const pageParam = searchParams.get("page");
-  if (pageParam) setCurrentPage(parseInt(pageParam, 10));
-}, [searchParams]);
+  const paginatedVolunteers = useMemo(() => {
+    const start = (currentPage - 1) * perPage;
+    return filteredVolunteers.slice(start, start + perPage);
+  }, [filteredVolunteers, currentPage]);
+  const totalPages = Math.ceil(filteredVolunteers.length / perPage);
+  useEffect(() => {
+    const pageParam = searchParams.get("page");
+    if (pageParam) setCurrentPage(parseInt(pageParam, 10));
+  }, [searchParams]);
 
-const goToPage = (page: number) => {
-  setCurrentPage(page);
-  router.push(`/volunteers?page=${page}`, { scroll: false });
-};
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    router.push(`/volunteers?page=${page}`, { scroll: false });
+  };
   const handleEdit = (volunteer: any) => {
     setSelectedVolunteer(volunteer);
     setOpenAddDialog(true);
@@ -136,7 +133,7 @@ const goToPage = (page: number) => {
       <div className="flex-1 flex flex-col md:ml-64">
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
-        <div className="bg-gray-900 text-gray-100 p-4">
+        <div className="bg-neutral-900 text-gray-100 p-4">
           {/* Header + Actions */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -145,14 +142,15 @@ const goToPage = (page: number) => {
               </p>
             </div>
             <div className="flex gap-2 mb-5">
-              <Link href="/volunteers/archived">
-                <Button
-                  variant="outline"
-                  className="gap-2 border-gray-700 bg-gray-800 text-gray-100 hover:bg-gray-700"
-                >
-                  <List className="w-4 h-4" /> Archived
-                </Button>
-              </Link>
+              {/* <Link href="/volunteers/archived"> */}
+              <Button
+                variant="outline"
+                disabled
+                className="gap-2 border-gray-700 cursor-not-allowed disabled bg-blue-600 text-gray-100 hover:bg-neutral-700"
+              >
+                <List className="w-4 h-4" /> Archived
+              </Button>
+              {/* </Link> */}
 
               <AddVolunteerDialog
                 open={openAddDialog}
@@ -162,12 +160,13 @@ const goToPage = (page: number) => {
                   setSelectedVolunteer(null);
                   refetch();
                 }}
+                user={user}
               />
             </div>
           </div>
 
           {/* Filters */}
-          <Card className="bg-gray-800 border-gray-700">
+          <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
             <CardContent className="p-4 flex flex-col lg:flex-row gap-4 items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -175,38 +174,38 @@ const goToPage = (page: number) => {
                   placeholder="Search volunteers by name, email, or ministry..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-gray-700 text-gray-100 placeholder-gray-400"
+                  className="pl-10 bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md"
                 />
               </div>
 
-             <div className="flex gap-2">
-  <button
-    onClick={() => setViewMode("grid")}
-    className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
-      viewMode === "grid"
-        ? "bg-blue-400 text-gray-900"
-        : "bg-gray-700 text-gray-100 hover:bg-gray-600"
-    }`}
-    title="Grid view"
-  >
-    <LayoutGrid className="w-5 h-5" />
-  </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
+                    viewMode === "grid"
+                      ? "bg-blue-500 backdrop-blur-md text-white"
+                      : "bg-blue-600/10 backdrop-blur-md text-white"
+                  }`}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="w-5 h-5" />
+                </button>
 
-  <button
-    onClick={() => setViewMode("list")}
-    className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
-      viewMode === "list"
-        ? "bg-blue-400 text-gray-900"
-        : "bg-gray-700 text-gray-100 hover:bg-gray-600"
-    }`}
-    title="List view"
-  >
-    <List className="w-5 h-5" />
-  </button>
-</div>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`flex items-center justify-center w-10 h-10 rounded-md transition-colors ${
+                    viewMode === "list"
+                      ? "bg-blue-400 backdrop-blur-md text-white"
+                      : "bg-blue-600/10 backdrop-blur-md text-white"
+                  }`}
+                  title="List view"
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
 
               <NativeSelect
-                className="w-[150px] bg-gray-700 text-gray-100"
+                className="w-37.5 bg-blue-500/30 backdrop-blur-md text-white"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -225,7 +224,7 @@ const goToPage = (page: number) => {
               {Array.from({ length: 8 }).map((_, idx) => (
                 <Card
                   key={idx}
-                  className="bg-gray-800 border-gray-700 animate-pulse h-[320px]"
+                  className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md animate-pulse h-[320px]"
                 />
               ))}
             </div>
@@ -238,54 +237,59 @@ const goToPage = (page: number) => {
                     href={`/volunteers/${v.id}`}
                     className="block"
                   >
-                   <Card className="bg-gray-800 border-gray-700 p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors">
-         <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
-  {v.profilePicture || true ? (
-    <Image
-      src={
-        v.profilePicture
-          ? cloudinaryOptimized(v.profilePicture)
-          : `https://api.dicebear.com/7.x/avataaars/png?size=160&seed=${v.email}`
-      }
-      alt={`${v.firstName} ${v.lastName}`}
-      fill
-      sizes="80px"
-      className="object-cover"
-      placeholder="blur"
-      blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDE2MCAxNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbGw9IiM0MDRiN2YiIC8+PC9zdmc+"
-    />
-  ) : (
-    <span className="text-lg font-semibold text-gray-300">
-      {v.firstName[0]}
-      {v.lastName[0]}
-    </span>
-  )}
-</div>
-          <h3 className="font-semibold text-yellow-400">
-            {v.firstName} {v.lastName}
-          </h3>
-          <Badge
-            variant="outline"
-            className={
-              v.status === "Active"
-                ? "border-green-400 bg-green-800 text-green-400"
-                : "border-red-400 bg-red-800 text-red-400"
-            }
-          >
-            {v.status}
-          </Badge>
-          <p
-            className="text-sm text-center text-gray-400 line-clamp-2"
-            title={v.ministryName}
-          >
-            {v.ministryName}
-          </p>
-        </Card>
+                    <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors">
+                      <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
+                        {v.profilePicture || true ? (
+                          <Image
+                            src={
+                              v.profilePicture
+                                ? cloudinaryOptimized(v.profilePicture)
+                                : `https://api.dicebear.com/7.x/avataaars/png?size=160&seed=${v.email}`
+                            }
+                            alt={`${v.firstName} ${v.lastName}`}
+                            fill
+                            sizes="80px"
+                            className="object-cover"
+                            placeholder="blur"
+                            blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDE2MCAxNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbGw9IiM0MDRiN2YiIC8+PC9zdmc+"
+                          />
+                        ) : (
+                          <span className="text-lg font-semibold text-gray-300">
+                            {v.firstName[0]}
+                            {v.lastName[0]}
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="font-semibold font-mono text-white">
+                        {v.firstName} {v.lastName}
+                      </h3>
+                      <Badge
+                        variant="outline"
+                        className={
+                          v.status === "ACTIVE"
+                            ? "border-green-400 bg-green-800 text-green-400"
+                            : "border-red-400 bg-red-800 text-red-400"
+                        }
+                      >
+                        {v.status}
+                      </Badge>
+                      <p
+                        className="text-sm text-center text-gray-400 line-clamp-2"
+                        title={v.ministryName}
+                      >
+                        {v.ministryName}
+                      </p>
+                      <p>
+                        <Badge className="bg-purple-900">
+                          {v.volunteerCode}
+                        </Badge>
+                      </p>
+                    </Card>
                   </Link>
                 ))}
               </div>
             ) : (
-              <Card className="bg-gray-800 mt-4 border-gray-700 overflow-x-auto">
+              <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md mt-4 overflow-x-auto">
                 <table className="w-full text-gray-100">
                   <thead>
                     <tr className="border-b border-gray-700">
@@ -293,34 +297,36 @@ const goToPage = (page: number) => {
                       <th className="py-3 px-4 text-left">Ministry</th>
                       <th className="py-3 px-4 text-left">Email</th>
                       <th className="py-3 px-4 text-left">Status</th>
-                       <th className="py-3 px-4 text-left">Actions</th>
+                      <th className="py-3 px-4 text-left">Actions</th>
                     </tr>
                   </thead>
-                 <tbody>
+                  <tbody>
                     {paginatedVolunteers.map((v) => (
                       <tr
                         key={v.id}
-                        className="border-b border-gray-700 hover:bg-gray-700 transition-colors"
+                        className="border-b bg-blue-700/10 border-blue-500/30 border text-white-400 backdrop-blur-md hover:bg-blue-400/20 "
                       >
-      <td className="py-3 px-4 flex items-center gap-3">
-  <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-700 flex items-center justify-center">
-    {v.profilePicture ? (
-      <Image
-        src={cloudinaryOptimized(v.profilePicture)}
-        alt={`${v.firstName} ${v.lastName}`}
-        fill
-        sizes="40px"
-        className="object-cover"
-      />
-    ) : (
-      <span className="text-sm font-semibold text-gray-300">
-        {v.firstName[0]}
-        {v.lastName[0]}
-      </span>
-    )}
-  </div>
-  <span>{v.firstName} {v.lastName}</span>
-</td>
+                        <td className="py-3 px-4 flex items-center gap-3">
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-blue-500/10 backdrop-blur-md flex items-center justify-center">
+                            {v.profilePicture ? (
+                              <Image
+                                src={cloudinaryOptimized(v.profilePicture)}
+                                alt={`${v.firstName} ${v.lastName}`}
+                                fill
+                                sizes="40px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <span className="text-sm font-semibold text-gray-300">
+                                {v.firstName[0]}
+                                {v.lastName[0]}
+                              </span>
+                            )}
+                          </div>
+                          <span>
+                            {v.firstName} {v.lastName}
+                          </span>
+                        </td>
                         <td className="py-3 px-4">{v.ministryName}</td>
                         <td className="py-3 px-4">{v.email}</td>
                         <td className="py-3 px-4">{v.status}</td>
@@ -351,60 +357,73 @@ const goToPage = (page: number) => {
               <p className="text-gray-400">No volunteers found.</p>
             </Card>
           )}
-         {totalPages > 1 && (
-  <div className="flex justify-center mt-6 items-center gap-2 text-gray-100">
-    {/* Previous Button */}
-    <Button
-      size="sm"
-      variant="ghost"
-      disabled={currentPage === 1}
-      onClick={() => goToPage(currentPage - 1)}
-    >
-      &laquo; Prev
-    </Button>
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-10 items-center gap-2">
+              {/* Previous Button */}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => goToPage(currentPage - 1)}
+                className="bg-blue-500/5 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 disabled:opacity-30 disabled:hover:bg-transparent transition-all rounded-lg px-4"
+              >
+                &laquo; Prev
+              </Button>
 
-    {/* Page Numbers */}
-    {Array.from({ length: totalPages }).map((_, idx) => {
-      const page = idx + 1;
+              {/* Page Numbers */}
+              <div className="flex items-center gap-2 mx-2">
+                {Array.from({ length: totalPages }).map((_, idx) => {
+                  const page = idx + 1;
 
-      // Show only first, last, current, and +/- 1 pages with ellipsis
-      if (
-        page === 1 ||
-        page === totalPages ||
-        (page >= currentPage - 1 && page <= currentPage + 1)
-      ) {
-        return (
-          <Button
-            key={page}
-            size="sm"
-            variant={currentPage === page ? "secondary" : "ghost"}
-            onClick={() => goToPage(page)}
-          >
-            {page}
-          </Button>
-        );
-      } else if (
-        page === currentPage - 2 ||
-        page === currentPage + 2
-      ) {
-        return <span key={page} className="px-2">...</span>;
-      } else {
-        return null;
-      }
-    })}
+                  if (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1)
+                  ) {
+                    return (
+                      <Button
+                        key={page}
+                        size="sm"
+                        onClick={() => goToPage(page)}
+                        className={`w-10 h-10 rounded-lg transition-all border ${
+                          currentPage === page
+                            ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
+                            : "bg-blue-500/5 border-blue-500/20 text-blue-300 hover:bg-blue-500/20 hover:border-blue-400"
+                        }`}
+                      >
+                        {page}
+                      </Button>
+                    );
+                  } else if (
+                    page === currentPage - 2 ||
+                    page === currentPage + 2
+                  ) {
+                    return (
+                      <span
+                        key={page}
+                        className="text-blue-500/50 px-1 font-bold"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
 
-    {/* Next Button */}
-    <Button
-      size="sm"
-      variant="ghost"
-      disabled={currentPage === totalPages}
-      onClick={() => goToPage(currentPage + 1)}
-    >
-      Next &raquo;
-    </Button>
-  </div>
-)}
-      
+              {/* Next Button */}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage === totalPages}
+                onClick={() => goToPage(currentPage + 1)}
+                className="bg-blue-500/5 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 disabled:opacity-30 disabled:hover:bg-transparent transition-all rounded-lg px-4"
+              >
+                Next &raquo;
+              </Button>
+            </div>
+          )}
+
           {/* Delete Dialog */}
           <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <DialogContent className="bg-gray-800 text-gray-100 border-gray-700">

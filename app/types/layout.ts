@@ -1,1 +1,0 @@
-type ViewMode = "grid" | "list";

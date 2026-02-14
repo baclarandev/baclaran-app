@@ -10,10 +10,8 @@ export default async function DashboardPage() {
   const user = session;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100">
+    <div className="min-h-screen bg-neutral-900 text-gray-100">
       <Dashboard user={user} />
     </div>
   );
 }
-
-

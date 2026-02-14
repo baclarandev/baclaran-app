@@ -157,7 +157,6 @@ export default function Events({ user }: any) {
           user={user}
           isOpen={sidebarOpen}
           onOpenChange={setSidebarOpen}
-       
         />
         <div className="flex-1 flex flex-col md:ml-64">
           <Header
@@ -166,7 +165,7 @@ export default function Events({ user }: any) {
           />
 
           {/* Header / Add */}
-          <Card className="bg-gray-800 m-6 border-white/6">
+          <Card className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md m-6 ">
             <CardContent>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
@@ -184,29 +183,41 @@ export default function Events({ user }: any) {
                           placeholder="Search events..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-10 bg-gray-700 text-gray-100 placeholder-gray-400"
+                          className="pl-10 bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md placeholder-gray-400"
                         />
                       </div>
 
                       <NativeSelect
-                        className="w-40  bg-gray-700 text-gray-100"
+                        className="w-40  bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                       >
-                        <NativeSelectOption value="all">
+                        <NativeSelectOption
+                          value="all"
+                          className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
+                        >
                           All Events
                         </NativeSelectOption>
-                        <NativeSelectOption value="upcoming">
+                        <NativeSelectOption
+                          value="upcoming"
+                          className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
+                        >
                           Upcoming
                         </NativeSelectOption>
-                        <NativeSelectOption value="past">
+                        <NativeSelectOption
+                          value="past"
+                          // className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
+                        >
                           Past
                         </NativeSelectOption>
                       </NativeSelect>
                     </div>
                     <div className="flex flex-row gap-4 pt-4 lg:justify-end">
                       <Link href="/events/archived">
-                        <Button className="flex items-center gap-2 bg-stone-900 border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]">
+                        <Button
+                          disabled
+                          className="flex items-center gap-2 bg-neutral-900 border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]"
+                        >
                           <BoxArchive className="w-4 h-4 " />
                           <span className="text-gray-100">Archived</span>
                         </Button>
@@ -214,7 +225,7 @@ export default function Events({ user }: any) {
                       {isAdmin && (
                         <Button
                           onClick={() => setIsAddDialogOpen(true)}
-                          className="flex items-center gap-2 bg-white text-black border border-white hover:shadow-[0_6px_24px_rgba(212,175,55,0.12)]"
+                          className="flex items-center gap-2 bg-blue-500 border-blue-500/30 border text-white backdrop-blur-md"
                         >
                           <Plus className="w-4 h-4 " />
                           <span className="">Add Event</span>
@@ -227,7 +238,7 @@ export default function Events({ user }: any) {
                     open={isAddDialogOpen}
                     onOpenChange={setIsAddDialogOpen}
                   >
-                    <DialogContent className="max-w-lg bg-[#1b1c1f] border-white/6 text-gray-100">
+                    <DialogContent className="max-w-lg bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md">
                       <DialogHeader>
                         <DialogTitle className="text-white">
                           Create New Event
@@ -250,7 +261,7 @@ export default function Events({ user }: any) {
                             onChange={(e) =>
                               setForm({ ...form, title: e.target.value })
                             }
-                            className="bg-[#232428] text-gray-100 border-white/6"
+                            className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
                           />
                         </div>
 
@@ -269,7 +280,7 @@ export default function Events({ user }: any) {
                             onChange={(e) =>
                               setForm({ ...form, description: e.target.value })
                             }
-                            className="bg-[#232428] text-gray-100 border-white/6"
+                            className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
                           />
                         </div>
 
@@ -293,7 +304,7 @@ export default function Events({ user }: any) {
                                 startTime: time,
                               });
                             }}
-                            className="bg-[#232428] text-gray-100 border-white/6"
+                            className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
                           />
                         </div>
 
@@ -317,7 +328,7 @@ export default function Events({ user }: any) {
                                 endTime: time,
                               });
                             }}
-                            className="bg-[#232428] text-gray-100 border-white/6"
+                            className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
                           />
                         </div>
                       </div>
@@ -325,13 +336,13 @@ export default function Events({ user }: any) {
                       <div className="flex justify-end gap-3 mt-6">
                         <Button
                           variant="outline"
-                          className="border-white/6 text-gray-100"
+                          className="border-white/6 cursor-pointer bg-red-600/20 text-gray-100"
                           onClick={() => setIsAddDialogOpen(false)}
                         >
                           Cancel
                         </Button>
                         <Button
-                          className="bg-[#2a2b2f] text-white"
+                          className="bg-blue-500/10 border-blue-500/30 border cursor-pointer text-white backdrop-blur-md"
                           onClick={handleCreateEvent}
                         >
                           Create Event
@@ -345,7 +356,7 @@ export default function Events({ user }: any) {
           </Card>
           <div className="grid grid-cols-1 m-6 md:grid-cols-3 gap-6">
             {" "}
-            <Card className="bg-gray-800 border-white/6">
+            <Card className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md">
               {" "}
               <CardContent className="p-6 flex items-center gap-4">
                 {" "}
@@ -362,7 +373,7 @@ export default function Events({ user }: any) {
                 </div>{" "}
               </CardContent>{" "}
             </Card>{" "}
-            <Card className="bg-gray-800 border-white/6">
+            <Card className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md">
               {" "}
               <CardContent className="p-6 flex items-center gap-4">
                 {" "}
@@ -380,7 +391,7 @@ export default function Events({ user }: any) {
                 </div>{" "}
               </CardContent>{" "}
             </Card>{" "}
-            <Card className="bg-gray-800 border-white/6">
+            <Card className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md">
               {" "}
               <CardContent className="p-6 flex items-center gap-4">
                 {" "}
@@ -400,7 +411,7 @@ export default function Events({ user }: any) {
             </Card>{" "}
           </div>
           {/* Events Table */}
-          <Card className="bg-gray-800 m-6 border-white/6">
+          <Card className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md m-6">
             <CardHeader>
               <CardTitle className="text-white px-6 py-4">
                 Recent Events

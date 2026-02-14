@@ -120,7 +120,7 @@ export default function Attendance({ user }: any) {
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         <header className="py-10 px-4 text-center">
-          <h1 className="font-serif text-4xl md:text-5xl font-bold text-yellow-400 mb-3">
+          <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mb-3">
             Attendance
           </h1>
 
@@ -143,13 +143,16 @@ export default function Attendance({ user }: any) {
         </header>
 
         <div className="max-w-md mx-auto mb-10 px-4">
-          <div className="bg-card/40 border border-yellow-500/20 rounded-xl p-4 shadow-lg">
-            <label className="block text-sm text-yellow-400 mb-2 font-medium">
+          <div className="bg-card/40 border border-blue-500/20 rounded-xl p-4 shadow-lg">
+            <label className="block text-sm text-white mb-2 font-medium">
               Select Date
             </label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-white"
+                >
                   {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
                 </Button>
               </PopoverTrigger>

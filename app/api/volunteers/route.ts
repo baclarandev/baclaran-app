@@ -6,6 +6,7 @@ import { z } from "zod";
 
 const currentYear = new Date().getFullYear();
 
+// Schemas
 const FormationSchema = z.object({
   name: z.string().min(1),
   year: z.number().int().min(1900).max(currentYear),
@@ -40,28 +41,20 @@ const CreateVolunteerSchema = z.object({
   timelines: z.array(TimelineSchema).optional(),
 });
 
-// GET /api/volunteers - Fetch all volunteers with ministry info
+// GET /api/volunteers
 export async function GET() {
   const sessionUser = await getSession();
   if (!sessionUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const whereClause: any = {
-    status: "ACTIVE",
-  };
+  const whereClause: any = { status: "ACTIVE" };
 
-  // 🔐 Staff can only see their own ministry
+  // Staff can only see their own ministry
   if (!can.isAdmin(sessionUser)) {
-    if (!sessionUser.ministryId) {
-      return NextResponse.json([], { status: 200 });
-    }
-
+    if (!sessionUser.ministryId) return NextResponse.json([], { status: 200 });
     whereClause.ministryHistories = {
-      some: {
-        ministryId: sessionUser.ministryId,
-        status: "ACTIVE",
-      },
+      some: { ministryId: sessionUser.ministryId, status: "ACTIVE" },
     };
   }
 
@@ -86,14 +79,14 @@ export async function GET() {
     email: v.email,
     status: v.status,
     profilePicture: v.profilePicture,
-    ministryId: v.ministryHistories[0]?.ministryId ?? null, // ✅ IMPORTANT
+    ministryId: v.ministryHistories[0]?.ministryId ?? null,
     ministryName: v.ministryHistories[0]?.ministry?.name ?? "No Ministry",
   }));
 
   return NextResponse.json(transformedVolunteers);
 }
 
-// POST /api/volunteers - Create a new volunteer
+// POST /api/volunteers
 export async function POST(request: NextRequest) {
   try {
     const sessionUser = await getSession();
@@ -119,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Default optional arrays to empty arrays
-    const {
+    let {
       formations = [],
       timelines = [],
       ministryIds,
@@ -127,33 +120,37 @@ export async function POST(request: NextRequest) {
       ...data
     } = parsed.data;
 
-    // Determine ministry for this volunteer
-    let targetMinistryId: number;
-
-    if (can.isAdmin(sessionUser)) {
-      // Admin can pick ministry
-      if (!ministryIds || ministryIds.length === 0) {
-        return NextResponse.json(
-          { error: "Admin must select at least one ministry" },
-          { status: 400 },
-        );
-      }
-      targetMinistryId = ministryIds[0];
-    } else {
-      // Staff can only add to their own ministry
+    // 🔹 Force staff to only assign to their own ministry
+    if (sessionUser.role === "STAFF") {
       if (!sessionUser.ministryId) {
         return NextResponse.json(
           { error: "Staff user is not assigned to any ministry" },
           { status: 403 },
         );
       }
-      targetMinistryId = sessionUser.ministryId;
+      ministryIds = [sessionUser.ministryId]; // now guaranteed to exist for staff
     }
 
+    // Determine target ministry
+    let targetMinistryId: number;
+
+    if (can.isAdmin(sessionUser)) {
+      if (!ministryIds || ministryIds.length === 0) {
+        return NextResponse.json(
+          { error: "Admin must select at least one ministry" },
+          { status: 400 },
+        );
+      }
+      targetMinistryId = ministryIds[0]; // admin picks first ministry
+    } else {
+      // At this point, ministryIds is guaranteed to exist for staff
+      targetMinistryId = ministryIds![0]; // use '!' to tell TS it's defined
+    }
+
+    // Check ministry existence
     const ministry = await prisma.ministry.findUnique({
       where: { id: targetMinistryId },
     });
-
     if (!ministry) {
       return NextResponse.json(
         { error: "Selected ministry does not exist." },
@@ -161,12 +158,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Count existing volunteers in this ministry
+    // Generate volunteer code
     const lastVolunteerInMinistry =
       await prisma.volunteerMinistryHistory.findFirst({
         where: { ministryId: targetMinistryId },
         orderBy: { id: "desc" },
-        include: { volunteer: true }, // <-- add this
+        include: { volunteer: true },
       });
 
     const nextNumber = lastVolunteerInMinistry
@@ -178,13 +175,12 @@ export async function POST(request: NextRequest) {
     const volunteerCode = `${ministry.name
       .split(" ")
       .map((w) => w[0])
-      .join("")}-${String(nextNumber).padStart(4, "0")}`; // e.g., MOC-0001
+      .join("")}-${String(nextNumber).padStart(4, "0")}`;
 
-    // Check for duplicate email BEFORE creating
+    // Check for duplicate email
     const existing = await prisma.volunteer.findUnique({
       where: { email: data.email },
     });
-
     if (existing) {
       return NextResponse.json(
         { error: "A volunteer with this email already exists." },
@@ -192,7 +188,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new volunteer
+    // Create volunteer
     const volunteer = await prisma.volunteer.create({
       data: {
         volunteerCode,
@@ -201,20 +197,14 @@ export async function POST(request: NextRequest) {
 
         // Assign ministry
         ministryHistories: {
-          create: {
-            ministryId: targetMinistryId,
-            status: "ACTIVE",
-          },
+          create: { ministryId: targetMinistryId, status: "ACTIVE" },
         },
 
         // Formations
         ...(formations.length > 0 && {
           formations: {
             createMany: {
-              data: formations.map((f) => ({
-                name: f.name,
-                year: f.year,
-              })),
+              data: formations.map((f) => ({ name: f.name, year: f.year })),
             },
           },
         }),

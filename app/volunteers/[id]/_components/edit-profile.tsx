@@ -12,8 +12,10 @@ import { Label } from "@/components/ui/label";
 
 import { toast } from "sonner";
 import { CivilStatus, Sex, Volunteer } from "@/lib/data";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 
 interface EditDialogProps {
   open: boolean;
@@ -22,7 +24,12 @@ interface EditDialogProps {
   onSave: (updated: Partial<Volunteer>) => void;
 }
 
-export function EditProfileDialog({ open, onOpenChange, volunteer, onSave }: EditDialogProps) {
+export function EditProfileDialog({
+  open,
+  onOpenChange,
+  volunteer,
+  onSave,
+}: EditDialogProps) {
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,9 +47,9 @@ export function EditProfileDialog({ open, onOpenChange, volunteer, onSave }: Edi
         email: fd.get("email") as string,
         phone: fd.get("phone") as string,
         address: fd.get("address") as string,
-         dateOfBirth: fd.get("dateOfBirth")
-    ? new Date(fd.get("dateOfBirth") as string)
-    : undefined, // handle optional
+        dateOfBirth: fd.get("dateOfBirth")
+          ? new Date(fd.get("dateOfBirth") as string)
+          : undefined, // handle optional
         sex: fd.get("sex") as Sex,
         civilStatus: fd.get("civilStatus") as CivilStatus,
         occupation: fd.get("occupation") as string,
@@ -55,23 +62,46 @@ export function EditProfileDialog({ open, onOpenChange, volunteer, onSave }: Edi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] bg-gray-900 text-white overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] bg-blue-400/10 border-blue-500/30 border text-white backdrop-blur-md overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading text-xl">Edit Profile</DialogTitle>
+          <DialogTitle className="font-heading text-xl">
+            Edit Profile
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="First Name" name="firstName" defaultValue={volunteer.firstName} />
-            <Field label="Last Name" name="lastName" defaultValue={volunteer.lastName} />
+            <Field
+              label="First Name"
+              name="firstName"
+              defaultValue={volunteer.firstName}
+            />
+            <Field
+              label="Last Name"
+              name="lastName"
+              defaultValue={volunteer.lastName}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Middle Initial" name="middleInitial" defaultValue={volunteer.middleInitial} />
-            <Field label="Nickname" name="nickname" defaultValue={volunteer.nickname} />
+            <Field
+              label="Middle Initial"
+              name="middleInitial"
+              defaultValue={volunteer.middleInitial}
+            />
+            <Field
+              label="Nickname"
+              name="nickname"
+              defaultValue={volunteer.nickname}
+            />
           </div>
 
-          <Field label="Email" name="email" type="email" defaultValue={volunteer.email} />
+          <Field
+            label="Email"
+            name="email"
+            type="email"
+            defaultValue={volunteer.email}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Phone" name="phone" defaultValue={volunteer.phone} />
@@ -79,45 +109,75 @@ export function EditProfileDialog({ open, onOpenChange, volunteer, onSave }: Edi
               label="Date of Birth"
               name="dateOfBirth"
               type="date"
-              defaultValue={volunteer.dateOfBirth ? new Date(volunteer.dateOfBirth).toISOString().split("T")[0] : ""}
+              defaultValue={
+                volunteer.dateOfBirth
+                  ? new Date(volunteer.dateOfBirth).toISOString().split("T")[0]
+                  : ""
+              }
             />
           </div>
 
-          <Field label="Address" name="address" defaultValue={volunteer.address} />
+          <Field
+            label="Address"
+            name="address"
+            defaultValue={volunteer.address}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Sex</Label>
+              <Label className="text-xs font-semibold text-muted-foreground">
+                Sex
+              </Label>
               <NativeSelect name="sex" defaultValue={volunteer.sex}>
-           <NativeSelectOption value="">Select a Gender</NativeSelectOption>
-              
-                  <NativeSelectOption value="Male">Male</NativeSelectOption>
-                  <NativeSelectOption value="Female">Female</NativeSelectOption>
-                
-              
+                <NativeSelectOption value="">
+                  Select a Gender
+                </NativeSelectOption>
+
+                <NativeSelectOption value="Male">Male</NativeSelectOption>
+                <NativeSelectOption value="Female">Female</NativeSelectOption>
               </NativeSelect>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">Civil Status</Label>
-              <NativeSelect name="civilStatus" defaultValue={volunteer.civilStatus}>
-               <NativeSelectOption value="" >Select civil status</NativeSelectOption>
-                
-                  <NativeSelectOption value="Single">Single</NativeSelectOption>
-                  <NativeSelectOption value="Married">Married</NativeSelectOption>
-                  <NativeSelectOption value="Widowed">Widowed</NativeSelectOption>
-                  <NativeSelectOption value="Divorced">Divorced</NativeSelectOption>
-                
+              <Label className="text-xs font-semibold text-muted-foreground">
+                Civil Status
+              </Label>
+              <NativeSelect
+                name="civilStatus"
+                defaultValue={volunteer.civilStatus}
+              >
+                <NativeSelectOption value="">
+                  Select civil status
+                </NativeSelectOption>
+
+                <NativeSelectOption value="Single">Single</NativeSelectOption>
+                <NativeSelectOption value="Married">Married</NativeSelectOption>
+                <NativeSelectOption value="Widowed">Widowed</NativeSelectOption>
+                <NativeSelectOption value="Divorced">
+                  Divorced
+                </NativeSelectOption>
               </NativeSelect>
             </div>
           </div>
 
-          <Field label="Occupation" name="occupation" defaultValue={volunteer.occupation} />
+          <Field
+            label="Occupation"
+            name="occupation"
+            defaultValue={volunteer.occupation}
+          />
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="bg-red-500/20 cursor-pointer"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
+            >
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -140,7 +200,9 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-semibold text-muted-foreground">{label}</Label>
+      <Label className="text-xs font-semibold text-muted-foreground">
+        {label}
+      </Label>
       <Input name={name} type={type} defaultValue={defaultValue} />
     </div>
   );

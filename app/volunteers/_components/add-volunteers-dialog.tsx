@@ -30,14 +30,7 @@ import {
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Plus,
-  Check,
-  User,
-  ChevronsUpDown,
-  Upload,
-  Lock,
-} from "lucide-react";
+import { Plus, Check, User, ChevronsUpDown, Upload, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMinistries } from "@/app/services/ministries";
 import { useCreateVolunteer, useVolunteers } from "@/app/services/volunteer";
@@ -48,8 +41,9 @@ import { useUploadImage } from "@/app/services/upload";
 import imageCompression from "browser-image-compression";
 import { getSession } from "@/lib/auth";
 import { Volunteer } from "@/lib/data";
-import { CURRENT_YEAR, DEFAULT_FORMATIONS, sacramentMap, YEARS } from "@/app/utils/helper";
+
 import { steps, TimelineType } from "@/app/types/volunteer";
+import { CURRENT_YEAR, sacramentMap, YEARS } from "@/app/utils/helper";
 
 interface FormData {
   lastName: string;
@@ -70,7 +64,7 @@ interface FormData {
 interface AddVolunteerDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
-  user?: Staff;
+  user: Staff;
   onSuccess?: () => void;
 }
 
@@ -104,14 +98,25 @@ const FormDataSchema = z.object({
   formations: z.array(
     z.object({
       name: z.string().min(1, "Formation name required"),
-      year: z.number().int().min(1900).max(CURRENT_YEAR),
+      year: z
+        .number()
+        .int()
+        .min(1900)
+        .max(new Date().getFullYear(), "Invalid year"),
     }),
   ),
   timelines: z.array(
     z.object({
       organization: z.string().min(1, "Organization required"),
-      startYear: z.number().min(1900).max(CURRENT_YEAR),
-      endYear: z.number().min(1900).max(CURRENT_YEAR).optional(),
+      startYear: z
+        .number()
+        .min(1900)
+        .max(new Date().getFullYear(), "Invalid start year"),
+      endYear: z
+        .number()
+        .min(1900)
+        .max(new Date().getFullYear(), "Invalid end year")
+        .optional(),
       type: z.enum(["SHRINE", "OUTSIDE"]),
     }),
   ),
@@ -144,7 +149,12 @@ export function AddVolunteerDialog({
   const [shrineTimelines, setShrineTimelines] = useState<Timeline[]>([]);
   const [outsideTimelines, setOutsideTimelines] = useState<Timeline[]>([]);
   const { mutate: uploadImage } = useUploadImage();
-
+  const isAdmin = user?.role === "ADMIN";
+  const currentMinistry = user?.ministry?.name;
+  const staffMinistryIds = useMemo(
+    () => (user?.ministry ? [user.ministry.id] : []),
+    [user?.ministry?.id],
+  );
   const [formData, setFormData] = useState<FormData>({
     lastName: "",
     firstName: "",
@@ -156,15 +166,11 @@ export function AddVolunteerDialog({
     sex: "",
     civilStatus: "",
     occupation: "",
-    ministryIds: [],
+    ministryIds: isAdmin ? [] : staffMinistryIds,
     sacraments: [],
     profilePicture: "",
     marriageType: "",
   });
-
- 
-  const isAdmin = user?.role === "ADMIN";
-  const staffMinistryIds = user?.ministry ? [user.ministry.id] : [];
 
   const updateFormData = (field: keyof FormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -202,8 +208,6 @@ export function AddVolunteerDialog({
     }
   };
 
-
-// console.log(ministriesWithStaff);
   const handleVolunteerSelect = (volunteer: Volunteer) => {
     setSelectedVolunteer(volunteer);
     setUpdateVolunteerId(volunteer.id);
@@ -226,7 +230,7 @@ export function AddVolunteerDialog({
           BAPTISM: "Baptism",
           EUCHARIST: "First Communion",
           CONFIRMATION: "Confirmation",
-          MATRIMONY: 'Matrimony',
+          MATRIMONY: "Matrimony",
         };
         return reverseMap[s] || s;
       }),
@@ -240,19 +244,16 @@ export function AddVolunteerDialog({
     if (!file) return;
 
     try {
-      // Compress / resize the image client-side
       const compressedFile = await imageCompression(file, {
         maxSizeMB: 2, // target size ~2MB
         maxWidthOrHeight: 512, // max width/height 512px
         useWebWorker: true,
       });
 
-      // instant preview
       setPreviewImage(URL.createObjectURL(compressedFile));
 
       uploadImage(compressedFile, {
         onSuccess: (data) => {
-          console.log("[UPLOAD SUCCESS]", data.url);
           updateFormData("profilePicture", data.url);
           setUploadProgress(100);
           setTimeout(() => setUploadProgress(0), 500);
@@ -270,10 +271,13 @@ export function AddVolunteerDialog({
   };
 
   const handleNext = () => {
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
     if (!isStepValid) {
       toast.warning("Please complete required fields first");
       return;
+    }
+
+    if (currentStep < 3) {
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
@@ -281,11 +285,9 @@ export function AddVolunteerDialog({
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-
-
   const [formations, setFormations] = useState<
     { name: string; year: number | "" }[]
-  >(DEFAULT_FORMATIONS.map((f) => ({ name: f, year: "" })));
+  >([{ name: "", year: "" }]);
 
   const computeTotal = (start: number, end?: number) =>
     end ? end - start + 1 : new Date().getFullYear() - start + 1;
@@ -310,20 +312,26 @@ export function AddVolunteerDialog({
 
   useEffect(() => {
     if (formData.civilStatus === "Married") {
-      if (!formData.sacraments.includes("Matrimony")) {
-        updateFormData("sacraments", [
-          ...formData.sacraments,
-          "Matrimony",
-        ]);
-      }
-    } else {
-      updateFormData(
-        "sacraments",
-        formData.sacraments.filter((s) => s !== "Matrimony"),
+      const allSacraments = Object.keys(sacramentMap);
+      // Only update if formData.sacraments is missing any
+      const missing = allSacraments.filter(
+        (s) => !formData.sacraments.includes(s),
       );
-    }
-  }, [formData.civilStatus]);
 
+      if (missing.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          sacraments: allSacraments,
+        }));
+      }
+    }
+  }, [formData.civilStatus, formData.sacraments]);
+
+  const ministryIds: number[] = isAdmin
+    ? formData.ministryIds
+    : user?.ministry?.id
+      ? [user.ministry.id]
+      : [];
   const handleSubmit = async () => {
     const payload: any = {
       firstName: formData.firstName,
@@ -342,8 +350,7 @@ export function AddVolunteerDialog({
       phone: formData.phone || null,
       address: formData.address || null,
       dateOfBirth: formData.dob ? new Date(formData.dob) : null,
-      ministryIds:
-        formData.ministryIds.length > 0 ? formData.ministryIds : undefined,
+      ministryIds,
       sacraments: formData.sacraments
         .map((s) => sacramentMap[s])
         .filter(Boolean),
@@ -362,15 +369,12 @@ export function AddVolunteerDialog({
       type: t.type,
     }));
 
-
-
     if (validFormations.length > 0) {
       payload.formations = validFormations.map((f) => ({
         name: f.name.trim(),
         year: Number(f.year),
       }));
     }
-
 
     if (validTimelines.length > 0) {
       payload.timelines = validTimelines.map((t) => ({
@@ -384,7 +388,6 @@ export function AddVolunteerDialog({
 
     try {
       if (updateVolunteerId) {
-
         return;
       }
 
@@ -394,7 +397,8 @@ export function AddVolunteerDialog({
           setIsOpen(false);
           resetForm();
           setTimelines([]);
-          setFormations(DEFAULT_FORMATIONS.map((f) => ({ name: f, year: "" })));
+          setFormations([{ name: "", year: "" }]);
+
           onSuccess?.();
         },
         onError: (err: any) =>
@@ -405,7 +409,6 @@ export function AddVolunteerDialog({
       toast(err.message);
     }
   };
-
 
   const resetForm = () => {
     setCurrentStep(1);
@@ -429,7 +432,6 @@ export function AddVolunteerDialog({
     });
   };
 
-
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) resetForm();
@@ -452,7 +454,11 @@ export function AddVolunteerDialog({
       );
     }
     if (currentStep === 2) {
-      return formData.ministryIds.length > 0;
+      if (isAdmin) {
+        return formData.ministryIds.length > 0;
+      }
+
+      return staffMinistryIds.length > 0;
     }
     return true;
   }, [currentStep, formData, isExistingVolunteer, selectedVolunteer]);
@@ -461,19 +467,27 @@ export function AddVolunteerDialog({
     `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
   useEffect(() => {
-    if (staffMinistryIds.length > 0 && !isAdmin) {
+    if (!isAdmin && staffMinistryIds.length > 0) {
+      setFormData((prev) => {
+        // avoid useless updates
+        const same =
+          prev.ministryIds.length === staffMinistryIds.length &&
+          prev.ministryIds.every((id, i) => id === staffMinistryIds[i]);
 
-      setFormData((prev) => ({
-        ...prev,
-        ministryIds: staffMinistryIds,
-      }));
+        if (same) return prev;
+
+        return {
+          ...prev,
+          ministryIds: staffMinistryIds,
+        };
+      });
     }
   }, [staffMinistryIds, isAdmin]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-gray-800 text-gray-100 hover:bg-gray-700">
+        <Button className="gap-2 cursor-pointer bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
           <Plus className="w-4 h-4" />
           Add Volunteer
         </Button>
@@ -528,7 +542,6 @@ export function AddVolunteerDialog({
             </div>
           ))}
         </div>
-
 
         <div className="mt-6 min-h-75">
           {/* Step 1: Personal Info */}
@@ -617,8 +630,7 @@ export function AddVolunteerDialog({
                                   </Avatar>
                                   <div className="flex-1">
                                     <p className="font-medium">
-                                      {volunteer.firstName}{" "}
-                                      {volunteer.lastName}
+                                      {volunteer.firstName} {volunteer.lastName}
                                     </p>
                                     <p className="text-xs text-gray-400">
                                       {volunteer.volunteerCode} •{" "}
@@ -859,9 +871,17 @@ export function AddVolunteerDialog({
                       <Label>Civil Status</Label>
                       <select
                         value={formData.civilStatus}
-                        onChange={(e) =>
-                          updateFormData("civilStatus", e.target.value)
-                        }
+                        onChange={(e) => {
+                          const newStatus = e.target.value;
+                          updateFormData("civilStatus", newStatus);
+
+                          if (newStatus === "Married") {
+                            updateFormData(
+                              "sacraments",
+                              Object.keys(sacramentMap),
+                            );
+                          }
+                        }}
                         className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
                       >
                         <option value="">Select status</option>
@@ -913,7 +933,7 @@ export function AddVolunteerDialog({
                 <div className="flex items-center gap-2">
                   <Label>Ministries</Label>
                   {!isAdmin && (
-                    <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/20 rounded text-xs text-yellow-600">
+                    <div className="flex items-center gap-1 px-2 py-1 bg-blue-500/20 rounded text-xs text-gray-100">
                       <Lock className="w-3 h-3" />
                       Auto-assigned
                     </div>
@@ -990,15 +1010,14 @@ export function AddVolunteerDialog({
                   )}
                 </Popover>
 
-                {!isAdmin && (
-                  <p className="text-xs text-gray-400">
-                    Ministry is automatically set to:{" "}
-                    <span className="font-medium text-gray-100">
-                      {getMinistryNames(formData.ministryIds) ||
-                        "Not assigned"}
-                    </span>
-                  </p>
-                )}
+                <p className="text-xs text-gray-400">
+                  Ministry is automatically set to:{" "}
+                  <span className="font-medium text-gray-100">
+                    {isAdmin
+                      ? getMinistryNames(formData.ministryIds) || "Not assigned"
+                      : user?.ministry?.name || "Not assigned"}
+                  </span>
+                </p>
               </div>
 
               {!isExistingVolunteer && (
@@ -1006,22 +1025,16 @@ export function AddVolunteerDialog({
                   <Label>Sacraments Received</Label>
                   <div className="flex flex-wrap gap-4 pt-2">
                     {Object.keys(sacramentMap).map((s) => {
-                      const isMatrimony = s === "Matrimony";
+                      const isDisabled = formData.civilStatus === "Married";
 
                       return (
-                        <label
-                          key={s}
-                          className={cn(
-                            "flex items-center gap-2",
-                            isMatrimony && "opacity-50 cursor-not-allowed",
-                          )}
-                        >
+                        <label key={s} className="flex items-center gap-2">
                           <input
                             type="checkbox"
-                            className="rounded bg-gray-700 border-gray-600 text-yellow-500 focus:ring-yellow-500"
                             checked={formData.sacraments.includes(s)}
-                            disabled={isMatrimony}
+                            disabled={isDisabled}
                             onChange={() => toggleSacrament(s)}
+                            className="rounded bg-gray-700 border-gray-600 text-blue-500"
                           />
                           {s}
                         </label>
@@ -1055,10 +1068,13 @@ export function AddVolunteerDialog({
                             e.target.value === "" ? "" : Number(e.target.value);
                           setFormations(copy);
                         }}
-                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
                       >
                         <option value="">Select Year</option>
-                        {YEARS.map((year) => (
+                        {Array.from(
+                          { length: CURRENT_YEAR - 1900 + 1 },
+                          (_, i) => CURRENT_YEAR - i,
+                        ).map((year) => (
                           <option key={year} value={year}>
                             {year}
                           </option>
@@ -1108,7 +1124,7 @@ export function AddVolunteerDialog({
                           );
                           setShrineTimelines(copy);
                         }}
-                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
                       >
                         <option value="">Select Year</option>
                         {YEARS.map((year) => (
@@ -1130,7 +1146,7 @@ export function AddVolunteerDialog({
                           );
                           setShrineTimelines(copy);
                         }}
-                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
                       >
                         <option value="">Present</option>
                         {YEARS.map((year) => (
@@ -1197,7 +1213,7 @@ export function AddVolunteerDialog({
                           );
                           setOutsideTimelines(copy);
                         }}
-                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
                       >
                         <option value="">Start Year</option>
                         {YEARS.map((year) => (
@@ -1219,7 +1235,7 @@ export function AddVolunteerDialog({
                           );
                           setOutsideTimelines(copy);
                         }}
-                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-2 text-gray-100"
+                        className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
                       >
                         <option value="">Present</option>
                         {YEARS.map((year) => (

@@ -92,7 +92,7 @@ export async function GET(
 }
 export async function PATCH(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   const sessionUser = await getSession();
 
@@ -107,7 +107,7 @@ export async function PATCH(
     if (!volunteerId || isNaN(volunteerId)) {
       return NextResponse.json(
         { error: "Invalid volunteer ID" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -125,12 +125,11 @@ export async function PATCH(
     if (!volunteer) {
       return NextResponse.json(
         { error: "Volunteer not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    const volunteerMinistryId =
-      volunteer.ministryHistories[0]?.ministryId;
+    const volunteerMinistryId = volunteer.ministryHistories[0]?.ministryId;
 
     // 🔐 AUTHORIZATION
     const isAdmin = sessionUser.role === "ADMIN";
@@ -139,10 +138,7 @@ export async function PATCH(
       sessionUser.ministryId === volunteerMinistryId;
 
     if (!isAdmin && !isStaffOfSameMinistry) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // ✅ Partial update payload
@@ -156,7 +152,7 @@ export async function PATCH(
     if (body.address !== undefined) data.address = body.address;
     if (body.profilePicture !== undefined)
       data.profilePicture = body.profilePicture;
-
+    if (body.nickname !== undefined) data.nickname = body.nickname;
     if (body.dateOfBirth) {
       data.dateOfBirth = new Date(body.dateOfBirth);
     }
@@ -171,7 +167,7 @@ export async function PATCH(
     console.error("[PATCH_VOLUNTEER_ERROR]", err);
     return NextResponse.json(
       { error: "Failed to update volunteer" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -210,6 +206,7 @@ export async function PUT(
       sex: body.sex,
       profilePicture: body.profilePicture ?? null,
       sacraments: body.sacraments ?? [],
+      nickname: body.nickname ?? null,
     };
 
     if (body.dob) data.dateOfBirth = new Date(body.dob);

@@ -5,7 +5,7 @@ const page = async () => {
   const session = await getSession();
   const user = session;
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-200">
+    <div className="min-h-screen bg-neutral-900 text-gray-200">
       <Attendance user={user} />
     </div>
   );

@@ -13,17 +13,17 @@ export interface Timeline {
   organization: string;
   startYear: number;
   endYear?: number;
-  type: string; 
+  type: string;
 }
 export type Sex = "male" | "female";
 export type CivilStatus = "Single" | "Married" | "Widowed" | "Separated";
-export type VolunteerStatus = "Active" | "Inactive" | "On Leave";
+export type VolunteerStatus = "ACTIVE" | "INACTIVE" | "ON LEAVE";
 export type MinistryType = "MAIN" | "SUB_GROUP";
 export type TaskStatus = "To Do" | "In Progress" | "Completed";
 export type TaskPriority = "low" | "medium" | "high";
 export interface Volunteer {
-  id: number
-  volunteerCode?: string
+  id: number;
+  volunteerCode?: string;
   volunteerId?: string;
   firstName: string;
   lastName: string;
@@ -33,17 +33,17 @@ export interface Volunteer {
   phone?: string;
   address: string;
   dateOfBirth?: Date;
-  sex: Sex
-  civilStatus: CivilStatus
+  sex: Sex;
+  civilStatus: CivilStatus;
   occupation?: string;
   ministryId: string;
   ministryName: string;
-  status: VolunteerStatus
+  status: VolunteerStatus;
   profilePicture?: string;
   appliedDate?: string;
   regularDuration?: string;
   sacraments: string[];
- formations: { id: number; name: string; year: number }[];
+  formations: { id: number; name: string; year: number }[];
   timelines: Timeline[];
   createdAt: Date;
 }
@@ -52,11 +52,11 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  status: TaskStatus
+  status: TaskStatus;
   dueDate?: Date;
   ministryId?: string;
   ministryName?: string;
-  priority: TaskPriority
+  priority: TaskPriority;
   assignee?: string;
   createdAt: Date;
 }
@@ -73,5 +73,3 @@ export interface Event {
   preRegisteredCount: number;
   createdAt: Date;
 }
-
-

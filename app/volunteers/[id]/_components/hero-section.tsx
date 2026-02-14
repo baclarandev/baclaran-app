@@ -1,10 +1,16 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Mail, Phone, Heart, MapPin, Pencil, MessageCircle } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  Heart,
+  MapPin,
+  Pencil,
+  MessageCircle,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { Volunteer } from "@/lib/data";
-
 
 const statusStyles: Record<string, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -17,14 +23,16 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ volunteer, onEdit }: HeroSectionProps) {
-  const statusClass = statusStyles[volunteer.status.toLowerCase()] ?? "bg-muted text-muted-foreground border-border";
+  const statusClass =
+    statusStyles[volunteer.status.toLowerCase()] ??
+    "bg-muted text-muted-foreground border-border";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="relative w-full rounded-2xl overflow-hidden bg-card border shadow-sm"
+      className="relative w-full rounded-2xl overflow-hidden  bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
     >
       {/* Decorative top band */}
       <div className="h-28 bg-gradient-to-r from-primary/80 via-primary/50 to-accent/40" />
@@ -39,7 +47,8 @@ export function HeroSection({ volunteer, onEdit }: HeroSectionProps) {
             }
           />
           <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground font-heading">
-            {volunteer.firstName[0]}{volunteer.lastName[0]}
+            {volunteer.firstName[0]}
+            {volunteer.lastName[0]}
           </AvatarFallback>
         </Avatar>
 
@@ -49,13 +58,16 @@ export function HeroSection({ volunteer, onEdit }: HeroSectionProps) {
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-heading text-card-foreground">
               {volunteer.firstName} {volunteer.lastName}
             </h1>
-            <Badge variant="outline" className={`text-xs font-medium ${statusClass}`}>
+            <Badge
+              variant="outline"
+              className={`text-xs font-medium ${statusClass}`}
+            >
               {volunteer.status}
             </Badge>
           </div>
 
           {volunteer.nickname && (
-            <p className="text-sm text-muted-foreground italic">
+            <p className="lg:text-2xl text-purple-400 sm:text-sm text-muted-foreground italic">
               &ldquo;{volunteer.nickname}&rdquo;
             </p>
           )}
@@ -86,10 +98,14 @@ export function HeroSection({ volunteer, onEdit }: HeroSectionProps) {
 
         {/* Actions */}
         <div className="flex gap-2 shrink-0">
-      
-          <Button size="sm" variant="secondary" className="cursor-pointer rounded-full gap-1.5" onClick={onEdit}>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="cursor-pointer bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md rounded-full gap-1.5"
+            onClick={onEdit}
+          >
             <Pencil className="h-3.5 w-3.5" />
-          Update profile
+            Update profile
           </Button>
         </div>
       </div>
