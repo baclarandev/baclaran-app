@@ -1,5 +1,4 @@
 "use client";
-
 import React from "react";
 import { AttendanceCell } from "./attendance-cell";
 import { VolunteerWithAttendance } from "@/app/services/attendance";
@@ -27,30 +26,30 @@ export const AttendanceRow = React.memo(
 
     return (
       <tr className="border-b border-gray-700">
-        {/* NAME (TRUNCATED) */}
-        <td className="sticky left-0 bg-neutral-900 px-2 py-1 max-w-[180px]">
+        {/* Name */}
+        <td className="sticky left-0 bg-neutral-900 print-bg-none px-2 py-1 max-w-[180px]">
           <div className="truncate font-medium">
             {member.firstName} {member.lastName}
           </div>
         </td>
 
-        {/* MONTHLY */}
+        {/* Monthly meeting */}
         <td className="text-center">
           <button
             onClick={() => toggleMonthlyMeeting(member.id)}
-            className="w-6 h-6 rounded bg-blue-500 text-white"
+            className="w-8 h-8 rounded-md bg-blue-500 text-white text-base font-medium"
           >
             {member.monthlyMeeting ? 1 : 0}
           </button>
         </td>
 
-        {/* DAYS */}
+        {/* Attendance days */}
         {member.days.map((day, index) => {
           const isPast = isCurrentMonth && index + 1 < today;
           const isToday = isCurrentMonth && index + 1 === today;
 
           return (
-            <td key={index} className="text-center">
+            <td key={index} className="text-center p-1">
               <AttendanceCell
                 value={day}
                 isPast={isPast}
@@ -62,7 +61,8 @@ export const AttendanceRow = React.memo(
           );
         })}
 
-        <td className="text-center font-semibold">{total}</td>
+        {/* Total */}
+        <td className="text-center font-semibold text-lg">{total}</td>
       </tr>
     );
   },

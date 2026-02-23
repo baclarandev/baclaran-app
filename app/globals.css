@@ -219,6 +219,57 @@ h6 {
   color: #888;
 }
 @media print {
+  th.sticky,
+  body,
+  table,
+  th,
+  td,
+  div,
+  span,
+  button {
+    background: #fff !important; /* white background */
+    color: #000 !important; /* black text */
+    -webkit-print-color-adjust: exact !important; /* force black & white */
+  }
+
+  /* Remove gradients, shadows, glows */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    background-image: none !important;
+  }
+
+  /* Remove sticky positions for printing */
+  th.sticky,
+  td.sticky-left,
+  td.print-bg-none {
+    position: static !important;
+    background: #fff !important;
+  }
+
+  /* Table layout adjustments */
+  .printable-table {
+    overflow: visible !important;
+    width: 100% !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    font-size: 12pt !important;
+    width: 100% !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #000 !important; /* black borders */
+    padding: 0.25em !important;
+    color: #000 !important;
+  }
+  td.sticky-left,
+  td.print-bg-none {
+    position: static !important; /* remove sticky */
+    background: none !important; /* remove dark bg */
+  }
   .printable-table {
     overflow: visible !important; /* Remove scrollbars */
     width: 100% !important;
@@ -270,7 +321,8 @@ h6 {
     page-break-inside: auto;
     width: 100% !important;
     border-collapse: collapse !important;
-    font-size: 12pt;
+
+    font-size: 10pt;
   }
 
   .printable-table th,
@@ -282,5 +334,12 @@ h6 {
   /* Remove sticky headers for print */
   .printable-table th.sticky {
     position: static !important;
+  }
+  .printable-table td.sticky-left {
+    position: static !important;
+  }
+  @page {
+    size: landscape;
+    margin: 1cm;
   }
 }

@@ -27,7 +27,7 @@ export default function AttendanceSheet({ user }: any) {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-
+  const userMinistry = user.ministry;
   const limit = 10;
   const { data: ministries } = useMinistries();
 
@@ -209,13 +209,21 @@ export default function AttendanceSheet({ user }: any) {
             </Button>
           </div>
         </div>
-
+        {user.role === "STAFF" && ministryId !== "all" && (
+          <div className="hidden print:block text-center text-lg font-semibold mb-2">
+            {userMinistry} Attendance -{" "}
+            {new Date(selectedYear, selectedMonth).toLocaleString("default", {
+              month: "long",
+              year: "numeric",
+            })}
+          </div>
+        )}
         {/* Attendance Table */}
-        <div className="p-6 printable-table print:w-full print:overflow-visible">
-          <table className="w-full border-collapse text-sm print:text-xs">
+        <div className="p-6 printable-table overflow-x-auto w-full print:overflow-visible print:w-full print:block">
+          <table className="w-full table-auto border-collapse text-sm print:text-xs print:w-full">
             <thead>
               <tr className="bg-neutral-800 print:bg-neutral-200">
-                <th className="sticky left-0 bg-neutral-900 px-2 print:bg-neutral-200">
+                <th className="sticky left-0 bg-neutral-900 px-2 print:static print:bg-none print:px-1">
                   Member
                 </th>
                 <th>Monthly</th>

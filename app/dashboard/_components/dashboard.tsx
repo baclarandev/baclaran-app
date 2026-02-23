@@ -284,11 +284,14 @@ export default function Dashboard({ user }: { user: any }) {
                               </div>
                             ))}
                             <Link href="/ministries">
-                              <div className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md border-dashed w-full min-h-[140px] rounded-xl p-4 flex flex-col items-center justify-center hover:bg-blue-500/20 transition-all cursor-pointer group">
+                              <div
+                                className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md border-dashed rounded-xl p-4 flex flex-col items-center justify-center hover:bg-blue-500/20 transition-all cursor-pointer group
+                  w-full h-full min-h-[120px]"
+                              >
                                 <div className="w-12 h-12 rounded-full mb-3 flex items-center justify-center bg-yellow-400/10 group-hover:scale-110 transition-transform">
                                   <ChevronRight className="w-6 h-6 text-yellow-400" />
                                 </div>
-                                <p className="text-sm text-yellow-400">
+                                <p className="text-sm text-yellow-400 text-center">
                                   See all
                                 </p>
                               </div>
@@ -300,7 +303,7 @@ export default function Dashboard({ user }: { user: any }) {
                   </div>
 
                   {/* Resources & Impact Section */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
                     {/* Spiritual Resources */}
                     <Card className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-purple-500/30 border backdrop-blur-md">
                       <CardHeader>

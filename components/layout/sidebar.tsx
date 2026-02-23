@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
-  Church,
   Calendar,
   ListChecks,
   Settings,
@@ -17,7 +16,8 @@ import {
 } from "lucide-react";
 import { User } from "@/app/services/users";
 import { useMinistries } from "@/app/services/ministries";
-
+import Image from "next/image";
+import Logo from "@/public/logo.svg";
 interface SidebarProps {
   user: User;
   isOpen?: boolean;
@@ -124,8 +124,13 @@ export function Sidebar({
           href="/dashboard"
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
-          <div className="w-9 h-9 bg-blue-400 rounded-xl flex items-center justify-center shadow-md">
-            <Church className="w-5 h-5 text-gray-900" />
+          <div className="w-9 h-9  rounded-xl flex items-center justify-center shadow-md">
+            <Image
+              src={Logo}
+              alt="Baclaran Church Logo"
+              width={36}
+              height={36}
+            />
           </div>
           <div className="flex flex-col">
             <span className="lg:text-lg font-bold text-gray-100">
