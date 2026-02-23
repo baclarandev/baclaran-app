@@ -28,7 +28,9 @@ import SplashScreen from "@/components/splash-screen";
 import { toast } from "sonner";
 import { Spotlight } from "@/components/ui/spotlight-new";
 import { BackgroundBeams } from "@/components/ui/background-beams";
-
+import Image from "next/image";
+import Logo from "@/public/logo.svg";
+import ContactSupportModal from "./_component/contact-support";
 const Page = () => {
   const router = useRouter();
 
@@ -88,7 +90,6 @@ const Page = () => {
               <span className="font-semibold text-blue-300">
                 Baclaran Church
               </span>{" "}
-              Staff Portal
             </h1>
             <p className="text-lg text-stone-300 leading-relaxed">
               A sacred space where our community gathers to grow spiritually,
@@ -147,11 +148,16 @@ const Page = () => {
         <div className="w-full">
           <Card className="border-neutral-600/30 bg-blue-500/10 backdrop-blur-md shadow-2xl">
             <CardHeader className="text-center pb-6">
-              <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-400/30 to-blue-600/20 rounded-2xl flex items-center justify-center shadow-lg mb-4">
-                <Church className="w-8 h-8 text-blue-200" />
+              <div className="mx-auto w-16 h-16  rounded-2xl flex items-center justify-center shadow-lg mb-4">
+                <Image
+                  src={Logo}
+                  alt="Baclaran Church Logo"
+                  width={52}
+                  height={52}
+                />
               </div>
               <CardTitle className="text-3xl font-light text-white">
-                Staff Login
+                Login to Your Account
               </CardTitle>
               <CardDescription className="text-stone-300 mt-2">
                 Access your account to manage parish operations
@@ -218,12 +224,7 @@ const Page = () => {
                   <p className="text-center text-stone-400 text-sm mb-3">
                     Need help accessing your account?
                   </p>
-                  <Button
-                    variant="ghost"
-                    className="w-full text-blue-300 hover:text-blue-200 hover:bg-blue-500/10"
-                  >
-                    Contact Support
-                  </Button>
+                  <ContactSupportModal />
                 </div>
               </form>
             </CardContent>
