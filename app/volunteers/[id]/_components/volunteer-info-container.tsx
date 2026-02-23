@@ -18,21 +18,21 @@ import { EditProfileDialog } from "./edit-profile";
 import { HeroSection } from "./hero-section";
 import { useMinistries } from "@/app/services/ministries";
 
-
-
-
-
-
 export default function VolunteerProfile({ user }: { user: any }) {
   const router = useRouter();
   const params = useParams();
   const rawId = params.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const volunteerId = id && !isNaN(Number(id)) ? id : undefined;
-  const { data: ministries = [],  } = useMinistries();
+  const { data: ministries = [] } = useMinistries();
   const [editOpen, setEditOpen] = useState(false);
-
-  const { data: volunteer, isLoading, isError, error } = useVolunteerById(volunteerId);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const {
+    data: volunteer,
+    isLoading,
+    isError,
+    error,
+  } = useVolunteerById(volunteerId);
   const updateVolunteer = useUpdateVolunteer();
 
   const handleSave = (updated: Partial<typeof volunteer>) => {
@@ -48,7 +48,7 @@ export default function VolunteerProfile({ user }: { user: any }) {
         onError: (err: any) => {
           toast.error(err.message || "Update failed");
         },
-      }
+      },
     );
   };
 
@@ -70,9 +70,9 @@ export default function VolunteerProfile({ user }: { user: any }) {
 
   return (
     <div className="flex min-h-screen w-full">
-      <Sidebar user={user}  />
-      <div className="flex-1 flex flex-col w-full md:ml-64 transition-all duration-300">
-        <Header user={user} />
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
+      <div className="flex-1 flex flex-col md:ml-64">
+        <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <main className="p-4 md:p-8 mx-auto w-full space-y-8">
           {/* Back Button */}
           <Button

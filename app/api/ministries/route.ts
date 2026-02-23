@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { ROLE_LEVEL, hasLevel } from "@/lib/rbac";
 import { z } from "zod";
@@ -12,41 +12,35 @@ const MinistrySchema = z.object({
 });
 
 // ─── GET MINISTRIES ─────────────────────────
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const sessionUser = await getSession();
+    if (!sessionUser)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const where: any = {};
+    if (sessionUser.role === "STAFF") {
+      if (!sessionUser.ministryId)
+        return NextResponse.json(
+          { error: "Staff has no ministry assigned" },
+          { status: 403 },
+        );
+      where.id = sessionUser.ministryId; // filter only their ministry
+    }
+
     const ministries = await prisma.ministry.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true,
-        name: true,
-        icon: true,
-        type: true, // 👈 added
-        volunteers: {
-          where: { status: "ACTIVE" },
-          select: {
-            volunteer: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-              },
-            },
-            joinedAt: true,
-            leftAt: true,
-          },
-        },
+      where,
+      include: {
+        volunteers: true, // include volunteers
       },
+      orderBy: { name: "asc" },
     });
 
-    return NextResponse.json({
-      message: "Ministries fetched successfully",
-      data: ministries,
-    });
+    return NextResponse.json({ data: ministries });
   } catch (err: any) {
     console.error("[GET_MINISTRIES_ERROR]", err);
     return NextResponse.json(
-      { error: "Failed to fetch ministries", details: err.message },
+      { error: err.message || "Failed to fetch ministries" },
       { status: 500 },
     );
   }

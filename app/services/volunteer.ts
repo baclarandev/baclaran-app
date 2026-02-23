@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {  VolunteerWithBookings } from "../types/volunteer";
+import { VolunteerWithBookings } from "../types/volunteer";
 import { Volunteer } from "@/lib/data";
 
 export function useVolunteers() {
@@ -7,9 +7,9 @@ export function useVolunteers() {
     queryKey: ["volunteers"],
     queryFn: async () => {
       const res = await fetch("/api/volunteers");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fetch volunteers");
-      return data;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to fetch volunteers");
+      return json.data;
     },
   });
 }
@@ -83,13 +83,7 @@ export function useUpdateVolunteer() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      payload,
-    }: {
-      id: string;
-      payload: any;
-    }) => {
+    mutationFn: async ({ id, payload }: { id: string; payload: any }) => {
       const res = await fetch(`/api/volunteers/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

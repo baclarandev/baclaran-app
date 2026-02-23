@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { can } from "@/lib/rbac";
 import { z } from "zod";
+import { generateVolunteerCode } from "@/app/lib/generate-volunteer-code";
 
 const currentYear = new Date().getFullYear();
 
-// Schemas
+/* ================= SCHEMAS ================= */
+
 const FormationSchema = z.object({
   name: z.string().min(1),
   year: z.number().int().min(1900).max(currentYear),
@@ -19,7 +21,10 @@ const TimelineSchema = z
     endYear: z.number().int().min(1900).max(currentYear).optional(),
     type: z.enum(["SHRINE", "OUTSIDE"]),
   })
-  .refine((d) => !d.endYear || d.endYear >= d.startYear, { path: ["endYear"] });
+  .refine((d) => !d.endYear || d.endYear >= d.startYear, {
+    message: "endYear must be greater than or equal to startYear",
+    path: ["endYear"],
+  });
 
 const CreateVolunteerSchema = z.object({
   firstName: z.string().min(1),
@@ -37,188 +42,185 @@ const CreateVolunteerSchema = z.object({
   profilePicture: z.string().optional(),
   ministryIds: z.array(z.number()).optional(),
   sacraments: z.array(z.any()).optional(),
+  joinedYear: z.number().int().min(1900).max(currentYear).optional(),
   formations: z.array(FormationSchema).optional(),
   timelines: z.array(TimelineSchema).optional(),
 });
 
-// GET /api/volunteers
-export async function GET() {
-  const sessionUser = await getSession();
-  if (!sessionUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+/* ================= RESPONSE SCHEMA ================= */
 
-  const whereClause: any = { status: "ACTIVE" };
+const VolunteerResponseSchema = z.object({
+  id: z.number(),
+  volunteerCode: z.string(),
+  joinedYear: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  middleInitial: z.string().nullable().optional(),
+  nickname: z.string().nullable().optional(),
+  email: z.string(),
+  phone: z.string().nullable().optional(),
+  address: z.string().nullable().optional(),
+  dateOfBirth: z.date().nullable().optional(),
+  sex: z.string(),
+  civilStatus: z.string(),
+  occupation: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  profilePicture: z.string().nullable().optional(),
+});
 
-  // Staff can only see their own ministry
-  if (!can.isAdmin(sessionUser)) {
-    if (!sessionUser.ministryId) return NextResponse.json([], { status: 200 });
-    whereClause.ministryHistories = {
-      some: { ministryId: sessionUser.ministryId, status: "ACTIVE" },
-    };
-  }
+/* ================= GET ================= */
 
-  const volunteers = await prisma.volunteer.findMany({
-    where: whereClause,
-    include: {
-      ministryHistories: {
-        where: { status: "ACTIVE" },
-        include: { ministry: true },
-        orderBy: { joinedAt: "desc" },
-        take: 1,
+export async function GET(request: NextRequest) {
+  try {
+    const sessionUser = await getSession();
+
+    if (!sessionUser)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!can.isStaff(sessionUser))
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    // Build filter based on role
+    const where: any = {};
+
+    // If user is staff, restrict to their ministry
+    if (sessionUser.role === "STAFF") {
+      if (!sessionUser.ministryId)
+        return NextResponse.json(
+          { error: "Staff has no ministry assigned" },
+          { status: 403 },
+        );
+
+      where.ministryHistories = {
+        some: { ministryId: sessionUser.ministryId },
+      };
+    }
+
+    const volunteers = await prisma.volunteer.findMany({
+      where,
+      orderBy: { joinedYear: "desc" },
+      select: {
+        id: true,
+        volunteerCode: true,
+        joinedYear: true,
+        firstName: true,
+        lastName: true,
+        middleInitial: true,
+        nickname: true,
+        email: true,
+        phone: true,
+        address: true,
+        dateOfBirth: true,
+        sex: true,
+        civilStatus: true,
+        occupation: true,
+        status: true,
+        profilePicture: true,
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+    });
 
-  const transformedVolunteers = volunteers.map((v) => ({
-    id: v.id,
-    volunteerCode: v.volunteerCode,
-    firstName: v.firstName,
-    lastName: v.lastName,
-    email: v.email,
-    status: v.status,
-    profilePicture: v.profilePicture,
-    ministryId: v.ministryHistories[0]?.ministryId ?? null,
-    ministryName: v.ministryHistories[0]?.ministry?.name ?? "No Ministry",
-  }));
+    const parsedVolunteers = volunteers.map((v) =>
+      VolunteerResponseSchema.parse({
+        ...v,
+        joinedYear: v.joinedYear ? String(v.joinedYear) : "N/A",
+      }),
+    );
 
-  return NextResponse.json(transformedVolunteers);
+    return NextResponse.json({ data: parsedVolunteers });
+  } catch (error: any) {
+    console.error("[GET_VOLUNTEERS_ERROR]", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to fetch volunteers" },
+      { status: 500 },
+    );
+  }
 }
 
-// POST /api/volunteers
+/* ================= POST ================= */
+
 export async function POST(request: NextRequest) {
   try {
     const sessionUser = await getSession();
-    if (!sessionUser) {
-      return NextResponse.json(
-        { error: "Unauthorized: No session found" },
-        { status: 401 },
-      );
-    }
-
-    if (!can.isStaff(sessionUser)) {
+    if (!sessionUser)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!can.isStaff(sessionUser))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const body = await request.json();
     const parsed = CreateVolunteerSchema.safeParse(body);
 
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid volunteer data", details: parsed.error },
+        { error: "Invalid volunteer data", details: parsed.error.format() },
         { status: 400 },
       );
     }
 
-    // Default optional arrays to empty arrays
     let {
       formations = [],
       timelines = [],
       ministryIds,
       dateOfBirth,
+      joinedYear: selectedYear, // <- get user-selected year
       ...data
     } = parsed.data;
 
-    // 🔹 Force staff to only assign to their own ministry
+    // Force staff ministry
     if (sessionUser.role === "STAFF") {
-      if (!sessionUser.ministryId) {
+      if (!sessionUser.ministryId)
         return NextResponse.json(
-          { error: "Staff user is not assigned to any ministry" },
+          { error: "Staff has no ministry assigned" },
           { status: 403 },
         );
-      }
-      ministryIds = [sessionUser.ministryId]; // now guaranteed to exist for staff
+      ministryIds = [sessionUser.ministryId];
     }
 
-    // Determine target ministry
-    let targetMinistryId: number;
-
-    if (can.isAdmin(sessionUser)) {
-      if (!ministryIds || ministryIds.length === 0) {
-        return NextResponse.json(
-          { error: "Admin must select at least one ministry" },
-          { status: 400 },
-        );
-      }
-      targetMinistryId = ministryIds[0]; // admin picks first ministry
-    } else {
-      // At this point, ministryIds is guaranteed to exist for staff
-      targetMinistryId = ministryIds![0]; // use '!' to tell TS it's defined
+    if (!ministryIds || ministryIds.length === 0) {
+      return NextResponse.json({ error: "Ministry required" }, { status: 400 });
     }
 
-    // Check ministry existence
-    const ministry = await prisma.ministry.findUnique({
-      where: { id: targetMinistryId },
-    });
-    if (!ministry) {
-      return NextResponse.json(
-        { error: "Selected ministry does not exist." },
-        { status: 400 },
-      );
-    }
+    const targetMinistryId = ministryIds[0];
 
-    // Generate volunteer code
-    const lastVolunteerInMinistry =
-      await prisma.volunteerMinistryHistory.findFirst({
-        where: { ministryId: targetMinistryId },
-        orderBy: { id: "desc" },
-        include: { volunteer: true },
-      });
-
-    const nextNumber = lastVolunteerInMinistry
-      ? parseInt(
-          lastVolunteerInMinistry.volunteer.volunteerCode.split("-")[1],
-        ) + 1
-      : 1;
-
-    const volunteerCode = `${ministry.name
-      .split(" ")
-      .map((w) => w[0])
-      .join("")}-${String(nextNumber).padStart(4, "0")}`;
-
-    // Check for duplicate email
+    // Check duplicate email
     const existing = await prisma.volunteer.findUnique({
       where: { email: data.email },
     });
-    if (existing) {
+    if (existing)
       return NextResponse.json(
-        { error: "A volunteer with this email already exists." },
+        { error: "Volunteer email already exists." },
         { status: 400 },
       );
-    }
+
+    // Generate volunteer code using selected year
+    const { volunteerCode, joinedYear } = await generateVolunteerCode(
+      targetMinistryId,
+      selectedYear ? String(selectedYear) : undefined, // <-- pass selected year
+    );
 
     // Create volunteer
     const volunteer = await prisma.volunteer.create({
       data: {
         volunteerCode,
+        joinedYear,
         ...data,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
 
-        // Assign ministry
         ministryHistories: {
-          create: { ministryId: targetMinistryId, status: "ACTIVE" },
+          create: {
+            ministryId: targetMinistryId,
+            status: "ACTIVE",
+          },
         },
 
-        // Formations
         ...(formations.length > 0 && {
-          formations: {
-            createMany: {
-              data: formations.map((f) => ({ name: f.name, year: f.year })),
-            },
-          },
+          formations: { createMany: { data: formations } },
         }),
 
-        // Timelines
         ...(timelines.length > 0 && {
           timelines: {
             createMany: {
               data: timelines.map((t) => ({
-                organization: t.organization,
-                startYear: t.startYear,
-                endYear: t.endYear,
+                ...t,
                 totalYears: (t.endYear ?? currentYear) - t.startYear + 1,
-                type: t.type,
               })),
             },
           },

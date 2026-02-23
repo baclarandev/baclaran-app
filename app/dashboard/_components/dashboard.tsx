@@ -10,6 +10,11 @@ import {
   Church,
   Plus,
   ChevronRight,
+  Sparkles,
+  TrendingUp,
+  Heart,
+  BookOpen,
+  Target,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,7 +51,7 @@ export default function Dashboard({ user }: { user: any }) {
     if (!volunteers || !ministries) return null;
 
     const activeVolunteers = volunteers.filter(
-      (v) => v.status === "ACTIVE",
+      (v: any) => v.status === "ACTIVE",
     ).length;
     const inactiveVolunteers = volunteers.length - activeVolunteers;
 
@@ -110,12 +115,30 @@ export default function Dashboard({ user }: { user: any }) {
             <DashboardSkeleton />
           ) : (
             <>
+              {/* Welcome Banner */}
+              <div className="bg-gradient-to-r from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-2xl p-6 backdrop-blur-md">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-white mb-2">
+                      Welcome back to Baclaran Church
+                    </h2>
+                    <p className="text-stone-300">
+                      Together we serve, inspire, and care for our community
+                      with grace and purpose.
+                    </p>
+                  </div>
+                  <div className="hidden md:flex w-20 h-20 rounded-xl bg-gradient-to-br from-yellow-400/30 to-amber-500/20 items-center justify-center">
+                    <Sparkles className="w-10 h-10 text-yellow-300" />
+                  </div>
+                </div>
+              </div>
+
               {/* Top Section: Stats + QR */}
               <div className="flex flex-col lg:flex-row gap-6 items-start">
                 {/* Stats */}
                 <div className="grid grid-cols-1 w-full md:grid-cols-2 lg:grid-cols-4 gap-6 flex-1">
                   <StatCard
-                    label={`Total volunteers ${isStaff && "on your ministry"}`}
+                    label={`Total volunteers ${isStaff ? "on your ministry" : isAdmin ? "in total" : ""}`}
                     value={metrics.totalVolunteers}
                     sub={`${metrics.activeVolunteers} active • ${metrics.inactiveVolunteers} inactive`}
                     icon={Users}
@@ -129,10 +152,11 @@ export default function Dashboard({ user }: { user: any }) {
                     color="green"
                   />
                   <StatCard
-                    label="Task Completion"
-                    value={`${metrics.taskCompletionRate}%`}
-                    icon={CheckCircle2}
-                    color="purple"
+                    label="Community Engagement"
+                    value={`${Math.floor((metrics.activeVolunteers / Math.max(1, metrics.totalVolunteers)) * 100)}%`}
+                    sub="Active participation"
+                    icon={TrendingUp}
+                    color="blue"
                   />
                   <StatCard
                     label="Active Ministries"
@@ -182,7 +206,7 @@ export default function Dashboard({ user }: { user: any }) {
                   <TabsTrigger
                     className="
     data-[state=active]:bg-blue-500/10
-    data-[state=active]:text-black
+    data-[state=active]:text-white
     text-gray-300
   "
                     value="volunteers"
@@ -193,9 +217,9 @@ export default function Dashboard({ user }: { user: any }) {
 
                 {/* Overview */}
                 <TabsContent value="overview">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     {/* Quick Actions */}
-                    <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
+                    <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md lg:col-span-1">
                       <CardHeader>
                         <CardTitle className="text-primary text-base">
                           Quick Actions
@@ -224,21 +248,29 @@ export default function Dashboard({ user }: { user: any }) {
                     </Card>
 
                     {/* Ministries */}
-                    <Card className="lg:col-span-2 bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
+                    <Card className="lg:col-span-3 bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
                       <CardHeader>
                         <CardTitle className="text-yellow-400">
-                          Ministries
+                          Ministries Overview
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        {isStaff &&
-                          `Your current ministry is ${currentMinistry}`}
+                        {isStaff && (
+                          <div className="bg-gradient-to-r from-amber-500/10 to-yellow-500/5 border border-amber-500/20 rounded-lg p-4 mb-4">
+                            <p className="text-sm text-white">
+                              <span className="font-semibold">
+                                Your Ministry:
+                              </span>{" "}
+                              {currentMinistry}
+                            </p>
+                          </div>
+                        )}
                         {isAdmin && (
-                          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-4">
                             {metrics.ministryData.map((m: any, i: number) => (
                               <div
                                 key={i}
-                                className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md rounded-xl p-4 text-center"
+                                className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md rounded-xl p-4 text-center hover:bg-blue-500/20 transition-all"
                               >
                                 <div
                                   className={`w-12 h-12 ${m.color} rounded-full mx-auto mb-3 flex items-center justify-center`}
@@ -257,12 +289,81 @@ export default function Dashboard({ user }: { user: any }) {
                                   <ChevronRight className="w-6 h-6 text-yellow-400" />
                                 </div>
                                 <p className="text-sm text-yellow-400">
-                                  See all ministries
+                                  See all
                                 </p>
                               </div>
                             </Link>
                           </div>
                         )}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Resources & Impact Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                    {/* Spiritual Resources */}
+                    <Card className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border-purple-500/30 border backdrop-blur-md">
+                      <CardHeader>
+                        <BookOpen className="w-5 h-5 text-purple-300 mb-2" />
+                        <CardTitle className="text-purple-300 text-base">
+                          Spiritual Resources
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <p className="text-sm text-stone-300">
+                          Access prayers, readings, and spiritual guidance for
+                          your ministry work and personal growth.
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="w-full text-sm mt-3"
+                        >
+                          Explore Resources
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Community Impact */}
+                    <Card className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30 border backdrop-blur-md">
+                      <CardHeader>
+                        <Heart className="w-5 h-5 text-green-300 mb-2" />
+                        <CardTitle className="text-green-300 text-base">
+                          Community Impact
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <p className="text-sm text-stone-300">
+                          Track the positive difference our volunteers are
+                          making in serving others and strengthening our parish.
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="w-full text-sm mt-3"
+                        >
+                          View Impact
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Ministry Goals */}
+                    <Card className="bg-gradient-to-br from-orange-500/10 to-amber-500/10 border-orange-500/30 border backdrop-blur-md">
+                      <CardHeader>
+                        <Target className="w-5 h-5 text-orange-300 mb-2" />
+                        <CardTitle className="text-orange-300 text-base">
+                          Ministry Goals
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2">
+                        <p className="text-sm text-stone-300">
+                          Set and monitor goals for each ministry to ensure
+                          alignment with our church's mission and values.
+                        </p>
+                        <Button
+                          variant="outline"
+                          className="w-full text-sm mt-3"
+                        >
+                          Manage Goals
+                        </Button>
                       </CardContent>
                     </Card>
                   </div>
@@ -273,7 +374,8 @@ export default function Dashboard({ user }: { user: any }) {
                   <Card className="bg-gray-800 border-gray-700">
                     <CardHeader className="flex flex-row justify-between">
                       <CardTitle className="text-yellow-400">
-                        Recent Volunteers {`${isStaff && "on your ministry"}`}
+                        Recent Volunteers{" "}
+                        {`${(isStaff && "on your ministry") || (isAdmin && "in total")}`}
                       </CardTitle>
                       <Link href="/volunteers">
                         <Button>
@@ -292,8 +394,8 @@ export default function Dashboard({ user }: { user: any }) {
                               src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${v.email}`}
                             />
                             <AvatarFallback>
-                              {v.firstName[0]}
-                              {v.lastName[0]}
+                              {v.firstName}
+                              {v.lastName}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
@@ -348,8 +450,8 @@ function StatCard({ label, value, sub, icon: Icon, color }: any) {
     <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
       <CardContent className="p-6 flex justify-between items-center">
         <div>
-          <p className="text-sm text-gray-400">{label}</p>
-          <p className="text-3xl font-bold text-blue-400">{value}</p>
+          <p className="text-sm text-white">{label}</p>
+          <p className="text-3xl font-bold text-gray-400">{value}</p>
           {sub && <p className="text-sm text-gray-500">{sub}</p>}
         </div>
         <div

@@ -4,6 +4,36 @@
   --foreground: 0 0% 100%; /* light text on dark bg */
   --primary-foreground: 0 0% 4%; /* dark text if needed */
 }
+::-webkit-scrollbar {
+  width: 12px; /* width of the scrollbar */
+  height: 12px; /* for horizontal scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(0 0% 8%); /* dark track to match your card bg */
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    135deg,
+    hsl(43 74% 49%) 0%,
+    hsl(43 100% 70%) 50%,
+    hsl(43 74% 49%) 100%
+  ); /* gold shimmer effect */
+  border-radius: 8px;
+  border: 3px solid hsl(0 0% 8%); /* space between thumb & track */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(263, 96%, 49%); /* brighter gold on hover */
+}
+
+/* Scrollbar for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(241, 87%, 58%) hsl(0 0% 8%);
+}
 @layer base {
   :root {
     --background: 0 0% 4%;
@@ -187,4 +217,70 @@ h6 {
 
 .read-the-docs {
   color: #888;
+}
+@media print {
+  .printable-table {
+    overflow: visible !important; /* Remove scrollbars */
+    width: 100% !important;
+  }
+  body {
+    background: #000; /* or white if preferred */
+    color: #fff;
+  }
+
+  /* Hide UI elements that shouldn't appear */
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Make table full width for print */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 12pt;
+  }
+
+  th,
+  td {
+    border: 1px solid #888 !important;
+    padding: 0.3em !important;
+  }
+
+  /* Remove sticky headers */
+  th.sticky {
+    position: static !important;
+  }
+  @page {
+    size: landscape;
+    margin: 1cm; /* optional: adjust page margins */
+  }
+
+  body {
+    background: #fff; /* optional: white background for print */
+    color: #000; /* text color for print */
+  }
+
+  /* Hide sidebar, header, buttons, etc. */
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Table print styles */
+  .printable-table table {
+    page-break-inside: auto;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 12pt;
+  }
+
+  .printable-table th,
+  .printable-table td {
+    border: 1px solid #888 !important;
+    padding: 0.3em !important;
+  }
+
+  /* Remove sticky headers for print */
+  .printable-table th.sticky {
+    position: static !important;
+  }
 }

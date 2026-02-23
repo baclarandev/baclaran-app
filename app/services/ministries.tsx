@@ -1,7 +1,12 @@
-import { Volunteer } from "@/lib/data";
 import { useQuery } from "@tanstack/react-query";
-
-
+export interface Volunteer {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+  volunteerCode?: string | null;
+}
 export function useMinistries() {
   return useQuery({
     queryKey: ["ministries"],
@@ -38,7 +43,22 @@ export interface VolunteerMinistry {
   id: number;
   name: string;
 }
+export function useMinistryByID(id?: string) {
+  return useQuery<Volunteer[], Error>({
+    queryKey: ["ministry", id],
+    enabled: !!id,
+    queryFn: async () => {
+      const res = await fetch(`/api/ministries/${id}`, { cache: "no-store" });
+      const data = await res.json();
 
+      if (!res.ok) throw new Error(data.error ?? "Failed to fetch ministry");
+
+      // return volunteers array directly
+      return data ?? [];
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
 export function useVolunteerMinistries(volunteerId?: number) {
   return useQuery<VolunteerMinistry[], Error>({
     queryKey: ["volunteerMinistries", volunteerId],

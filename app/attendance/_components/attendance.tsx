@@ -1,204 +1,277 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { ScheduleModal } from "@/components/schedule-modal";
+import { Button } from "@/components/ui/button";
 import {
-  sundaySchedule,
-  wednesdaySchedule,
-  ordinarySchedule,
-} from "@/lib/schedule";
-import Link from "next/link";
-import { useVolunteerMinistries } from "@/app/services/ministries";
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 
-type MassType = "sunday" | "novena" | "ordinary" | null;
+import { useMinistries } from "@/app/services/ministries";
+import {
+  useAttendance,
+  VolunteerWithAttendance,
+} from "@/app/services/attendance";
 
-export default function Attendance({ user }: any) {
-  const [selectedMass, setSelectedMass] = useState<MassType>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>();
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [selectedVolunteerMinistryId, setSelectedVolunteerMinistryId] =
-    useState<number | null>(null);
+import { toast } from "sonner";
+import { AttendanceSkeleton } from "./attendance-skeleton";
+import { AttendanceRow } from "./attendance-row";
+
+export default function AttendanceSheet({ user }: any) {
+  const [page, setPage] = useState(1);
+  const [members, setMembers] = useState<VolunteerWithAttendance[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { data: volunteerMinistries = [], isLoading: loadingMinistries } =
-    useVolunteerMinistries(user?.id);
-  const [isAdmin, setIsAdmin] = useState(
-    user.role === "ADMIN" || user.role === "CHAIRMAN",
-  );
-  const [viewMode, setViewMode] = useState<"mine" | "all">(
-    isAdmin ? "all" : "mine",
-  );
+  const [ministryId, setMinistryId] = useState<string>("all");
 
-  const handleDateSelect = (date?: Date) => {
-    if (!date) return;
-    setSelectedDate(date);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-    const day = date.getDay();
-    if (day === 0) setSelectedMass("sunday");
-    else if (day === 3) setSelectedMass("novena");
-    else setSelectedMass("ordinary");
-  };
+  const limit = 10;
+  const { data: ministries } = useMinistries();
 
-  const getSchedule = () => {
-    switch (selectedMass) {
-      case "sunday":
-        return sundaySchedule;
-      case "novena":
-        return wednesdaySchedule;
-      case "ordinary":
-        return ordinarySchedule;
-      default:
-        return { am: [], pm: [] };
-    }
-  };
+  const totalDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const today = new Date().getDate();
+  const isCurrentMonth =
+    selectedMonth === new Date().getMonth() &&
+    selectedYear === new Date().getFullYear();
 
-  const getMassTitle = () => {
-    const base =
-      selectedMass === "sunday"
-        ? "Sunday Mass"
-        : selectedMass === "novena"
-          ? "Wednesday Novena & Masses"
-          : selectedMass === "ordinary"
-            ? "Ordinary Weekday Mass"
-            : "";
-    return selectedDate ? `${base} — ${format(selectedDate, "PPP")}` : base;
-  };
+  const { volunteers, isLoading, saveAttendance, saving, pagination } =
+    useAttendance(
+      page,
+      limit,
+      ministryId === "all" ? undefined : Number(ministryId),
+      selectedMonth + 1,
+      selectedYear,
+    );
 
-  // fetch bookings
-  const fetchBookings = async () => {
-    if (!selectedDate) return;
-    try {
-      const url =
-        viewMode === "all"
-          ? `/api/mass/bookings?date=${selectedDate.toISOString()}&all=true`
-          : `/api/mass/bookings?date=${selectedDate.toISOString()}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setBookings(data);
-    } catch (err) {
-      console.error("[FETCH_BOOKINGS_ERROR]", err);
-    }
-  };
-
-  // initial fetch & refresh every 5 seconds for real-time updates
+  // Normalize volunteers to local state
   useEffect(() => {
-    fetchBookings();
-    const interval = setInterval(fetchBookings, 5000);
-    return () => clearInterval(interval);
-  }, [selectedDate, viewMode]);
+    if (!volunteers) return;
 
-  // handle admin confirm booking
-  const handleConfirm = async (bookingId: number) => {
+    const normalized = volunteers.map((m: any) => {
+      let days = m.days ?? [];
+      if (days.length !== totalDays) {
+        const newDays = Array(totalDays).fill(0);
+        for (let i = 0; i < Math.min(days.length, totalDays); i++) {
+          newDays[i] = days[i] ?? 0;
+        }
+        days = newDays;
+      }
+      return { ...m, days, monthlyMeeting: m.monthlyMeeting ?? false };
+    });
+
+    if (JSON.stringify(normalized) !== JSON.stringify(members)) {
+      setMembers(normalized);
+    }
+  }, [volunteers, totalDays]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedMonth, selectedYear, ministryId]);
+
+  const incrementDay = (id: number, index: number) => {
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? {
+              ...m,
+              days: m.days.map((v, i) =>
+                i === index ? Math.min(v + 1, 8) : v,
+              ),
+            }
+          : m,
+      ),
+    );
+  };
+
+  const resetDay = (id: number, index: number) => {
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? { ...m, days: m.days.map((v, i) => (i === index ? 0 : v)) }
+          : m,
+      ),
+    );
+  };
+
+  const toggleMonthlyMeeting = (id: number) => {
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === id ? { ...m, monthlyMeeting: !m.monthlyMeeting } : m,
+      ),
+    );
+  };
+
+  const handleSave = async () => {
     try {
-      const res = await fetch(`/api/mass/bookings/${bookingId}/confirm`, {
-        method: "PATCH",
-      });
-      if (!res.ok) throw new Error("Failed to confirm booking");
-
-      const updated = await res.json();
-      setBookings((prev) =>
-        prev.map((b) => (b.id === bookingId ? updated : b)),
+      await saveAttendance(
+        members.map((m) => ({
+          volunteerId: m.id,
+          ministryId: m.ministryId,
+          days: m.days,
+          monthlyMeeting: m.monthlyMeeting,
+        })),
       );
-    } catch (err) {
-      console.error("[CONFIRM_BOOKING_ERROR]", err);
+      toast.success("Attendance saved!");
+    } catch {
+      toast.error("Save failed");
     }
   };
+
+  if (isLoading) return <AttendanceSkeleton user={user} />;
 
   return (
-    <>
-      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
-      <div className="flex-1 flex flex-col md:ml-64">
-        <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+    <div className="min-h-screen bg-neutral-900 text-gray-200">
+      {/* Sidebar (hidden in print) */}
+      <div className="print-hidden">
+        <Sidebar
+          user={user}
+          isOpen={sidebarOpen}
+          onOpenChange={setSidebarOpen}
+        />
+      </div>
 
-        <header className="py-10 px-4 text-center">
-          <h1 className="font-serif text-4xl md:text-5xl font-bold text-white mb-3">
-            Attendance
-          </h1>
+      <div className="flex flex-col md:ml-64">
+        {/* Header (hidden in print) */}
+        <div className="print-hidden">
+          <Header
+            user={user}
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+          />
+        </div>
 
-          {isAdmin && (
-            <div className="flex justify-center gap-4 mt-4">
-              <Button
-                variant={viewMode === "all" ? "default" : "outline"}
-                onClick={() => setViewMode("all")}
-              >
-                View All Bookings
-              </Button>
-              <Button
-                variant={viewMode === "mine" ? "default" : "outline"}
-                onClick={() => setViewMode("mine")}
-              >
-                My Bookings
-              </Button>
-            </div>
-          )}
-        </header>
-
-        <div className="max-w-md mx-auto mb-10 px-4">
-          <div className="bg-card/40 border border-blue-500/20 rounded-xl p-4 shadow-lg">
-            <label className="block text-sm text-white mb-2 font-medium">
-              Select Date
-            </label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-white"
+        {/* Filters (hidden in print) */}
+        <div className="p-6 space-y-4 print-hidden">
+          <h1 className="text-xl font-semibold text-white">Attendance Sheet</h1>
+          <div className="flex gap-3 flex-wrap">
+            <NativeSelect
+              value={selectedMonth.toString()}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <NativeSelectOption
+                  className="bg-blue-500/20"
+                  key={i}
+                  value={i.toString()}
                 >
-                  {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-card border-yellow-500/20">
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  initialFocus
-                  disabled={(date) =>
-                    date < new Date(new Date().setHours(0, 0, 0, 0))
-                  }
-                  modifiers={{
-                    past: (date) =>
-                      date < new Date(new Date().setHours(0, 0, 0, 0)),
-                  }}
-                  modifiersClassNames={{
-                    past: "bg-gray-800 text-gray-500 line-through opacity-60 cursor-not-allowed",
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
+                  {new Date(2000, i).toLocaleString("default", {
+                    month: "long",
+                  })}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+
+            <NativeSelect
+              value={selectedYear.toString()}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-blue-500/20"
+            >
+              {Array.from({ length: 5 }).map((_, i) => {
+                const year = new Date().getFullYear() - 2 + i;
+                return (
+                  <NativeSelectOption
+                    className="bg-blue-500/20"
+                    key={year}
+                    value={year.toString()}
+                  >
+                    {year}
+                  </NativeSelectOption>
+                );
+              })}
+            </NativeSelect>
+
+            <NativeSelect
+              value={ministryId}
+              onChange={(e) => setMinistryId(e.target.value)}
+            >
+              <NativeSelectOption value="all">
+                All Ministries
+              </NativeSelectOption>
+              {ministries?.map((m: any) => (
+                <NativeSelectOption key={m.id} value={m.id.toString()}>
+                  {m.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "💾 Save"}
+            </Button>
+            <Button
+              onClick={() => window.print()}
+              variant="outline"
+              className="print-hidden"
+            >
+              🖨️ Print
+            </Button>
           </div>
         </div>
 
-        <main className="max-w-4xl mx-auto px-4 pb-20">
-          <ScheduleModal
-            open={selectedMass !== null}
-            onClose={() => setSelectedMass(null)}
-            massType={getMassTitle()}
-            schedules={getSchedule()}
-            bookings={bookings}
-            volunteerMinistries={volunteerMinistries}
-            selectedVolunteerMinistryId={selectedVolunteerMinistryId}
-            setSelectedVolunteerMinistryId={setSelectedVolunteerMinistryId}
-            isAdmin={viewMode === "all"}
-            onConfirmBooking={(id) =>
-              setBookings((prev) =>
-                prev.map((b) =>
-                  b.id === id ? { ...b, status: "CONFIRMED" } : b,
-                ),
-              )
-            }
-          />
-        </main>
+        {/* Attendance Table */}
+        <div className="p-6 printable-table print:w-full print:overflow-visible">
+          <table className="w-full border-collapse text-sm print:text-xs">
+            <thead>
+              <tr className="bg-neutral-800 print:bg-neutral-200">
+                <th className="sticky left-0 bg-neutral-900 px-2 print:bg-neutral-200">
+                  Member
+                </th>
+                <th>Monthly</th>
+                {Array.from({ length: totalDays }).map((_, i) => (
+                  <th key={i}>{i + 1}</th>
+                ))}
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((member) => (
+                <AttendanceRow
+                  key={member.id}
+                  member={member}
+                  today={today}
+                  isCurrentMonth={isCurrentMonth}
+                  incrementDay={incrementDay}
+                  resetDay={resetDay}
+                  toggleMonthlyMeeting={toggleMonthlyMeeting}
+                />
+              ))}
+            </tbody>
+          </table>
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex justify-end gap-2 mt-4 print:hidden">
+              <Button
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 1}
+                variant="outline"
+              >
+                Prev
+              </Button>
+              {Array.from({ length: pagination.totalPages }).map((_, i) => (
+                <Button
+                  key={i}
+                  onClick={() => setPage(i + 1)}
+                  variant={page === i + 1 ? "default" : "outline"}
+                >
+                  {i + 1}
+                </Button>
+              ))}
+              <Button
+                onClick={() =>
+                  setPage((p) => Math.min(p + 1, pagination.totalPages))
+                }
+                disabled={page === pagination.totalPages}
+                variant="outline"
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -11,13 +11,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Church, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  Church,
+  Eye,
+  EyeOff,
+  Loader2,
+  Compass,
+  Users,
+  Heart,
+} from "lucide-react";
 
 import { useMutation } from "@tanstack/react-query";
 import { loginUser } from "@/app/services/login";
 import { useRouter } from "next/navigation";
 import SplashScreen from "@/components/splash-screen";
 import { toast } from "sonner";
+import { Spotlight } from "@/components/ui/spotlight-new";
+import { BackgroundBeams } from "@/components/ui/background-beams";
 
 const Page = () => {
   const router = useRouter();
@@ -67,84 +77,163 @@ const Page = () => {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-900 via-stone-950 to-stone-900 flex items-center justify-center px-4 text-white">
-      <Card className="border-amber-600/30 bg-stone-900/80 backdrop-blur-md shadow-2xl w-full max-w-md">
-        <CardHeader className="text-center pb-2">
-          <div className="mx-auto w-20 h-20 bg-amber-400/20 rounded-3xl flex items-center justify-center shadow-lg mb-4 animate-pulse">
-            <Church className="w-10 h-10 text-amber-200" />
+    <div className="min-h-screen w-full bg-gradient-to-br from-stone-900 via-stone-950 to-stone-900 flex items-center justify-center px-4 py-12 text-white">
+      <BackgroundBeams />
+      <div className="w-full max-w-5xl grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+        {/* Left side - Content */}
+        <div className="hidden md:flex flex-col space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-4xl lg:text-5xl font-light leading-tight">
+              Welcome to{" "}
+              <span className="font-semibold text-blue-300">
+                Baclaran Church
+              </span>{" "}
+              Staff Portal
+            </h1>
+            <p className="text-lg text-stone-300 leading-relaxed">
+              A sacred space where our community gathers to grow spiritually,
+              serve faithfully, and care for one another with compassion and
+              purpose.
+            </p>
           </div>
-          <CardTitle className="text-2xl font-light text-amber-200">
-            Baclaran Church
-          </CardTitle>
-            {/* <CardDescription className="text-[#0a0a84]">
-              Staff Login
-            </CardDescription> */}
-        </CardHeader>
 
-        <CardContent className="pt-6">
-          <form onSubmit={handleStaffSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-amber-200">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-11 bg-stone-800 border-amber-600/30 text-amber-100"
-              />
+          {/* Features */}
+          <div className="space-y-4">
+            <div className="flex gap-4 items-start">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                <Compass className="w-6 h-6 text-blue-300" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">
+                  Spiritual Guidance
+                </h3>
+                <p className="text-stone-400 text-sm">
+                  Access resources and community support for your faith journey
+                </p>
+              </div>
             </div>
-            <div className="space-y-2 relative">
-              <Label htmlFor="password" className="text-amber-200">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="h-11 pr-10 bg-stone-800 border-amber-600/30 text-amber-100"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-11 -translate-y-1/2 text-stone-400 hover:text-amber-300"
-              >
-                {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
+
+            <div className="flex gap-4 items-start">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                <Users className="w-6 h-6 text-blue-300" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">
+                  Community Connection
+                </h3>
+                <p className="text-stone-400 text-sm">
+                  Stay informed and collaborate with fellow staff members
+                </p>
+              </div>
             </div>
-            <Button
-              type="submit"
-              disabled={staffLoginMutation.isPending}
-              className="w-full h-11 bg-amber-400 text-stone-900 font-semibold hover:bg-amber-500"
-            >
-              {staffLoginMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
-              )}
-            </Button>
-            {/* <div className="text-center">
-              <p>Want to be a volunteer? </p>
-              <Button variant="link" className="cursor-pointer underline">
-                Apply here
-              </Button>
-            </div> */}
-          </form>
-        </CardContent>
-      </Card>
+
+            <div className="flex gap-4 items-start">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-1">
+                <Heart className="w-6 h-6 text-blue-300" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white mb-1">
+                  Serve with Purpose
+                </h3>
+                <p className="text-stone-400 text-sm">
+                  Manage ministry activities and outreach initiatives
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side - Login Form */}
+        <div className="w-full">
+          <Card className="border-neutral-600/30 bg-blue-500/10 backdrop-blur-md shadow-2xl">
+            <CardHeader className="text-center pb-6">
+              <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-400/30 to-blue-600/20 rounded-2xl flex items-center justify-center shadow-lg mb-4">
+                <Church className="w-8 h-8 text-blue-200" />
+              </div>
+              <CardTitle className="text-3xl font-light text-white">
+                Staff Login
+              </CardTitle>
+              <CardDescription className="text-stone-300 mt-2">
+                Access your account to manage parish operations
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-6">
+              <form onSubmit={handleStaffSubmit} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-white font-medium">
+                    Email Address
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@baclaran.org"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-11 bg-gray-800/50 border-neutral-600/30 text-amber-100 placeholder:text-stone-500"
+                  />
+                </div>
+                <div className="space-y-2 relative">
+                  <Label htmlFor="password" className="text-white font-medium">
+                    Password
+                  </Label>
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-11 pr-10 bg-gray-800/50 border-neutral-600/30 text-amber-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-11 -translate-y-1/2 text-stone-400 hover:text-blue-300 transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={staffLoginMutation.isPending}
+                  className="w-full h-11 cursor-pointer bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg"
+                >
+                  {staffLoginMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
+                </Button>
+
+                <div className="pt-4 border-t border-neutral-600/30">
+                  <p className="text-center text-stone-400 text-sm mb-3">
+                    Need help accessing your account?
+                  </p>
+                  <Button
+                    variant="ghost"
+                    className="w-full text-blue-300 hover:text-blue-200 hover:bg-blue-500/10"
+                  >
+                    Contact Support
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <p className="text-center text-stone-500 text-xs mt-6">
+            © Baclaran Church. All rights reserved.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

@@ -92,7 +92,7 @@ export function Sidebar({
           </Link>
 
           {/* Dynamic Ministry Links */}
-          {ministryLinks.map(({ type, label }) => {
+          {/* {ministryLinks.map(({ type, label }) => {
             const href = `/ministries/${type.toLowerCase()}`;
             const isActive = pathname.startsWith(href);
 
@@ -111,7 +111,7 @@ export function Sidebar({
                 <span className="ml-2 font-medium">{label}</span>
               </Link>
             );
-          })}
+          })} */}
         </div>
       </div>
     );
@@ -119,7 +119,7 @@ export function Sidebar({
 
   const sidebarContent = (
     <>
-      <div className="flex h-16 items-center border-b border-neutral-700 px-6 bg-neutral-900">
+      <div className="print-hidden flex h-16 items-center border-b border-neutral-700 px-6 bg-neutral-900">
         <Link
           href="/dashboard"
           className="flex items-center gap-3 hover:opacity-80 transition-opacity"
@@ -150,7 +150,7 @@ export function Sidebar({
         </button>
       </div>
 
-      <nav className="flex-1 overflow-auto py-6 px-4 scrollbar-thin">
+      <nav className="print-hidden flex-1 overflow-auto py-6 px-4 scrollbar-thin">
         <p className="text-xs font-semibold uppercase text-gray-400 mb-1">
           Dashboard
         </p>

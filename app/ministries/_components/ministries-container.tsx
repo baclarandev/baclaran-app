@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMinistries } from "@/app/services/ministries";
-import { useVolunteers } from "@/app/services/volunteer";
 
 import {
   Card,
@@ -220,11 +219,10 @@ export const ICON_OPTIONS = [
 
   { name: "Grid", icon: Grid },
 ];
-export default function MinistriesClient({ user }: any) {
+export default function Ministries({ user }: any) {
   const queryClient = useQueryClient();
   const [type, setType] = useState<"LITURGICAL" | "PASTORAL">("LITURGICAL");
   const { data: ministries = [], isLoading, error } = useMinistries();
-  const { data: volunteers = [] } = useVolunteers();
 
   const isAdmin = user?.role === "ADMIN";
   const canManage = isAdmin;
@@ -248,22 +246,16 @@ export default function MinistriesClient({ user }: any) {
       ),
     [ministries, search],
   );
-
-  const volunteerCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    volunteers.forEach((v) => {
-      if (v.ministryName) {
-        map[v.ministryName] = (map[v.ministryName] || 0) + 1;
-      }
-    });
-    return map;
-  }, [volunteers]);
-
-  const canViewMembers = (ministry: any) => {
-    if (user?.role === "ADMIN") return true;
-    if (user?.role === "STAFF") return user?.ministry?.id === ministry.id;
-    return false;
+  console.log(filtered);
+  const getVolunteerCount = (ministry: any) => {
+    return ministry.volunteers?.length || 0;
   };
+
+  // const canViewMembers = (ministry: any) => {
+  //   if (user?.role === "ADMIN") return true;
+  //   if (user?.role === "STAFF") return user?.ministry?.id === ministry.id;
+  //   return false;
+  // };
 
   /* ───────────── CRUD LOGIC ───────────── */
   async function createMinistry() {
@@ -414,7 +406,7 @@ export default function MinistriesClient({ user }: any) {
                         <MinistryTypeBadge type={m.type} />
                       </td>
                       <td className="px-6 py-4 text-blue-200/60">
-                        {volunteerCountMap[m.name] || 0} Members
+                        {getVolunteerCount(m)} Members
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -465,17 +457,16 @@ export default function MinistriesClient({ user }: any) {
                         <div className="p-3 bg-blue-500/10 rounded-xl group-hover:bg-blue-500/20 transition-colors">
                           <IconComp className="w-8 h-8 text-blue-400" />
                         </div>
-                        {canViewMembers(ministry) && (
-                          <Link href={`/ministries/${ministry.id}`}>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-blue-400 hover:bg-blue-500/20 rounded-lg"
-                            >
-                              Members <ChevronRight className="ml-1 w-4 h-4" />
-                            </Button>
-                          </Link>
-                        )}
+
+                        <Link href={`/ministries/${ministry.id}`}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-blue-400 hover:bg-blue-500/20 rounded-lg"
+                          >
+                            Members <ChevronRight className="ml-1 w-4 h-4" />
+                          </Button>
+                        </Link>
                       </div>
                       <CardTitle className="text-xl text-white group-hover:text-blue-300 transition-colors">
                         {ministry.name}
@@ -486,7 +477,7 @@ export default function MinistriesClient({ user }: any) {
                     </CardHeader>
                     <CardContent className="mt-auto pt-6 border-t border-blue-500/10 flex justify-between items-center">
                       <span className="text-sm text-blue-100/40">
-                        {volunteerCountMap[ministry.name] || 0} active
+                        {getVolunteerCount(ministry)} active
                       </span>
                       {canManage && (
                         <div className="flex gap-1">

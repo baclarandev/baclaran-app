@@ -7,27 +7,24 @@ export async function GET(
   _: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
-  const sessionUser = await getSession();
-  if (!sessionUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const sessionUser = await getSession();
+    if (!sessionUser)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const params = await context.params;
     const id = Number(params.id);
-
-    if (!id || isNaN(id)) {
+    if (!id || isNaN(id))
       return NextResponse.json(
         { error: "Invalid volunteer ID" },
         { status: 400 },
       );
-    }
 
     const volunteer = await prisma.volunteer.findUnique({
       where: { id },
       include: {
-        formations: true, // Include all formations
-        timelines: true, // Include all timelines
+        formations: true,
+        timelines: true,
         ministryHistories: {
           where: { status: "ACTIVE" },
           include: { ministry: true },
@@ -36,51 +33,17 @@ export async function GET(
       },
     });
 
-    if (!volunteer) {
+    if (!volunteer)
       return NextResponse.json(
         { error: "Volunteer not found" },
         { status: 404 },
       );
-    }
-
-    // Transform formations and timelines if you want a simpler shape
-    const transformedFormations = volunteer.formations.map((f) => ({
-      id: f.id,
-      name: f.name,
-      year: f.year,
-    }));
-
-    const transformedTimelines = volunteer.timelines.map((t) => ({
-      id: t.id,
-      organization: t.organization,
-      startYear: t.startYear,
-      endYear: t.endYear,
-      totalYears: t.totalYears,
-      type: t.type,
-    }));
 
     return NextResponse.json({
-      id: volunteer.id,
-      volunteerCode: volunteer.volunteerCode,
-      firstName: volunteer.firstName,
-      lastName: volunteer.lastName,
-      middleInitial: volunteer.middleInitial,
-      nickname: volunteer.nickname,
-      email: volunteer.email,
-      phone: volunteer.phone,
-      address: volunteer.address,
-      dateOfBirth: volunteer.dateOfBirth,
-      sex: volunteer.sex,
-      civilStatus: volunteer.civilStatus,
-      occupation: volunteer.occupation,
-      status: volunteer.status,
-      profilePicture: volunteer.profilePicture,
-      sacraments: volunteer.sacraments,
-      formations: transformedFormations, // ✅ include formations
-      timelines: transformedTimelines, // ✅ include timelines
+      ...volunteer,
+      joinedYear: volunteer.joinedYear ?? new Date().getFullYear().toString(),
       ministryName:
         volunteer.ministryHistories[0]?.ministry?.name ?? "No Ministry",
-      createdAt: volunteer.createdAt,
     });
   } catch (err: any) {
     console.error("[GET_VOLUNTEER_ERROR]", err);
@@ -90,6 +53,7 @@ export async function GET(
     );
   }
 }
+
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
@@ -156,7 +120,17 @@ export async function PATCH(
     if (body.dateOfBirth) {
       data.dateOfBirth = new Date(body.dateOfBirth);
     }
+    if (body.joinedYear !== undefined) {
+      data.joinedYear = body.joinedYear.toString();
+    }
+    if (body.joinedYear !== undefined) {
+      data.joinedYear = body.joinedYear.toString();
 
+      // Generate volunteerCode: SC-{joinedYear}-{ID padded 4 digits}
+      data.volunteerCode = `SC-${data.joinedYear}-${volunteerId
+        .toString()
+        .padStart(4, "0")}`;
+    }
     const updated = await prisma.volunteer.update({
       where: { id: volunteerId },
       data,
@@ -180,18 +154,16 @@ export async function PUT(
   try {
     const params = await context.params;
     const id = Number(params.id);
-
-    if (!id || isNaN(id)) {
+    if (!id || isNaN(id))
       return NextResponse.json(
         { error: "Invalid volunteer ID" },
         { status: 400 },
       );
-    }
 
     const body = await req.json();
     if (!body.firstName || !body.lastName || !body.email) {
       return NextResponse.json(
-        { error: "firstName, lastName, and email are required" },
+        { error: "firstName, lastName, email required" },
         { status: 400 },
       );
     }
@@ -200,26 +172,28 @@ export async function PUT(
       firstName: body.firstName,
       lastName: body.lastName,
       middleInitial: body.middleInitial ?? null,
+      nickname: body.nickname ?? null,
       email: body.email,
       phone: body.phone ?? null,
       address: body.address ?? null,
       sex: body.sex,
+      occupation: body.occupation ?? null,
       profilePicture: body.profilePicture ?? null,
+      status: body.status ?? "ACTIVE",
       sacraments: body.sacraments ?? [],
-      nickname: body.nickname ?? null,
+      joinedYear:
+        body.joinedYear?.toString() ?? new Date().getFullYear().toString(),
+      dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
     };
 
-    if (body.dob) data.dateOfBirth = new Date(body.dob);
-
-    const updated = await prisma.volunteer.update({
-      where: { id },
-      data,
-    });
-
+    const updated = await prisma.volunteer.update({ where: { id }, data });
     return NextResponse.json({ success: true, data: updated });
   } catch (err: any) {
     console.error("[UPDATE_VOLUNTEER_ERROR]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update volunteer" },
+      { status: 500 },
+    );
   }
 }
 

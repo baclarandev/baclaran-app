@@ -54,12 +54,14 @@ interface FormData {
   address: string;
   dob: string;
   sex: string;
+  joinedYear?: string;
   ministryIds: number[];
   sacraments: string[];
   profilePicture: string;
   civilStatus: string;
   occupation: string;
   marriageType?: "CHURCH" | "CIVIL" | "";
+  nickname: string;
 }
 interface AddVolunteerDialogProps {
   open: boolean;
@@ -105,6 +107,7 @@ const FormDataSchema = z.object({
         .max(new Date().getFullYear(), "Invalid year"),
     }),
   ),
+  nickname: z.string().optional(),
   timelines: z.array(
     z.object({
       organization: z.string().min(1, "Organization required"),
@@ -164,6 +167,8 @@ export function AddVolunteerDialog({
     address: "",
     dob: "",
     sex: "",
+    joinedYear: "",
+    nickname: "",
     civilStatus: "",
     occupation: "",
     ministryIds: isAdmin ? [] : staffMinistryIds,
@@ -199,6 +204,8 @@ export function AddVolunteerDialog({
         address: "",
         dob: "",
         sex: "",
+        joinedYear: "",
+        nickname: "",
         civilStatus: "",
         occupation: "",
         ministryIds: [],
@@ -223,8 +230,10 @@ export function AddVolunteerDialog({
         : "",
       civilStatus: volunteer.civilStatus || "",
       occupation: volunteer.occupation || "",
+      joinedYear: volunteer.joinedYear ? String(volunteer.joinedYear) : "",
       sex: volunteer.sex.toLowerCase(),
       ministryIds: [],
+      nickname: volunteer.nickname || "",
       sacraments: volunteer.sacraments.map((s) => {
         const reverseMap: Record<string, string> = {
           BAPTISM: "Baptism",
@@ -338,6 +347,7 @@ export function AddVolunteerDialog({
       lastName: formData.lastName,
       middleInitial: formData.middleInitial || null,
       email: formData.email,
+      joinedYear: formData.joinedYear ? Number(formData.joinedYear) : null,
       sex:
         formData.sex === "male"
           ? "Male"
@@ -424,6 +434,7 @@ export function AddVolunteerDialog({
       address: "",
       dob: "",
       sex: "",
+      nickname: "",
       civilStatus: "",
       occupation: "",
       ministryIds: [],
@@ -454,11 +465,15 @@ export function AddVolunteerDialog({
       );
     }
     if (currentStep === 2) {
-      if (isAdmin) {
-        return formData.ministryIds.length > 0;
-      }
+      // Check ministries and joinedYear
+      const ministriesValid = isAdmin
+        ? formData.ministryIds.length > 0
+        : staffMinistryIds.length > 0;
 
-      return staffMinistryIds.length > 0;
+      const joinedYearValid =
+        formData.joinedYear !== "" && formData.joinedYear !== null;
+
+      return ministriesValid && joinedYearValid;
     }
     return true;
   }, [currentStep, formData, isExistingVolunteer, selectedVolunteer]);
@@ -493,7 +508,7 @@ export function AddVolunteerDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="w-full lg:max-w-2xl px-6 max-h-[90vh] overflow-y-auto bg-gray-800 text-gray-100 border-gray-700">
+      <DialogContent className="w-full lg:max-w-2xl px-6 max-h-[90vh] overflow-y-auto bg-blue-400/10 border-blue-500/30 border text-white backdrop-blur-md">
         <DialogHeader>
           <DialogTitle>Add New Volunteer</DialogTitle>
           <DialogDescription className="text-gray-400">
@@ -779,7 +794,18 @@ export function AddVolunteerDialog({
                       />
                     </div>
                   </div>
-
+                  <div className="space-y-2">
+                    <Label htmlFor="nickname">Nickname</Label>
+                    <Input
+                      id="nickname"
+                      placeholder="Juanito"
+                      value={formData.nickname}
+                      onChange={(e) =>
+                        updateFormData("nickname", e.target.value)
+                      }
+                      className="bg-gray-700 border-gray-600 text-gray-100"
+                    />
+                  </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
@@ -1043,6 +1069,27 @@ export function AddVolunteerDialog({
                   </div>
                 </div>
               )}
+              <div className="space-y-2">
+                <Label htmlFor="joinedYear">Joined Year</Label>
+                <select
+                  id="joinedYear"
+                  value={formData.joinedYear ?? ""}
+                  onChange={(e) =>
+                    updateFormData(
+                      "joinedYear",
+                      e.target.value === "" ? null : Number(e.target.value),
+                    )
+                  }
+                  className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
+                >
+                  <option value="">Select Year</option>
+                  {YEARS.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Formations */}
               <Card>
@@ -1374,6 +1421,7 @@ export function AddVolunteerDialog({
           <div className="flex gap-2">
             <Button
               variant="destructive"
+              className="bg-red-500/20"
               onClick={() => handleOpenChange(false)}
             >
               Cancel
@@ -1381,7 +1429,7 @@ export function AddVolunteerDialog({
             {currentStep < 3 ? (
               <Button
                 onClick={handleNext}
-                className="bg-yellow-500 text-gray-900 hover:bg-yellow-400"
+                className="bg-blue-400/10 cursor-pointer border-blue-500/30 border text-white backdrop-blur-md"
                 disabled={!isStepValid}
               >
                 Next
@@ -1389,7 +1437,7 @@ export function AddVolunteerDialog({
             ) : (
               <Button
                 onClick={handleSubmit}
-                className="bg-green-600 text-white hover:bg-green-500"
+                className="bg-blue-600 text-white hover:bg-blue-500"
                 disabled={!isStepValid}
               >
                 {isExistingVolunteer ? "Add to Ministry" : "Save Volunteer"}

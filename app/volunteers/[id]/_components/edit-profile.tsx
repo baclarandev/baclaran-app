@@ -53,6 +53,7 @@ export function EditProfileDialog({
         sex: fd.get("sex") as Sex,
         civilStatus: fd.get("civilStatus") as CivilStatus,
         occupation: fd.get("occupation") as string,
+        joinedYear: (fd.get("joinedYear") as string) || new Date().getFullYear().toString(),
       });
       toast.success("Profile updated successfully");
       setSaving(false);
@@ -164,7 +165,14 @@ export function EditProfileDialog({
             name="occupation"
             defaultValue={volunteer.occupation}
           />
-
+          <Field
+            label="Joined Year"
+            name="joinedYear"
+            type="number"
+            defaultValue={
+              volunteer.joinedYear ?? new Date().getFullYear().toString()
+            }
+          />
           <DialogFooter className="pt-2">
             <Button
               type="button"

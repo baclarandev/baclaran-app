@@ -14,6 +14,10 @@ import {
   Download,
   Edit,
   Trash2,
+  Users,
+  CheckCircle2,
+  Clock,
+  Zap,
 } from "lucide-react";
 import {
   NativeSelect,
@@ -51,6 +55,13 @@ const cloudinaryOptimized = (url: string) => {
     : url;
 };
 type ViewMode = "grid" | "list";
+const formatVolunteerCode = (code: string) => {
+  if (!code) return "";
+  const parts = code.split("-"); // ["SC", "2026", "0001"]
+  if (parts.length !== 3) return code;
+  const yearLast2 = parts[1].slice(-2); // "26"
+  return `${parts[0]}-${yearLast2}-${parts[2]}`;
+};
 export default function Volunteer({ user }: any) {
   const {
     data: volunteers = [],
@@ -133,36 +144,121 @@ export default function Volunteer({ user }: any) {
       <div className="flex-1 flex flex-col md:ml-64">
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
-        <div className="bg-neutral-900 text-gray-100 p-4">
-          {/* Header + Actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="text-gray-400">
-                Manage and track church volunteers
-              </p>
+        <div className="bg-neutral-900 text-gray-100 p-4 space-y-6">
+          {/* Welcome Banner */}
+          <div className="bg-gradient-to-r from-blue-500/20 to-blue-600/10 border border-blue-500/30 backdrop-blur-md rounded-lg p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-white mb-2">
+                  Volunteer Management
+                </h1>
+                <p className="text-stone-300">
+                  Build, nurture, and empower our community of dedicated
+                  servants. Track engagement, manage assignments, and celebrate
+                  contributions.
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  disabled
+                  className="gap-2 border-gray-700 cursor-not-allowed disabled bg-blue-600 text-gray-100 hover:bg-neutral-700"
+                >
+                  <List className="w-4 h-4" /> Archived
+                </Button>
+                <AddVolunteerDialog
+                  open={openAddDialog}
+                  setOpen={setOpenAddDialog}
+                  onSuccess={() => {
+                    setOpenAddDialog(false);
+                    setSelectedVolunteer(null);
+                    refetch();
+                  }}
+                  user={user}
+                />
+              </div>
             </div>
-            <div className="flex gap-2 mb-5">
-              {/* <Link href="/volunteers/archived"> */}
-              <Button
-                variant="outline"
-                disabled
-                className="gap-2 border-gray-700 cursor-not-allowed disabled bg-blue-600 text-gray-100 hover:bg-neutral-700"
-              >
-                <List className="w-4 h-4" /> Archived
-              </Button>
-              {/* </Link> */}
+          </div>
 
-              <AddVolunteerDialog
-                open={openAddDialog}
-                setOpen={setOpenAddDialog}
-                onSuccess={() => {
-                  setOpenAddDialog(false);
-                  setSelectedVolunteer(null);
-                  refetch();
-                }}
-                user={user}
-              />
-            </div>
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="bg-blue-500/10 border-blue-500/30 border backdrop-blur-md">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-stone-400 text-sm mb-1">
+                    Total Volunteers
+                  </p>
+                  <p className="text-2xl font-bold text-white">
+                    {volunteers.length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-300" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-green-500/10 border-green-500/30 border backdrop-blur-md">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-stone-400 text-sm mb-1">Active Members</p>
+                  <p className="text-2xl font-bold text-white">
+                    {volunteers.filter((v) => v.status === "ACTIVE").length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-green-300" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-amber-500/10 border-amber-500/30 border backdrop-blur-md">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-stone-400 text-sm mb-1">
+                    Inactive Members
+                  </p>
+                  <p className="text-2xl font-bold text-white">
+                    {volunteers.filter((v) => v.status === "INACTIVE").length}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-amber-300" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-purple-500/10 border-purple-500/30 border backdrop-blur-md">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-stone-400 text-sm mb-1">Engagement Rate</p>
+                  <p className="text-2xl font-bold text-white">
+                    {volunteers.length > 0
+                      ? Math.round(
+                          (volunteers.filter((v) => v.status === "ACTIVE")
+                            .length /
+                            volunteers.length) *
+                            100,
+                        )
+                      : 0}
+                    %
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-purple-300" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Tips */}
+          <div className="bg-gradient-to-r from-indigo-500/10 to-cyan-500/10 border border-indigo-500/20 backdrop-blur-md rounded-lg p-4">
+            <p className="text-sm text-stone-300">
+              <span className="font-semibold text-indigo-300">Pro tip:</span>{" "}
+              Use the search bar to find volunteers by name, email, or ministry.
+              Switch between grid and list views for different perspectives on
+              your volunteer community.
+            </p>
           </div>
 
           {/* Filters */}
@@ -174,7 +270,7 @@ export default function Volunteer({ user }: any) {
                   placeholder="Search volunteers by name, email, or ministry..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md"
+                  className="pl-10 bg-gray-800 border-blue-500/30 border text-white-400 backdrop-blur-md"
                 />
               </div>
 
@@ -209,7 +305,9 @@ export default function Volunteer({ user }: any) {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
-                <NativeSelectOption value="all">All Status</NativeSelectOption>
+                <NativeSelectOption className="bg-blue-500/20" value="all">
+                  All Status
+                </NativeSelectOption>
                 <NativeSelectOption value="ACTIVE">Active</NativeSelectOption>
                 <NativeSelectOption value="INACTIVE">
                   Inactive
@@ -263,6 +361,11 @@ export default function Volunteer({ user }: any) {
                       <h3 className="font-semibold font-mono text-white">
                         {v.firstName} {v.lastName}
                       </h3>
+                      {v.nickname && (
+                        <p className="text-sm text-gray-400 italic">
+                          {v.nickname}
+                        </p>
+                      )}
                       <Badge
                         variant="outline"
                         className={
@@ -281,7 +384,7 @@ export default function Volunteer({ user }: any) {
                       </p>
                       <p>
                         <Badge className="bg-purple-900">
-                          {v.volunteerCode}
+                          {formatVolunteerCode(v?.volunteerCode as any)}
                         </Badge>
                       </p>
                     </Card>
@@ -353,8 +456,15 @@ export default function Volunteer({ user }: any) {
               </Card>
             )
           ) : (
-            <Card className="p-12 text-center bg-gray-800 border-gray-700 mt-4">
-              <p className="text-gray-400">No volunteers found.</p>
+            <Card className="p-12 text-center bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30 border backdrop-blur-md mt-4">
+              <div className="flex flex-col items-center justify-center space-y-3">
+                <Users className="w-12 h-12 text-stone-400" />
+                <p className="text-gray-300 text-lg">No volunteers found.</p>
+                <p className="text-gray-500 text-sm">
+                  Try adjusting your search filters or add a new volunteer to
+                  get started.
+                </p>
+              </div>
             </Card>
           )}
           {totalPages > 1 && (
