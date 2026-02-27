@@ -70,7 +70,7 @@ export default function Volunteer({ user }: any) {
   } = useVolunteers();
 
   const deleteVolunteer = useDeleteVolunteer();
-
+  const { data: ministries = [] } = useMinistries();
   const [selectedVolunteer, setSelectedVolunteer] = useState<any>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,7 +109,7 @@ export default function Volunteer({ user }: any) {
     const pageParam = searchParams.get("page");
     if (pageParam) setCurrentPage(parseInt(pageParam, 10));
   }, [searchParams]);
-
+  console.log(paginatedVolunteers);
   const goToPage = (page: number) => {
     setCurrentPage(page);
     router.push(`/volunteers?page=${page}`, { scroll: false });
@@ -137,7 +137,23 @@ export default function Volunteer({ user }: any) {
       });
     }
   };
+  const getVolunteerMinistryPath = (volunteer: any) => {
+    const ministry = volunteer.ministry;
+    if (!ministry) return "-";
 
+    if (ministry.parent) {
+      return `${ministry.parent.name} / ${ministry.name}`;
+    }
+
+    return ministry.name;
+  };
+  const getMinistryDisplay = (v: any) => {
+    const ministry = v.ministry || v.ministryHistories?.[0]?.ministry;
+    if (!ministry) return "-";
+    return ministry.parent
+      ? `${ministry.parent.name} / ${ministry.name}`
+      : ministry.name;
+  };
   return (
     <>
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
@@ -376,11 +392,8 @@ export default function Volunteer({ user }: any) {
                       >
                         {v.status}
                       </Badge>
-                      <p
-                        className="text-sm text-center text-gray-400 line-clamp-2"
-                        title={v.ministryName}
-                      >
-                        {v.ministryName}
+                      <p className="text-sm text-gray-400 text-center">
+                        {getMinistryDisplay(v)}
                       </p>
                       <p>
                         <Badge className="bg-purple-900">
@@ -430,23 +443,25 @@ export default function Volunteer({ user }: any) {
                             {v.firstName} {v.lastName}
                           </span>
                         </td>
-                        <td className="py-3 px-4">{v.ministryName}</td>
+                        <p className="text-sm text-gray-400 text-center">
+                          {getMinistryDisplay(v)}
+                        </p>
                         <td className="py-3 px-4">{v.email}</td>
                         <td className="py-3 px-4">{v.status}</td>
                         <td className="py-3 px-4 flex gap-2">
-                          <Button
+                          {/* <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleEdit(v)}
                           >
                             <Edit className="w-4 h-4" />
-                          </Button>
+                          </Button> */}
                           <Button
                             size="sm"
                             variant="destructive"
                             onClick={() => handleDelete(v)}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4 text-red-400" />
                           </Button>
                         </td>
                       </tr>

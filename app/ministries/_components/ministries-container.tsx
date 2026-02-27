@@ -93,132 +93,30 @@ import {
   LayoutGrid,
   ExternalLink,
   ChevronRight,
+  Plus as PlusIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
 /* ───────────── ICON LIST ───────────── */
-// Assuming you move the large icon list to a separate file for cleanliness
 export const ICON_OPTIONS = [
   { name: "Church", icon: Church },
-
   { name: "Users", icon: Users },
-
   { name: "UserPlus", icon: UserPlus },
-
   { name: "UserCheck", icon: UserCheck },
-
-  { name: "Users2", icon: Users2 },
-
-  { name: "UserX", icon: UserX },
-
   { name: "Calendar", icon: Calendar },
-
-  { name: "CalendarPlus", icon: CalendarPlus },
-
-  { name: "CalendarCheck", icon: CalendarCheck },
-
-  { name: "CalendarMinus", icon: CalendarMinus },
-
   { name: "Clock", icon: Clock },
-
-  { name: "Clock1", icon: Clock1 },
-
-  { name: "Clock2", icon: Clock2 },
-
-  { name: "Clock4", icon: Clock4 },
-
   { name: "BookOpen", icon: BookOpen },
-
-  { name: "Book", icon: Book },
-
-  { name: "Scroll", icon: Scroll },
-
-  { name: "Megaphone", icon: Megaphone },
-
   { name: "Bell", icon: Bell },
-
-  { name: "BellOff", icon: BellOff },
-
-  { name: "Mail", icon: Mail },
-
-  { name: "MailOpen", icon: MailOpen },
-
-  { name: "Phone", icon: Phone },
-
-  { name: "Smartphone", icon: Smartphone },
-
-  { name: "Tablet", icon: Tablet },
-
-  { name: "Globe", icon: Globe },
-
-  { name: "Heart", icon: Heart },
-
-  { name: "Star", icon: Star },
-
-  { name: "Gift", icon: Gift },
-
-  { name: "Flag", icon: Flag },
-
-  { name: "Trophy", icon: Trophy },
-
   { name: "Music", icon: Music },
-
-  { name: "Music2", icon: Music2 },
-
-  { name: "Video", icon: Video },
-
-  { name: "Camera", icon: Camera },
-
-  { name: "CameraOff", icon: CameraOff },
-
-  { name: "Smile", icon: Smile },
-
-  { name: "SmilePlus", icon: SmilePlus },
-
-  { name: "HandHeart", icon: HandHeart },
-
+  { name: "Heart", icon: Heart },
   { name: "Shield", icon: Shield },
-
-  { name: "ShieldCheck", icon: ShieldCheck },
-
-  { name: "Lock", icon: Lock },
-
-  { name: "LockOpen", icon: LockOpen },
-
-  { name: "Settings", icon: Settings },
-
-  { name: "HelpCircle", icon: HelpCircle },
-
-  { name: "Info", icon: Info },
-
-  { name: "CheckCircle", icon: CheckCircle },
-
-  { name: "XCircle", icon: XCircle },
-
-  { name: "AlertTriangle", icon: AlertTriangle },
-
-  { name: "BookCopy", icon: BookCopy },
-
-  { name: "MapPin", icon: MapPin },
-
-  { name: "Database", icon: Database },
-
-  { name: "Link", icon: LinkIcon },
-
-  { name: "Zap", icon: Zap },
-
-  { name: "Code", icon: Code },
-
-  { name: "Sun", icon: Sun },
-
-  { name: "Moon", icon: Moon },
-
+  { name: "Gift", icon: Gift },
+  { name: "Globe", icon: Globe },
   { name: "Leaf", icon: Leaf },
-
-  { name: "LayoutList", icon: LayoutList },
-
-  { name: "Grid", icon: Grid },
+  { name: "Zap", icon: Zap },
+  { name: "Trophy", icon: Trophy },
 ];
+
 export default function Ministries({ user }: any) {
   const queryClient = useQueryClient();
   const [type, setType] = useState<"LITURGICAL" | "PASTORAL">("LITURGICAL");
@@ -238,7 +136,9 @@ export default function Ministries({ user }: any) {
   const [openDelete, setOpenDelete] = useState(false);
   const [deleting, setDeleting] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
+  const [selectedParent, setSelectedParent] = useState<any>(null);
+  const [openCreateSub, setOpenCreateSub] = useState(false);
+  const [creatingSubFor, setCreatingSubFor] = useState<any>(null);
   const filtered = useMemo(
     () =>
       ministries.filter((m: any) =>
@@ -249,6 +149,13 @@ export default function Ministries({ user }: any) {
   console.log(filtered);
   const getVolunteerCount = (ministry: any) => {
     return ministry.volunteers?.length || 0;
+  };
+
+  const resetCreateForm = () => {
+    setName("");
+    setIcon("Church");
+    setType("LITURGICAL");
+    setSelectedParent(null);
   };
 
   // const canViewMembers = (ministry: any) => {
@@ -263,15 +170,46 @@ export default function Ministries({ user }: any) {
       const res = await fetch("/api/ministries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, icon, type }),
+        body: JSON.stringify({
+          name,
+          icon,
+          type,
+          parentId: selectedParent?.id || undefined,
+        }),
       });
+
       if (!res.ok) throw new Error();
       setOpenCreate(false);
-      setName("");
+      resetCreateForm();
       queryClient.invalidateQueries({ queryKey: ["ministries"] });
       toast.success("Ministry created successfully");
     } catch (err) {
       toast.error("Failed to create ministry");
+    }
+  }
+
+  async function createSubministry() {
+    if (!creatingSubFor) return;
+    try {
+      const res = await fetch("/api/ministries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          icon,
+          type,
+          parentId: creatingSubFor.id,
+        }),
+      });
+
+      if (!res.ok) throw new Error();
+      setOpenCreateSub(false);
+      resetCreateForm();
+      setCreatingSubFor(null);
+      queryClient.invalidateQueries({ queryKey: ["ministries"] });
+      toast.success("Subministry created successfully");
+    } catch (err) {
+      toast.error("Failed to create subministry");
     }
   }
 
@@ -413,6 +351,19 @@ export default function Ministries({ user }: any) {
                           <Button
                             size="icon"
                             variant="ghost"
+                            className="text-green-400"
+                            onClick={() => {
+                              setCreatingSubFor(m);
+                              resetCreateForm();
+                              setOpenCreateSub(true);
+                            }}
+                            title="Create subministry"
+                          >
+                            <PlusIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             className="text-blue-400"
                             onClick={() => {
                               setSelected(m);
@@ -471,6 +422,17 @@ export default function Ministries({ user }: any) {
                       <CardTitle className="text-xl text-white group-hover:text-blue-300 transition-colors">
                         {ministry.name}
                       </CardTitle>
+
+                      {/* SUBMINISTRY INFO */}
+                      {ministry.parent && (
+                        <p className="text-sm text-blue-300/50 mt-1">
+                          Subministry of{" "}
+                          <span className="font-semibold">
+                            {ministry.parent.name}
+                          </span>
+                        </p>
+                      )}
+
                       <div className="flex items-center gap-2 mt-2">
                         <MinistryTypeBadge type={ministry.type} />
                       </div>
@@ -481,6 +443,19 @@ export default function Ministries({ user }: any) {
                       </span>
                       {canManage && (
                         <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-400 hover:bg-green-500/20"
+                            onClick={() => {
+                              setCreatingSubFor(ministry);
+                              resetCreateForm();
+                              setOpenCreateSub(true);
+                            }}
+                            title="Create subministry"
+                          >
+                            <PlusIcon className="w-3.5 h-3.5" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -577,6 +552,30 @@ export default function Ministries({ user }: any) {
                 className="bg-blue-500/5 border-blue-500/20 rounded-xl focus:ring-blue-500/40"
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-blue-300/70 ml-1">
+                Icon
+              </label>
+              <div className="grid grid-cols-4 gap-2 bg-blue-500/5 p-3 rounded-xl border border-blue-500/20">
+                {ICON_OPTIONS.map((option) => {
+                  const IsSelected = option.icon;
+                  return (
+                    <button
+                      key={option.name}
+                      onClick={() => setIcon(option.name)}
+                      className={`p-2 rounded-lg transition-all flex items-center justify-center ${
+                        icon === option.name
+                          ? "bg-blue-600 ring-2 ring-blue-400"
+                          : "bg-blue-500/10 hover:bg-blue-500/20"
+                      }`}
+                      title={option.name}
+                    >
+                      <IsSelected className="w-5 h-5 text-blue-400" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
           <Button
             onClick={createMinistry}
@@ -587,7 +586,142 @@ export default function Ministries({ user }: any) {
         </DialogContent>
       </Dialog>
 
-      {/* ... similar updates for Edit and Delete Dialogs ... */}
+      {/* CREATE SUBMINISTRY DIALOG */}
+      <Dialog open={openCreateSub} onOpenChange={setOpenCreateSub}>
+        <DialogContent className="bg-[#0f172a] border-green-500/30 backdrop-blur-2xl text-white rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-green-400">
+              Create Subministry
+            </DialogTitle>
+            <DialogDescription className="text-blue-100/50">
+              Add a sub-group under{" "}
+              <span className="text-green-400 font-semibold">
+                {creatingSubFor?.name}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <Button
+              variant={type === "LITURGICAL" ? "default" : "outline"}
+              onClick={() => setType("LITURGICAL")}
+              className={
+                type === "LITURGICAL"
+                  ? "bg-green-600 hover:bg-green-500"
+                  : "border-green-500/30 text-green-400"
+              }
+            >
+              Liturgical
+            </Button>
+            <Button
+              variant={type === "PASTORAL" ? "default" : "outline"}
+              onClick={() => setType("PASTORAL")}
+              className={
+                type === "PASTORAL"
+                  ? "bg-green-600 hover:bg-green-500"
+                  : "border-green-500/30 text-green-400"
+              }
+            >
+              Pastoral
+            </Button>
+          </div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-green-300/70 ml-1">
+                Subministry Name
+              </label>
+              <Input
+                placeholder="e.g. Senior Altar Servers"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-green-500/5 border-green-500/20 rounded-xl focus:ring-green-500/40"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-green-300/70 ml-1">
+                Icon
+              </label>
+              <div className="grid grid-cols-4 gap-2 bg-green-500/5 p-3 rounded-xl border border-green-500/20">
+                {ICON_OPTIONS.map((option) => {
+                  const IsSelected = option.icon;
+                  return (
+                    <button
+                      key={option.name}
+                      onClick={() => setIcon(option.name)}
+                      className={`p-2 rounded-lg transition-all flex items-center justify-center ${
+                        icon === option.name
+                          ? "bg-green-600 ring-2 ring-green-400"
+                          : "bg-green-500/10 hover:bg-green-500/20"
+                      }`}
+                      title={option.name}
+                    >
+                      <IsSelected className="w-5 h-5 text-green-400" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <Button
+            onClick={createSubministry}
+            className="w-full h-12 bg-green-600 hover:bg-green-500 text-lg font-semibold rounded-xl transition-all shadow-lg shadow-green-600/20"
+          >
+            Create Subministry
+          </Button>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={openDelete} onOpenChange={setOpenDelete}>
+        <DialogContent className="bg-[#0f172a] border-red-500/30 backdrop-blur-2xl text-white rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-red-400 flex items-center gap-2">
+              <AlertTriangle className="w-6 h-6" />
+              Delete Ministry
+            </DialogTitle>
+
+            <DialogDescription className="text-blue-100/50">
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-3">
+            <p className="text-blue-200/70">You are about to delete:</p>
+
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+              <p className="text-lg font-semibold text-red-300">
+                {deleting?.name}
+              </p>
+
+              {deleting?.parent && (
+                <p className="text-sm text-red-300/60 mt-1">
+                  Subministry of{" "}
+                  <span className="font-semibold">{deleting.parent.name}</span>
+                </p>
+              )}
+            </div>
+
+            <p className="text-sm text-red-300/70">
+              All related assignments and references may be affected.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <Button
+              variant="ghost"
+              className="flex-1 border border-blue-500/20 text-blue-300 hover:bg-blue-500/10"
+              onClick={() => setOpenDelete(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={confirmDelete}
+              className="flex-1 bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Permanently
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

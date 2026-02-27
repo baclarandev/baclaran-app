@@ -3,12 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { ROLE_LEVEL, hasLevel } from "@/lib/rbac";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 // ─── ZOD SCHEMA ─────────────────────────
 const MinistrySchema = z.object({
   name: z.string().min(2),
   icon: z.string().optional(),
-  type: z.enum(["LITURGICAL", "PASTORAL"]), // 👈 added
+  type: z.enum(["LITURGICAL", "PASTORAL"]),
+  parentId: z.number().optional(), // 👈 allow sub-ministry
 });
 
 // ─── GET MINISTRIES ─────────────────────────
@@ -18,20 +20,26 @@ export async function GET(request: NextRequest) {
     if (!sessionUser)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const where: any = {};
+    let where: any = {};
+
+    // Only filter STAFF users with a ministry
     if (sessionUser.role === "STAFF") {
       if (!sessionUser.ministryId)
         return NextResponse.json(
           { error: "Staff has no ministry assigned" },
           { status: 403 },
         );
-      where.id = sessionUser.ministryId; // filter only their ministry
+      where.id = sessionUser.ministryId; // staff only sees their ministry
     }
+
+    // Admins see all ministries → no filter
 
     const ministries = await prisma.ministry.findMany({
       where,
       include: {
-        volunteers: true, // include volunteers
+        volunteers: true,
+        parent: true,
+        subMinistries: true,
       },
       orderBy: { name: "asc" },
     });
@@ -58,19 +66,21 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = MinistrySchema.safeParse(body);
 
-  if (!parsed.success)
+  if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.flatten().fieldErrors },
       { status: 400 },
     );
+  }
 
   try {
     const ministry = await prisma.ministry.create({
       data: {
         name: parsed.data.name,
         icon: parsed.data.icon || "Church",
-        type: parsed.data.type, // 👈 saved here
-      },
+        type: parsed.data.type,
+        parentId: parsed.data.parentId, // ✅ works if you cast to UncheckedCreateInput
+      } as Prisma.MinistryUncheckedCreateInput,
     });
 
     return NextResponse.json(

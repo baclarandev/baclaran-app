@@ -75,14 +75,18 @@ model VolunteerMinistryHistory {
 }
 
 model Ministry {
-  id           Int                        @id @default(autoincrement())
-  name         String                     @unique
-  icon         String                     @default("Church")
-  type         MinistryType?
-  massBookings MassBooking[]
-  users        User[]
-  attendance   VolunteerAttendance[]
-  volunteers   VolunteerMinistryHistory[]
+  id            Int                        @id @default(autoincrement())
+  name          String                     @unique
+  icon          String                     @default("Church")
+  type          MinistryType?
+  parentId      Int?
+  Event         Event[]
+  massBookings  MassBooking[]
+  parent        Ministry?                  @relation("MinistryHierarchy", fields: [parentId], references: [id], onUpdate: NoAction, map: "ministry_parent_fk")
+  subMinistries Ministry[]                 @relation("MinistryHierarchy")
+  users         User[]
+  attendance    VolunteerAttendance[]
+  volunteers    VolunteerMinistryHistory[]
 }
 
 model VolunteerAttendance {
@@ -158,6 +162,8 @@ model Event {
   createdAt   DateTime          @default(now())
   title       String
   status      EventStatus       @default(UPCOMING)
+  ministryId  Int?
+  Ministry    Ministry?         @relation(fields: [ministryId], references: [id], onUpdate: NoAction)
   attendance  EventAttendance[]
   volunteers  EventVolunteer[]
 }
@@ -171,12 +177,16 @@ model EventVolunteer {
 }
 
 model EventAttendance {
-  id          Int              @id @default(autoincrement())
+  id          Int                  @id @default(autoincrement())
   eventId     Int
   volunteerId Int
-  status      AttendanceStatus @default(PENDING)
-  event       Event            @relation(fields: [eventId], references: [id])
-  volunteer   Volunteer        @relation(fields: [volunteerId], references: [id])
+  status      AttendanceStatus     @default(PENDING)
+  session     String?
+  response    attendance_response? @default(NO_RESPONSE)
+  event       Event                @relation(fields: [eventId], references: [id])
+  volunteer   Volunteer            @relation(fields: [volunteerId], references: [id])
+
+  @@unique([eventId, volunteerId, session], map: "volunteer_attendance_unique")
 }
 
 model VolunteerFormation {
@@ -249,4 +259,17 @@ enum EventStatus {
   ONGOING
   COMPLETED
   CANCELLED
+}
+
+enum attendance_response {
+  ON_LEAVE
+  EXCUSE
+  CAN_ATTEND
+  CANT_ATTEND
+  NO_RESPONSE
+}
+
+enum event_session {
+  AM
+  PM
 }

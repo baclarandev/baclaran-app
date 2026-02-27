@@ -42,7 +42,7 @@ export default function MinistryInfo({
         .includes(search.toLowerCase()),
     );
   }, [volunteers, search]);
-  console.log(filtered, "data here");
+
   return (
     <div className="w-full min-h-screen bg-neutral-900 text-gray-100">
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />

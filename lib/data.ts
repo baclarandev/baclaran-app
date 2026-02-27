@@ -38,6 +38,8 @@ export interface Volunteer {
   occupation?: string;
   ministryId: string;
   ministryName: string;
+  subMinistryName?: string;
+  subMinistryId?: string;
   status: VolunteerStatus;
   profilePicture?: string;
   appliedDate?: string;
