@@ -49,7 +49,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     console.log("🧾 RAW BODY:", body);
 
-    const { title, description, startDate, endDate, startTime, endTime } = body;
+    const {
+      title,
+      description,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      ministryId,
+    } = body;
 
     if (!title || !startDate || !endDate || !startTime || !endTime) {
       return NextResponse.json(
@@ -74,6 +82,7 @@ export async function POST(req: Request) {
         startTime,
         endTime,
         status, // 🔥 DB-driven status
+        ministryId: ministryId ?? null,
         archived: false,
       },
     });
