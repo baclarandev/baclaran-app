@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/native-select";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar } from "lucide-react";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Header } from "@/components/layout/header";
+
 
 interface VolunteerAttendance {
   id: number;
@@ -36,8 +39,8 @@ interface Event {
   attendance: VolunteerAttendance[];
 }
 
-// ---------------- API ----------------
-const fetchEvent = async (id: string): Promise<Event> => {
+export default function EventInfo({ eventId, user }: { eventId: string; user: any }) {
+    const fetchEvent = async (id: string): Promise<Event> => {
   const res = await fetch(`/api/events/${id}`);
   if (!res.ok) throw new Error("Failed to fetch event");
   return res.json();
@@ -58,16 +61,9 @@ const updateAttendanceApi = async ({
   if (!res.ok) throw new Error("Failed to update attendance");
   return res.json();
 };
-
-// ---------------- Component ----------------
-export default function EventAttendance({
-  params,
-}: {
-  params: { eventId: string };
-}) {
-  const { eventId } = params;
-  const queryClient = useQueryClient();
-
+    
+     const queryClient = useQueryClient();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   // Fetch Event
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", eventId],
@@ -117,11 +113,13 @@ export default function EventAttendance({
   };
 
   if (isLoading) return <p>Loading...</p>;
-
   return (
-    <div className="flex flex-col md:ml-64 p-6">
-      {/* Event Info */}
-      <Card className="mb-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
+
+     <div className="h-screen w-full ">
+          <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
+          <div className="flex-1  flex flex-col md:ml-64">
+            <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+      <Card className="mb-6 m-6 p-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
         <CardHeader>
           <CardTitle>
             <Calendar className="inline w-5 h-5 mr-2" /> {event?.title}
@@ -138,7 +136,7 @@ export default function EventAttendance({
       </Card>
 
       {/* Attendance Table */}
-      <Card className="bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
+      <Card className="bg-blue-500/10 m-6 p-6 border border-blue-500/30 text-white backdrop-blur-md">
         <CardHeader>
           <CardTitle>Volunteers Attendance</CardTitle>
         </CardHeader>
@@ -242,6 +240,8 @@ export default function EventAttendance({
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div></div>
+
+
+  )
 }

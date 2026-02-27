@@ -272,7 +272,7 @@ export default function Events({ user }: any) {
                   All Ministries
                 </NativeSelectOption>
                 {ministries.map((m: any) => (
-                  <NativeSelectOption key={m.id} value={m.id}>
+                  <NativeSelectOption className="bg-blue-600/20" key={m.id} value={m.id}>
                     {m.name}
                   </NativeSelectOption>
                 ))}
@@ -288,6 +288,7 @@ export default function Events({ user }: any) {
 
               <Label>Start Date & Time</Label>
               <Input
+                className="text-white bg-blue-900/30 border border-blue-500/30"
                 type="datetime-local"
                 value={form.startDate + "T" + form.startTime}
                 onChange={(e) => {
@@ -299,6 +300,7 @@ export default function Events({ user }: any) {
               <Label>End Date & Time</Label>
               <Input
                 type="datetime-local"
+                className="text-white bg-blue-900/30 border border-blue-500/30"
                 value={form.endDate + "T" + form.endTime}
                 onChange={(e) => {
                   const [date, time] = e.target.value.split("T");

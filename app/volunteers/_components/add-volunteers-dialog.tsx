@@ -83,7 +83,7 @@ const FormDataSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email"),
-  sex: z.enum(["male", "female", "other"], "Please select sex"),
+  sex: z.enum(["male", "female"], "Please select sex"),
   civilStatus: z.string().min(1, "Civil status is required"),
   ministryIds: z.array(z.number()).min(1, "Select at least one ministry"),
   formations: z.array(
@@ -440,10 +440,9 @@ export function AddVolunteerDialog({
       joinedYear: formData.joinedYear ? Number(formData.joinedYear) : null,
       sex:
         formData.sex === "male"
-          ? "Male"
-          : formData.sex === "female"
-            ? "Female"
-            : "Other",
+          ? "Male": formData.sex === "female" ? "Female" : null,  
+ 
+  
       civilStatus: formData.civilStatus,
       occupation: formData.occupation || null,
       status: "ACTIVE",
