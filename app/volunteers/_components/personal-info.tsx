@@ -140,7 +140,7 @@ export function PersonalInfoStep({
         <div className="space-y-2">
           <Label>Sex</Label>
           <div className="flex gap-4 pt-2">
-            {["male", "female", "other"].map((sex) => (
+            {["male", "female",].map((sex) => (
               <label
                 key={sex}
                 className="flex items-center gap-2 cursor-pointer"

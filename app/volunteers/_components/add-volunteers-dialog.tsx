@@ -557,7 +557,7 @@ export function AddVolunteerDialog({
           {/* Step 1: Personal Info */}
           {currentStep === 1 && (
             <div>
-              <ExistingVolunteerSelector
+              {/* <ExistingVolunteerSelector
                 volunteers={volunteers}
                 isExistingVolunteer={isExistingVolunteer}
                 selectedVolunteer={selectedVolunteer}
@@ -565,7 +565,7 @@ export function AddVolunteerDialog({
                 onModeToggle={handleModeToggle}
                 onSelectVolunteer={handleVolunteerSelect}
                 onOpenComboboxChange={setOpenCombobox}
-              />
+              /> */}
 
               {!isExistingVolunteer && (
                 <div className="space-y-4 mt-4 animate-in fade-in duration-300">
