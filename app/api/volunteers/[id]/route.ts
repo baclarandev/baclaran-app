@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { generateVolunteerCode } from "@/app/lib/generate-volunteer-code";
+import { getRootMinistryId } from "@/lib/get-root-ministry";
+
+const currentYear = new Date().getFullYear();
 
 // ---------------- GET SINGLE VOLUNTEER ----------------
 export async function GET(
@@ -13,7 +17,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const params = await context.params;
-    const id = Number(params.id);
+    const id = Number((await params).id);
     if (!id || isNaN(id))
       return NextResponse.json(
         { error: "Invalid volunteer ID" },
@@ -41,7 +45,6 @@ export async function GET(
 
     return NextResponse.json({
       ...volunteer,
-      joinedYear: volunteer.joinedYear ?? new Date().getFullYear().toString(),
       ministryName:
         volunteer.ministryHistories[0]?.ministry?.name ?? "No Ministry",
     });
@@ -54,58 +57,45 @@ export async function GET(
   }
 }
 
+// ---------------- PATCH (partial update) ----------------
 export async function PATCH(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   const sessionUser = await getSession();
-
-  if (!sessionUser) {
+  if (!sessionUser)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   try {
     const params = await context.params;
-    const volunteerId = Number(params.id);
+    const volunteerId = Number((await params).id);
 
-    if (!volunteerId || isNaN(volunteerId)) {
+    if (!volunteerId || isNaN(volunteerId))
       return NextResponse.json(
         { error: "Invalid volunteer ID" },
         { status: 400 },
       );
-    }
 
-    // 🔍 Fetch volunteer + active ministry
     const volunteer = await prisma.volunteer.findUnique({
       where: { id: volunteerId },
-      include: {
-        ministryHistories: {
-          where: { status: "ACTIVE" },
-          include: { ministry: true },
-        },
-      },
+      include: { ministryHistories: { where: { status: "ACTIVE" } } },
     });
 
-    if (!volunteer) {
+    if (!volunteer)
       return NextResponse.json(
         { error: "Volunteer not found" },
         { status: 404 },
       );
-    }
 
     const volunteerMinistryId = volunteer.ministryHistories[0]?.ministryId;
-
-    // 🔐 AUTHORIZATION
     const isAdmin = sessionUser.role === "ADMIN";
     const isStaffOfSameMinistry =
       sessionUser.role === "STAFF" &&
       sessionUser.ministryId === volunteerMinistryId;
 
-    if (!isAdmin && !isStaffOfSameMinistry) {
+    if (!isAdmin && !isStaffOfSameMinistry)
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
-    // ✅ Partial update payload
     const body = await req.json();
     const data: any = {};
 
@@ -117,23 +107,42 @@ export async function PATCH(
     if (body.profilePicture !== undefined)
       data.profilePicture = body.profilePicture;
     if (body.nickname !== undefined) data.nickname = body.nickname;
-    if (body.dateOfBirth) {
-      data.dateOfBirth = new Date(body.dateOfBirth);
-    }
-    if (body.joinedYear !== undefined) {
-      data.joinedYear = body.joinedYear.toString();
-    }
-    if (body.joinedYear !== undefined) {
-      data.joinedYear = body.joinedYear.toString();
+    if (body.dateOfBirth) data.dateOfBirth = new Date(body.dateOfBirth);
+    if (body.volunteerClassification !== undefined)
+      data.volunteerClassification = body.volunteerClassification;
 
-      // Generate volunteerCode: SC-{joinedYear}-{ID padded 4 digits}
-      data.volunteerCode = `SC-${data.joinedYear}-${volunteerId
-        .toString()
-        .padStart(4, "0")}`;
+    // Update timelines if provided
+    if (body.timelines !== undefined && Array.isArray(body.timelines)) {
+      data.timelines = {
+        deleteMany: { volunteerId }, // remove old timelines
+        createMany: {
+          data: body.timelines.map((t: any) => ({
+            ...t,
+            totalYears: (t.endYear ?? currentYear) - t.startYear + 1,
+          })),
+        },
+      };
     }
+
+    // Handle joinedYearShrine update and regenerate volunteerCode
+    if (body.joinedYearShrine !== undefined) {
+      const rootMinistryId = await getRootMinistryId(volunteerMinistryId!);
+      const { volunteerCode, joinedYear } = await generateVolunteerCode(
+        rootMinistryId,
+        body.joinedYearShrine,
+      );
+      data.volunteerCode = volunteerCode;
+      data.joinedYearShrine = joinedYear;
+    }
+
+    if (body.joinedYearMinistry !== undefined) {
+      data.joinedYearMinistry = body.joinedYearMinistry;
+    }
+
     const updated = await prisma.volunteer.update({
       where: { id: volunteerId },
       data,
+      include: { timelines: true },
     });
 
     return NextResponse.json(updated);
@@ -146,14 +155,15 @@ export async function PATCH(
   }
 }
 
-// ---------------- PUT ----------------
+// ---------------- PUT (full update) ----------------
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
     const params = await context.params;
-    const id = Number(params.id);
+    const id = Number((await params).id);
+
     if (!id || isNaN(id))
       return NextResponse.json(
         { error: "Invalid volunteer ID" },
@@ -161,12 +171,16 @@ export async function PUT(
       );
 
     const body = await req.json();
-    if (!body.firstName || !body.lastName || !body.email) {
+    if (!body.firstName || !body.lastName || !body.email)
       return NextResponse.json(
         { error: "firstName, lastName, email required" },
         { status: 400 },
       );
-    }
+
+    const volunteer = await prisma.volunteer.findUnique({
+      where: { id },
+      include: { ministryHistories: true }, // ✅ include relations
+    });
 
     const data: any = {
       firstName: body.firstName,
@@ -181,12 +195,43 @@ export async function PUT(
       profilePicture: body.profilePicture ?? null,
       status: body.status ?? "ACTIVE",
       sacraments: body.sacraments ?? [],
-      joinedYear:
-        body.joinedYear?.toString() ?? new Date().getFullYear().toString(),
+      volunteerClassification: body.volunteerClassification ?? "REGULAR",
+      joinedYearShrine: body.joinedYearShrine ?? currentYear,
+      joinedYearMinistry: body.joinedYearMinistry ?? currentYear,
       dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
+      classification: body.volunteerClassification ?? "REGULAR",
     };
 
-    const updated = await prisma.volunteer.update({ where: { id }, data });
+    // Update timelines if provided
+    if (body.timelines !== undefined && Array.isArray(body.timelines)) {
+      data.timelines = {
+        deleteMany: { volunteerId: id },
+        createMany: {
+          data: body.timelines.map((t: any) => ({
+            ...t,
+            totalYears: (t.endYear ?? currentYear) - t.startYear + 1,
+          })),
+        },
+      };
+    }
+
+    // Re-generate volunteerCode for PUT
+    if (volunteer && volunteer.ministryHistories?.length) {
+      const rootMinistryId = await getRootMinistryId(
+        volunteer.ministryHistories[0].ministryId,
+      );
+      const { volunteerCode } = await generateVolunteerCode(
+        rootMinistryId,
+        body.joinedYearShrine ?? currentYear,
+      );
+      data.volunteerCode = volunteerCode;
+    }
+
+    const updated = await prisma.volunteer.update({
+      where: { id },
+      data,
+      include: { timelines: true },
+    });
     return NextResponse.json({ success: true, data: updated });
   } catch (err: any) {
     console.error("[UPDATE_VOLUNTEER_ERROR]", err);
@@ -204,22 +249,20 @@ export async function DELETE(
 ) {
   try {
     const params = await context.params;
-    const id = Number(params.id);
+    const id = Number((await params).id);
 
-    if (!id || isNaN(id)) {
+    if (!id || isNaN(id))
       return NextResponse.json(
         { error: "Invalid volunteer ID" },
         { status: 400 },
       );
-    }
 
     const volunteer = await prisma.volunteer.findUnique({ where: { id } });
-    if (!volunteer) {
+    if (!volunteer)
       return NextResponse.json(
         { error: "Volunteer not found" },
         { status: 404 },
       );
-    }
 
     await prisma.volunteer.update({
       where: { id },

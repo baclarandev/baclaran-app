@@ -88,7 +88,7 @@ const Page = () => {
             <h1 className="text-4xl lg:text-5xl font-light leading-tight">
               Welcome to{" "}
               <span className="font-semibold text-blue-300">
-             National Shrine of Our Mother of Perpetual Help
+                National Shrine of Our Mother of Perpetual Help
               </span>{" "}
             </h1>
             <p className="text-lg text-stone-300 leading-relaxed">
@@ -231,7 +231,8 @@ const Page = () => {
           </Card>
 
           <p className="text-center text-stone-500 text-xs mt-6">
-            © Baclaran Church. All rights reserved.
+            © National Shrine of Our Mother of Perpetual Help. All rights
+            reserved.
           </p>
         </div>
       </div>

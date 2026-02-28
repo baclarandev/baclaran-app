@@ -38,8 +38,8 @@ function getClientIP(req: Request): string {
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "superrefreshkey";
 
-const ACCESS_EXPIRES = "55m"; // access token life
-const REFRESH_EXPIRES = "7d"; // refresh token life in JWT (not DB exp)
+const ACCESS_EXPIRES = "45d"; // Access token expires in 45 days (optional, usually shorter for security)
+const REFRESH_EXPIRES = "45d"; // Refresh token expires in 45 days
 
 // ================= LOGIN ROUTE ================= //
 
@@ -95,8 +95,7 @@ export async function POST(req: NextRequest) {
     });
 
     // ----- SAVE REFRESH TOKEN IN DB -----
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
+    const expiresAt = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000); // 45 days in milliseconds
     await prisma.refreshToken.create({
       data: {
         token: refreshToken,
@@ -124,7 +123,7 @@ export async function POST(req: NextRequest) {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24, // 1 day
+      maxAge: 60 * 60 * 24 * 45,
     });
 
     // ----- SET REFRESH TOKEN COOKIE -----
@@ -135,7 +134,7 @@ export async function POST(req: NextRequest) {
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 45,
     });
 
     return response;

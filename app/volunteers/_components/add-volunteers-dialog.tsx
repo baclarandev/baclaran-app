@@ -34,7 +34,10 @@ import { TimelinesSection } from "./timeline-section";
 import { FormationsSection } from "./formation-section";
 import { ReviewStep } from "./review-step";
 import { DialogActions } from "./dialog-actions";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 
 interface FormData {
   lastName: string;
@@ -45,7 +48,7 @@ interface FormData {
   address: string;
   dob: string;
   sex: string;
-  joinedYear?: string;
+  joinedYearShrine?: string;
   ministryIds: number[];
   sacraments: string[];
   profilePicture: string;
@@ -54,7 +57,8 @@ interface FormData {
   marriageType?: "CHURCH" | "CIVIL" | "";
   nickname: string;
   selectedSubMinistryId?: number; // ✅ add this
-    joinedYearMinistry?: string; // ✅ add this
+  joinedYearMinistry?: string; // ✅ add this
+  classification?: "REGULAR" | "SEASONAL";
 }
 
 interface AddVolunteerDialogProps {
@@ -75,7 +79,7 @@ export interface Staff {
 
 interface Timeline {
   organization: string;
-    parish?: string;
+  parish?: string;
   startYear: number;
   endYear?: number;
   totalYears: number;
@@ -102,6 +106,7 @@ const FormDataSchema = z.object({
   nickname: z.string().optional(),
   timelines: z.array(
     z.object({
+      parish: z.string().optional(),
       organization: z.string().min(1, "Organization required"),
       startYear: z
         .number()
@@ -125,7 +130,7 @@ export function AddVolunteerDialog({
 }: AddVolunteerDialogProps) {
   // Data fetching
   const { data: ministries = [] } = useMinistries();
-  const { data: volunteers = [] } = useVolunteers();
+
   const createVolunteer = useCreateVolunteer();
 
   // Step management
@@ -152,7 +157,8 @@ export function AddVolunteerDialog({
     address: "",
     dob: "",
     sex: "",
-    joinedYear: "",
+    joinedYearShrine: "",
+    joinedYearMinistry: "",
     nickname: "",
     civilStatus: "",
     occupation: "",
@@ -160,7 +166,7 @@ export function AddVolunteerDialog({
     sacraments: [],
     profilePicture: "",
     marriageType: "",
-    joinedYearMinistry: "",
+    classification: "REGULAR",
   });
 
   // Image upload
@@ -213,14 +219,14 @@ export function AddVolunteerDialog({
         address: "",
         dob: "",
         sex: "",
-        joinedYear: "",
+        joinedYearMinistry: "",
         nickname: "",
         civilStatus: "",
         occupation: "",
         ministryIds: [],
         sacraments: [],
         profilePicture: "",
-        joinedYearMinistry: "",
+        joinedYearShrine: "",
       });
     }
   };
@@ -240,7 +246,12 @@ export function AddVolunteerDialog({
         : "",
       civilStatus: volunteer.civilStatus || "",
       occupation: volunteer.occupation || "",
-      joinedYear: volunteer.joinedYear ? String(volunteer.joinedYear) : "",
+      joinedYearShrine: volunteer.joinedYearShrine
+        ? String(volunteer.joinedYearShrine)
+        : "",
+      joinedYearMinistry: volunteer.joinedYearMinistry
+        ? String(volunteer.joinedYearMinistry)
+        : "",
       sex: volunteer.sex.toLowerCase(),
       ministryIds: [],
       nickname: volunteer.nickname || "",
@@ -297,46 +308,46 @@ export function AddVolunteerDialog({
       (!t.endYear || t.endYear >= t.startYear),
   );
 
-const updateTimeline = (
-  list: Timeline[],
-  setList: (list: Timeline[]) => void,
-  index: number,
-  field: "organization" | "parish" | "startYear" | "endYear",
-  value: any,
-) => {
-  const copy = [...list];
+  const updateTimeline = (
+    list: Timeline[],
+    setList: (list: Timeline[]) => void,
+    index: number,
+    field: "organization" | "parish" | "startYear" | "endYear",
+    value: any,
+  ) => {
+    const copy = [...list];
 
-  copy[index] = {
-    ...copy[index],
-    [field]: value,
-    totalYears:
-      field === "startYear" || field === "endYear"
-        ? computeTotal(
-            field === "startYear" ? value : copy[index].startYear,
-            field === "endYear" ? value : copy[index].endYear,
-          )
-        : copy[index].totalYears,
+    copy[index] = {
+      ...copy[index],
+      [field]: value,
+      totalYears:
+        field === "startYear" || field === "endYear"
+          ? computeTotal(
+              field === "startYear" ? value : copy[index].startYear,
+              field === "endYear" ? value : copy[index].endYear,
+            )
+          : copy[index].totalYears,
+    };
+
+    setList(copy);
   };
-
-  setList(copy);
-};
 
   const addTimeline = (type: TimelineType) => {
-  const newTimeline: Timeline = {
-    organization: "",
-    parish: "", // ✅ add this
-    startYear: new Date().getFullYear(),
-    endYear: undefined,
-    totalYears: 1,
-    type,
-  };
+    const newTimeline: Timeline = {
+      organization: "",
+      parish: "", // ✅ add this
+      startYear: new Date().getFullYear(),
+      endYear: undefined,
+      totalYears: 1,
+      type,
+    };
 
-  if (type === "SHRINE") {
-    setShrineTimelines([...shrineTimelines, newTimeline]);
-  } else {
-    setOutsideTimelines([...outsideTimelines, newTimeline]);
-  }
-};
+    if (type === "SHRINE") {
+      setShrineTimelines([...shrineTimelines, newTimeline]);
+    } else {
+      setOutsideTimelines([...outsideTimelines, newTimeline]);
+    }
+  };
 
   const removeTimeline = (
     list: Timeline[],
@@ -397,10 +408,16 @@ const updateTimeline = (
         ? formData.ministryIds.length > 0
         : staffMinistryIds.length > 0;
 
-      const joinedYearValid =
-        formData.joinedYear !== "" && formData.joinedYear !== null;
+      const joinedYearShrineValid =
+        formData.joinedYearShrine !== "" && formData.joinedYearShrine !== null;
 
-      return ministriesValid && joinedYearValid;
+      const joinedYearMinistryValid =
+        formData.joinedYearMinistry !== "" &&
+        formData.joinedYearMinistry !== null;
+
+      return (
+        ministriesValid && joinedYearShrineValid && joinedYearMinistryValid
+      );
     }
     return true;
   }, [currentStep, formData, isExistingVolunteer, selectedVolunteer]);
@@ -426,12 +443,12 @@ const updateTimeline = (
     : user?.ministry?.id
       ? [user.ministry.id]
       : [];
-const computeYearsFromJoined = (year?: string | number | null) => {
-  if (!year) return 0;
-  const parsed = Number(year);
-  if (isNaN(parsed)) return 0;
-  return CURRENT_YEAR - parsed + 1;
-};
+  const computeYearsFromJoined = (year?: string | number | null) => {
+    if (!year) return 0;
+    const parsed = Number(year);
+    if (isNaN(parsed)) return 0;
+    return CURRENT_YEAR - parsed + 1;
+  };
   const handleSubmit = async () => {
     // Determine ministry IDs for payload
     const mainMinistryId: number | undefined = isAdmin
@@ -451,12 +468,19 @@ const computeYearsFromJoined = (year?: string | number | null) => {
       lastName: formData.lastName,
       middleInitial: formData.middleInitial || null,
       email: formData.email,
-      joinedYear: formData.joinedYear ? Number(formData.joinedYear) : null,
+      joinedYearShrine: formData.joinedYearShrine
+        ? Number(formData.joinedYearShrine)
+        : null,
+      joinedYearMinistry: formData.joinedYearMinistry
+        ? Number(formData.joinedYearMinistry)
+        : null,
       sex:
         formData.sex === "male"
-          ? "Male": formData.sex === "female" ? "Female" : null,  
- 
-  
+          ? "Male"
+          : formData.sex === "female"
+            ? "Female"
+            : null,
+      classification: formData.classification ?? "REGULAR",
       civilStatus: formData.civilStatus,
       occupation: formData.occupation || null,
       status: "ACTIVE",
@@ -482,6 +506,7 @@ const computeYearsFromJoined = (year?: string | number | null) => {
     // Attach timelines if valid
     if (validTimelines.length > 0) {
       payload.timelines = validTimelines.map((t) => ({
+        parish: t.parish?.trim() || null,
         organization: t.organization.trim(),
         startYear: Number(t.startYear),
         endYear: t.endYear ? Number(t.endYear) : undefined,
@@ -629,123 +654,142 @@ const computeYearsFromJoined = (year?: string | number | null) => {
               />
 
               {/* {!isExistingVolunteer && ( */}
-                <>
-                 <div>
-                  <label>Volunteer Classification</label><NativeSelect className="bg-gray-700 border border-gray-600">
-                   <NativeSelectOption className="bg-blue-400/10">Regular</NativeSelectOption> <NativeSelectOption className="bg-neutral-900">Seasonal</NativeSelectOption>  </NativeSelect></div>
+              <>
+                <div>
+                  <label>Volunteer Classification</label>
+                  <NativeSelect
+                    value={formData.classification}
+                    onChange={(e) =>
+                      updateFormData("classification", e.target.value)
+                    }
+                    className="bg-gray-700 border border-gray-600"
+                  >
+                    <NativeSelectOption value="REGULAR">
+                      Regular
+                    </NativeSelectOption>
+
+                    <NativeSelectOption value="SEASONAL">
+                      Seasonal
+                    </NativeSelectOption>
+                  </NativeSelect>
+                </div>
                 <div className="space-y-2">
-  <label htmlFor="joinedYearShrine" className="text-sm font-medium">
-    Joined Year on Shrine
-  </label>
+                  <label
+                    htmlFor="joinedYearShrine"
+                    className="text-sm font-medium"
+                  >
+                    Joined Year on Shrine
+                  </label>
 
-  <div className="flex items-center gap-3">
-    <select
-      id="joinedYearShrine"
-      value={formData.joinedYear ?? ""}
-      onChange={(e) =>
-        updateFormData(
-          "joinedYear",
-          e.target.value === "" ? null : Number(e.target.value),
-        )
-      }
-      className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
-    >
-      <option value="">Select Year</option>
-      {YEARS.map((year) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-    </select>
+                  <div className="flex items-center gap-3">
+                    <select
+                      id="joinedYearShrine"
+                      value={formData.joinedYearShrine ?? ""}
+                      onChange={(e) =>
+                        updateFormData(
+                          "joinedYearShrine",
+                          e.target.value === "" ? null : Number(e.target.value),
+                        )
+                      }
+                      className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
+                    >
+                      <option value="">Select Year</option>
+                      {YEARS.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
 
-    {formData.joinedYear && (
-      <span className="text-sm text-blue-400 whitespace-nowrap">
-        {computeYearsFromJoined(formData.joinedYear)} yrs
-      </span>
-    )}
-  </div>
-</div>
-                  <div className="space-y-2">
-  <label
-    htmlFor="joinedYearMinistry"
-    className="text-sm font-medium"
-  >
-    Joined Year on Ministry
-  </label>
+                    {formData.joinedYearShrine && (
+                      <span className="text-sm text-blue-400 whitespace-nowrap">
+                        {computeYearsFromJoined(formData.joinedYearShrine)} yrs
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="joinedYearMinistry"
+                    className="text-sm font-medium"
+                  >
+                    Joined Year on Ministry
+                  </label>
 
-  <div className="flex items-center gap-3">
-    <select
-      id="joinedYearMinistry"
-      value={formData.joinedYearMinistry ?? ""}
-      onChange={(e) =>
-        updateFormData(
-          "joinedYearMinistry",
-          e.target.value === "" ? null : Number(e.target.value),
-        )
-      }
-      className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
-    >
-      <option value="">Select Year</option>
-      {YEARS.map((year) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-    </select>
+                  <div className="flex items-center gap-3">
+                    <select
+                      id="joinedYearMinistry"
+                      value={formData.joinedYearMinistry ?? ""}
+                      onChange={(e) =>
+                        updateFormData(
+                          "joinedYearMinistry",
+                          e.target.value === "" ? null : Number(e.target.value),
+                        )
+                      }
+                      className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
+                    >
+                      <option value="">Select Year</option>
+                      {YEARS.map((year) => (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      ))}
+                    </select>
 
-    {formData.joinedYearMinistry && (
-      <span className="text-sm text-blue-400 whitespace-nowrap">
-        {computeYearsFromJoined(formData.joinedYearMinistry)} yrs
-      </span>
-    )}
-  </div>
-</div>
+                    {formData.joinedYearMinistry && (
+                      <span className="text-sm text-blue-400 whitespace-nowrap">
+                        {computeYearsFromJoined(formData.joinedYearMinistry)}{" "}
+                        yrs
+                      </span>
+                    )}
+                  </div>
+                </div>
 
-                  <FormationsSection
-                    formations={formations}
-                    onAddFormation={addFormation}
-                    onUpdateFormation={updateFormation}
-                    onRemoveFormation={removeFormation}
-                  />
+                <FormationsSection
+                  formations={formations}
+                  onAddFormation={addFormation}
+                  onUpdateFormation={updateFormation}
+                  onRemoveFormation={removeFormation}
+                />
 
-               <TimelinesSection
-  timelines={shrineTimelines}
-  type="SHRINE"
-  label="Shrine Timeline"
-  onAddTimeline={() => addTimeline("SHRINE")}
-  onUpdateTimeline={(index, field, value) =>
-    updateTimeline(
-      shrineTimelines,
-      setShrineTimelines,
-      index,
-      field,
-      value,
-    )
-  }
-  onRemoveTimeline={(index) =>
-    removeTimeline(shrineTimelines, setShrineTimelines, index)
-  }
-/>
+                <TimelinesSection
+                  timelines={shrineTimelines}
+                  type="SHRINE"
+                  label="Shrine Timeline"
+                  onAddTimeline={() => addTimeline("SHRINE")}
+                  onUpdateTimeline={(index, field, value) =>
+                    updateTimeline(
+                      shrineTimelines,
+                      setShrineTimelines,
+                      index,
+                      field,
+                      value,
+                    )
+                  }
+                  onRemoveTimeline={(index) =>
+                    removeTimeline(shrineTimelines, setShrineTimelines, index)
+                  }
+                />
 
-                  <TimelinesSection
-                    timelines={outsideTimelines}
-  type="OUTSIDE"
-  label="Other Affiliations"
-  onAddTimeline={() => addTimeline("OUTSIDE")}
-  onUpdateTimeline={(index, field, value) =>
-    updateTimeline(
-      outsideTimelines,
-      setOutsideTimelines,
-      index,
-      field,
-      value,
-    )
-  }
-  onRemoveTimeline={(index) =>
-    removeTimeline(outsideTimelines, setOutsideTimelines, index)
-  }
-                  />
-                </>
+                <TimelinesSection
+                  timelines={outsideTimelines}
+                  type="OUTSIDE"
+                  label="Other Affiliations"
+                  onAddTimeline={() => addTimeline("OUTSIDE")}
+                  onUpdateTimeline={(index, field, value) =>
+                    updateTimeline(
+                      outsideTimelines,
+                      setOutsideTimelines,
+                      index,
+                      field,
+                      value,
+                    )
+                  }
+                  onRemoveTimeline={(index) =>
+                    removeTimeline(outsideTimelines, setOutsideTimelines, index)
+                  }
+                />
+              </>
               {/* )} */}
             </div>
           )}

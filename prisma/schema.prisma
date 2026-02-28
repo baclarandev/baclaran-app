@@ -33,34 +33,36 @@ model RefreshToken {
 }
 
 model Volunteer {
-  id                Int                        @id @default(autoincrement())
-  address           String?
-  civilStatus       String
-  createdAt         DateTime                   @default(now())
-  dateOfBirth       DateTime?
-  email             String                     @unique
-  firstName         String
-  lastName          String
-  middleInitial     String?
-  nickname          String?
-  occupation        String?
-  phone             String?
-  profilePicture    String?
-  sex               String
-  status            String                     @default("ACTIVE")
-  volunteerCode     String                     @unique
-  sacraments        SacramentName[]
-  applicationStatus ApplicationStatus          @default(PENDING)
-  joinedYear        String?
-  ministryId        Int?
-  eventAttendance   EventAttendance[]
-  eventLinks        EventVolunteer[]
-  massBookings      MassBooking[]
-  Ministry          Ministry?                  @relation(fields: [ministryId], references: [id], map: "volunteer_ministry_fk")
-  attendances       VolunteerAttendance[]
-  formations        VolunteerFormation[]
-  ministryHistories VolunteerMinistryHistory[]
-  timelines         VolunteerTimeline[]
+  id                 Int                        @id @default(autoincrement())
+  address            String?
+  civilStatus        String
+  createdAt          DateTime                   @default(now())
+  dateOfBirth        DateTime?
+  email              String                     @unique
+  firstName          String
+  lastName           String
+  middleInitial      String?
+  nickname           String?
+  occupation         String?
+  phone              String?
+  profilePicture     String?
+  sex                String
+  status             String                     @default("ACTIVE")
+  volunteerCode      String                     @unique
+  sacraments         SacramentName[]
+  applicationStatus  ApplicationStatus          @default(PENDING)
+  joinedYearShrine   Int?
+  ministryId         Int?
+  classification     VolunteerClassification?   @default(REGULAR)
+  joinedYearMinistry Int?
+  eventAttendance    EventAttendance[]
+  eventLinks         EventVolunteer[]
+  massBookings       MassBooking[]
+  Ministry           Ministry?                  @relation(fields: [ministryId], references: [id], map: "volunteer_ministry_fk")
+  attendances        VolunteerAttendance[]
+  formations         VolunteerFormation[]
+  ministryHistories  VolunteerMinistryHistory[]
+  timelines          VolunteerTimeline[]
 }
 
 model VolunteerMinistryHistory {
@@ -210,6 +212,7 @@ model VolunteerTimeline {
   endYear      Int?
   totalYears   Int
   type         String
+  parish       String?
   volunteer    Volunteer @relation(fields: [volunteerId], references: [id])
 
   @@index([volunteerId])
@@ -275,4 +278,9 @@ enum attendance_response {
 enum event_session {
   AM
   PM
+}
+
+enum VolunteerClassification {
+  REGULAR
+  SEASONAL
 }

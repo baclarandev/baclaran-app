@@ -69,18 +69,6 @@ export function TimelinesSection({
           >
             {/* Organization + Remove */}
             <div className="flex gap-2 items-end">
-              <div className="flex-1 space-y-1">
-                <Label className="text-xs">Organization / Ministry</Label>
-                <Input
-                  placeholder="Organization name"
-                  value={timeline.organization}
-                  onChange={(e) =>
-                    onUpdateTimeline(index, "organization", e.target.value)
-                  }
-                  className="bg-gray-600 border-gray-500 text-gray-100"
-                />
-              </div>
-
               {timelines.length > 1 && (
                 <Button
                   type="button"
@@ -108,7 +96,17 @@ export function TimelinesSection({
                 />
               </div>
             )}
-
+            <div className="flex-1 space-y-1">
+              <Label className="text-xs">Organization / Ministry</Label>
+              <Input
+                placeholder="Organization name"
+                value={timeline.organization}
+                onChange={(e) =>
+                  onUpdateTimeline(index, "organization", e.target.value)
+                }
+                className="bg-gray-600 border-gray-500 text-gray-100"
+              />
+            </div>
             {/* Years Section */}
             <div className="grid grid-cols-3 gap-2">
               <div className="space-y-1">
@@ -131,7 +129,7 @@ export function TimelinesSection({
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs">End Year (Optional)</Label>
+                <Label className="text-xs">End Year</Label>
                 <Input
                   type="number"
                   placeholder="End year"

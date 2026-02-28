@@ -19,17 +19,26 @@ export function getMinistryInitials(name: string): string {
     )
     .map((word) => word[0].toUpperCase())
     .join("")
-    .slice(0, 3); // limit to 3 letters (optional but recommended)
+    .slice(0, 3);
 }
 
 /**
  * Generate next volunteer code
- * Format:
+ * FORMAT:
  * INITIALS-YEAR-0001
+ *
+ * RULES:
+ * - sequence NEVER resets per year
+ * - sequence separated per ROOT ministry
  */
-export async function generateVolunteerCode(ministryId: number, year?: string) {
+export async function generateVolunteerCode(
+  rootMinistryId: number,
+  year?: number,
+) {
+  /* ================= GET MINISTRY ================= */
+
   const ministry = await prisma.ministry.findUnique({
-    where: { id: ministryId },
+    where: { id: rootMinistryId },
     select: { name: true },
   });
 
@@ -37,27 +46,51 @@ export async function generateVolunteerCode(ministryId: number, year?: string) {
     throw new Error("Ministry not found");
   }
 
-  const joinedYear = year || new Date().getFullYear().toString(); // use selected year if provided
+  const joinedYear = year ?? new Date().getFullYear();
   const initials = getMinistryInitials(ministry.name);
+
+  /* ================= FIND LAST SEQUENCE ================= */
+  // IMPORTANT:
+  // No year filtering anymore
 
   const lastVolunteer = await prisma.volunteer.findFirst({
     where: {
-      joinedYear,
-      ministryHistories: { some: { ministryId } },
+      ministryHistories: {
+        some: {
+          ministry: {
+            OR: [
+              { id: rootMinistryId },
+              { parentId: rootMinistryId }, // include sub ministries
+            ],
+          },
+        },
+      },
     },
-    orderBy: { id: "desc" },
-    select: { volunteerCode: true },
+    orderBy: {
+      volunteerCode: "desc", // highest sequence first
+    },
+    select: {
+      volunteerCode: true,
+    },
   });
+
+  /* ================= COMPUTE NEXT NUMBER ================= */
 
   let nextNumber = 1;
 
   if (lastVolunteer?.volunteerCode) {
     const parts = lastVolunteer.volunteerCode.split("-");
     const lastSeq = Number(parts[2]);
-    if (!isNaN(lastSeq)) nextNumber = lastSeq + 1;
+
+    if (!isNaN(lastSeq)) {
+      nextNumber = lastSeq + 1;
+    }
   }
 
   const volunteerCode = `${initials}-${joinedYear}-${String(nextNumber).padStart(4, "0")}`;
 
-  return { volunteerCode, joinedYear };
+  return {
+    volunteerCode,
+    joinedYear,
+  };
 }

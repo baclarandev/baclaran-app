@@ -47,7 +47,8 @@ export interface Volunteer {
   sacraments: string[];
   formations: { id: number; name: string; year: number }[];
   timelines: Timeline[];
-  joinedYear: string;
+  joinedYearShrine: string;
+  joinedYearMinistry?: string;
   createdAt: Date;
 }
 

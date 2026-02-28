@@ -166,7 +166,13 @@ export function MinistrySelector({
       <Label>Sub-Ministry</Label>
       {subMinistries.length === 0 ? (
         <p className="text-gray-400 text-sm">
-          No sub-ministries under <strong>{selectedParent?.name}</strong>.
+          No sub-ministries
+          {/* <strong>
+            {selectedParent?.name.length === 0
+              ? "selected ministry"
+              : selectedParent?.name || "selected ministry"}
+          </strong> */}
+          .
         </p>
       ) : (
         <select

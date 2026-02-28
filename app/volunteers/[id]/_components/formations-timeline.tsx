@@ -64,6 +64,9 @@ export function FormationsTimelines({ volunteer }: { volunteer: Volunteer }) {
                   <div key={t.id} className="relative">
                     <div className="absolute -left-[1.3rem] top-1 h-3 w-3 rounded-full border-2 border-primary bg-card" />
                     <div>
+                      <h1 className="text-sm font-bold text-card-foreground">
+                        {t.parish}
+                      </h1>
                       <p className="text-sm font-medium text-card-foreground">
                         {t.organization}
                       </p>

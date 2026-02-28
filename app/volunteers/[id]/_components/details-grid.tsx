@@ -100,7 +100,14 @@ export function DetailsGrid({ volunteer }: { volunteer: Volunteer }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <InfoItem label="Joined Year" value={volunteer.joinedYear} />
+            <InfoItem
+              label="Joined Year (Shrine)"
+              value={volunteer.joinedYearShrine}
+            />
+            <InfoItem
+              label="Joined Year (Ministry)"
+              value={volunteer.joinedYearMinistry}
+            />
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
                 Occupation
