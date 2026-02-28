@@ -2,7 +2,7 @@
     Baptism: "BAPTISM",
     "First Communion": "EUCHARIST",
     Confirmation: "CONFIRMATION",
-    Matrimony: "MATRIMONY",
+ 
   };
 
   export const DEFAULT_FORMATIONS = [

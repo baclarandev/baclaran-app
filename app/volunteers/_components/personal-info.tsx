@@ -3,6 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { sacramentMap } from "@/app/utils/helper";
+import { SacramentsCheckboxes } from "./sacrament-checkbox";
 
 interface PersonalInfoStepProps {
   formData: {
@@ -18,13 +19,18 @@ interface PersonalInfoStepProps {
     civilStatus: string;
     marriageType?: "CHURCH" | "CIVIL" | "";
     nickname: string;
+    sacraments: string[];
   };
   onFieldChange: (field: string, value: string) => void;
+  toggleSacrament: (sacrament: string) => void;
+  selectedSacraments: string[]
 }
 
 export function PersonalInfoStep({
   formData,
   onFieldChange,
+  toggleSacrament,
+  selectedSacraments,
 }: PersonalInfoStepProps) {
   return (
     <div className="space-y-4">
@@ -203,6 +209,11 @@ export function PersonalInfoStep({
           </div>
         </div>
       )}
+       <SacramentsCheckboxes
+                    selectedSacraments={formData.sacraments}
+                    civilStatus={formData.civilStatus}
+                    onToggleSacrament={toggleSacrament}
+                  />
     </div>
   );
 }

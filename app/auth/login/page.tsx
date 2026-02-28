@@ -88,7 +88,7 @@ const Page = () => {
             <h1 className="text-4xl lg:text-5xl font-light leading-tight">
               Welcome to{" "}
               <span className="font-semibold text-blue-300">
-                Baclaran Church
+             National Shrine of Our Mother of Perpetual Help
               </span>{" "}
             </h1>
             <p className="text-lg text-stone-300 leading-relaxed">
