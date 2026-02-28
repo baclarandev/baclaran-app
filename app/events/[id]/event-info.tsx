@@ -11,7 +11,6 @@ import { Calendar } from "lucide-react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
-
 interface VolunteerAttendance {
   id: number;
   volunteer: {
@@ -39,37 +38,44 @@ interface Event {
   attendance: VolunteerAttendance[];
 }
 
-export default function EventInfo({ eventId, user }: { eventId: string; user: any }) {
-    const fetchEvent = async (id: string): Promise<Event> => {
-  const res = await fetch(`/api/events/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch event");
-  return res.json();
-};
-
-const updateAttendanceApi = async ({
-  id,
-  data,
+export default function EventInfo({
+  eventId,
+  user,
 }: {
-  id: number;
-  data: Partial<VolunteerAttendance>;
-}) => {
-  const res = await fetch(`/api/attendance/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update attendance");
-  return res.json();
-};
-    
-     const queryClient = useQueryClient();
+  eventId: string;
+  user: any;
+}) {
+  const fetchEvent = async (eventId: string): Promise<Event> => {
+    const res = await fetch(`/api/events/${eventId}`);
+    if (!res.ok) throw new Error("Failed to fetch event");
+    return res.json();
+  };
+
+  const updateAttendanceApi = async ({
+    eventId,
+    data,
+  }: {
+    eventId: string;
+    data: Partial<VolunteerAttendance>;
+  }) => {
+    const res = await fetch(`/api/events/${eventId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to update attendance");
+    return res.json();
+  };
+
+  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Fetch Event
   const { data: event, isLoading } = useQuery({
     queryKey: ["event", eventId],
     queryFn: () => fetchEvent(eventId),
+    enabled: !!eventId, // ⭐ FIX
   });
-
+  console.log(event);
   // Update Attendance
   const updateAttendanceMutation = useMutation({
     mutationFn: updateAttendanceApi,
@@ -94,7 +100,7 @@ const updateAttendanceApi = async ({
     setAttendanceList((prev) =>
       prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)),
     );
-    updateAttendanceMutation.mutate({ id, data: { [field]: value } });
+    updateAttendanceMutation.mutate({ eventId, data: { id, [field]: value } });
   };
 
   const statusColors: Record<string, string> = {
@@ -112,136 +118,162 @@ const updateAttendanceApi = async ({
     NO_RESPONSE: "bg-gray-600/30 text-gray-400",
   };
 
-  if (isLoading) return <p>Loading...</p>;
-  return (
+  if (isLoading)
+    return (
+      <div className="min-h-screen bg-neutral-900 text-gray-200 animate-pulse">
+        <Sidebar user={user} isOpen={false} onOpenChange={() => {}} />
 
-     <div className="h-screen w-full ">
-          <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
-          <div className="flex-1  flex flex-col md:ml-64">
-            <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-      <Card className="mb-6 m-6 p-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
-        <CardHeader>
-          <CardTitle>
-            <Calendar className="inline w-5 h-5 mr-2" /> {event?.title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-400">{event?.description}</p>
-          <p className="mt-2 text-sm text-gray-300">
-            {`${new Date(event?.startDate ?? "").toLocaleString()} - ${new Date(
-              event?.endDate ?? "",
-            ).toLocaleString()}`}
-          </p>
-        </CardContent>
-      </Card>
+        <div className="flex flex-col md:ml-64">
+          <Header user={user} onMenuClick={() => {}} />
 
-      {/* Attendance Table */}
-      <Card className="bg-blue-500/10 m-6 p-6 border border-blue-500/30 text-white backdrop-blur-md">
-        <CardHeader>
-          <CardTitle>Volunteers Attendance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
-              <thead>
-                <tr className="bg-gray-700">
-                  <th className="py-3 px-6 text-left text-gray-400">
-                    Volunteer
-                  </th>
-                  <th className="py-3 px-6 text-left text-gray-400">Session</th>
-                  <th className="py-3 px-6 text-left text-gray-400">Status</th>
-                  <th className="py-3 px-6 text-left text-gray-400">
-                    Response
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceList.map((a) => (
-                  <tr
-                    key={a.id}
-                    className="border-t border-white/6 hover:bg-gray-600 transition-colors"
-                  >
-                    <td className="py-4 px-6">
-                      {a.volunteer.firstName} {a.volunteer.lastName}{" "}
-                      {a.volunteer.email && (
-                        <span className="text-gray-400 text-sm">
-                          ({a.volunteer.email})
-                        </span>
-                      )}
-                    </td>
+          <div className="p-6 space-y-6">
+            <div className="h-6 w-48 bg-neutral-800 rounded" />
 
-                    <td className="py-4 px-6">
-                      <NativeSelect
-                        value={a.session}
-                        onChange={(e) =>
-                          handleUpdate(
-                            a.id,
-                            "session",
-                            e.target.value as "AM" | "PM",
-                          )
-                        }
-                      >
-                        <NativeSelectOption value="AM">AM</NativeSelectOption>
-                        <NativeSelectOption value="PM">PM</NativeSelectOption>
-                      </NativeSelect>
-                    </td>
+            <div className="flex gap-3">
+              <div className="h-10 w-40 bg-neutral-800 rounded" />
+              <div className="h-10 w-32 bg-neutral-800 rounded" />
+              <div className="h-10 w-48 bg-neutral-800 rounded" />
+              <div className="h-10 w-28 bg-neutral-800 rounded" />
+            </div>
 
-                    <td className="py-4 px-6">
-                      <NativeSelect
-                        value={a.status}
-                        className={statusColors[a.status]}
-                        onChange={(e) =>
-                          handleUpdate(
-                            a.id,
-                            "status",
-                            e.target.value as VolunteerAttendance["status"],
-                          )
-                        }
-                      >
-                        {["PENDING", "CONFIRMED", "CHECKED_IN", "ABSENT"].map(
-                          (s) => (
-                            <NativeSelectOption key={s} value={s}>
-                              {s.replace("_", " ")}
-                            </NativeSelectOption>
-                          ),
-                        )}
-                      </NativeSelect>
-                    </td>
-
-                    <td className="py-4 px-6">
-                      <NativeSelect
-                        value={a.response}
-                        className={responseColors[a.response]}
-                        onChange={(e) =>
-                          handleUpdate(
-                            a.id,
-                            "response",
-                            e.target.value as VolunteerAttendance["response"],
-                          )
-                        }
-                      >
-                        {[
-                          "ON_LEAVE",
-                          "EXCUSE",
-                          "CAN_ATTEND",
-                          "CANT_ATTEND",
-                          "NO_RESPONSE",
-                        ].map((r) => (
-                          <NativeSelectOption key={r} value={r}>
-                            {r.replace("_", " ")}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-10 bg-neutral-800 rounded" />
+            ))}
           </div>
-        </CardContent>
-      </Card>
-    </div></div>
+        </div>
+      </div>
+    );
+  return (
+    <div className="h-screen w-full ">
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
+      <div className="flex-1  flex flex-col md:ml-64">
+        <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <Card className="mb-6 m-6 p-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
+          <CardHeader>
+            <CardTitle>
+              <Calendar className="inline w-5 h-5 mr-2" /> {event?.title}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-400">{event?.description}</p>
+            <p className="mt-2 text-sm text-gray-300">
+              {`${new Date(event?.startDate ?? "").toLocaleString()} - ${new Date(
+                event?.endDate ?? "",
+              ).toLocaleString()}`}
+            </p>
+          </CardContent>
+        </Card>
 
+        {/* Attendance Table */}
+        <Card className="bg-blue-500/10 m-6 p-6 border border-blue-500/30 text-white backdrop-blur-md">
+          <CardHeader>
+            <CardTitle>Volunteers Attendance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[800px]">
+                <thead>
+                  <tr className="bg-gray-700">
+                    <th className="py-3 px-6 text-left text-gray-400">
+                      Volunteer
+                    </th>
+                    <th className="py-3 px-6 text-left text-gray-400">
+                      Session
+                    </th>
+                    <th className="py-3 px-6 text-left text-gray-400">
+                      Status
+                    </th>
+                    <th className="py-3 px-6 text-left text-gray-400">
+                      Response
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendanceList.map((a) => (
+                    <tr
+                      key={a.id}
+                      className="border-t border-white/6 hover:bg-gray-600 transition-colors"
+                    >
+                      <td className="py-4 px-6">
+                        {a.volunteer.firstName} {a.volunteer.lastName}{" "}
+                        {a.volunteer.email && (
+                          <span className="text-gray-400 text-sm">
+                            ({a.volunteer.email})
+                          </span>
+                        )}
+                      </td>
 
-  )
+                      <td className="py-4 px-6">
+                        <NativeSelect
+                          value={a.session}
+                          onChange={(e) =>
+                            handleUpdate(
+                              a.id,
+                              "session",
+                              e.target.value as "AM" | "PM",
+                            )
+                          }
+                        >
+                          <NativeSelectOption value="AM">AM</NativeSelectOption>
+                          <NativeSelectOption value="PM">PM</NativeSelectOption>
+                        </NativeSelect>
+                      </td>
+
+                      <td className="py-4 px-6">
+                        <NativeSelect
+                          value={a.status}
+                          className={statusColors[a.status]}
+                          onChange={(e) =>
+                            handleUpdate(
+                              a.id,
+                              "status",
+                              e.target.value as VolunteerAttendance["status"],
+                            )
+                          }
+                        >
+                          {["PENDING", "CONFIRMED", "CHECKED_IN", "ABSENT"].map(
+                            (s) => (
+                              <NativeSelectOption key={s} value={s}>
+                                {s.replace("_", " ")}
+                              </NativeSelectOption>
+                            ),
+                          )}
+                        </NativeSelect>
+                      </td>
+
+                      <td className="py-4 px-6">
+                        <NativeSelect
+                          value={a.response}
+                          className={responseColors[a.response]}
+                          onChange={(e) =>
+                            handleUpdate(
+                              a.id,
+                              "response",
+                              e.target.value as VolunteerAttendance["response"],
+                            )
+                          }
+                        >
+                          {[
+                            "ON_LEAVE",
+                            "EXCUSE",
+                            "CAN_ATTEND",
+                            "CANT_ATTEND",
+                            "NO_RESPONSE",
+                          ].map((r) => (
+                            <NativeSelectOption key={r} value={r}>
+                              {r.replace("_", " ")}
+                            </NativeSelectOption>
+                          ))}
+                        </NativeSelect>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 }

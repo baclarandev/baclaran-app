@@ -52,9 +52,11 @@ model Volunteer {
   sacraments        SacramentName[]
   applicationStatus ApplicationStatus          @default(PENDING)
   joinedYear        String?
+  ministryId        Int?
   eventAttendance   EventAttendance[]
   eventLinks        EventVolunteer[]
   massBookings      MassBooking[]
+  Ministry          Ministry?                  @relation(fields: [ministryId], references: [id], map: "volunteer_ministry_fk")
   attendances       VolunteerAttendance[]
   formations        VolunteerFormation[]
   ministryHistories VolunteerMinistryHistory[]
@@ -85,6 +87,7 @@ model Ministry {
   parent        Ministry?                  @relation("MinistryHierarchy", fields: [parentId], references: [id], onUpdate: NoAction, map: "ministry_parent_fk")
   subMinistries Ministry[]                 @relation("MinistryHierarchy")
   users         User[]
+  Volunteer     Volunteer[]
   attendance    VolunteerAttendance[]
   volunteers    VolunteerMinistryHistory[]
 }
@@ -181,7 +184,7 @@ model EventAttendance {
   eventId     Int
   volunteerId Int
   status      AttendanceStatus     @default(PENDING)
-  session     String?
+  session     event_session?       @default(AM)
   response    attendance_response? @default(NO_RESPONSE)
   event       Event                @relation(fields: [eventId], references: [id])
   volunteer   Volunteer            @relation(fields: [volunteerId], references: [id])
