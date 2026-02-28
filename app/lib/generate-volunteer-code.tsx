@@ -35,62 +35,40 @@ export async function generateVolunteerCode(
   rootMinistryId: number,
   year?: number,
 ) {
-  /* ================= GET MINISTRY ================= */
-
   const ministry = await prisma.ministry.findUnique({
     where: { id: rootMinistryId },
     select: { name: true },
   });
 
-  if (!ministry) {
-    throw new Error("Ministry not found");
-  }
+  if (!ministry) throw new Error("Ministry not found");
 
   const joinedYear = year ?? new Date().getFullYear();
   const initials = getMinistryInitials(ministry.name);
 
-  /* ================= FIND LAST SEQUENCE ================= */
-  // IMPORTANT:
-  // No year filtering anymore
-
-  const lastVolunteer = await prisma.volunteer.findFirst({
+  // --- Get all volunteers under this root ministry (including sub-ministries) ---
+  const volunteers = await prisma.volunteer.findMany({
     where: {
       ministryHistories: {
         some: {
           ministry: {
-            OR: [
-              { id: rootMinistryId },
-              { parentId: rootMinistryId }, // include sub ministries
-            ],
+            OR: [{ id: rootMinistryId }, { parentId: rootMinistryId }],
           },
         },
       },
     },
-    orderBy: {
-      volunteerCode: "desc", // highest sequence first
-    },
-    select: {
-      volunteerCode: true,
-    },
+    select: { volunteerCode: true },
   });
 
-  /* ================= COMPUTE NEXT NUMBER ================= */
-
+  // --- Compute next sequence number numerically ---
   let nextNumber = 1;
-
-  if (lastVolunteer?.volunteerCode) {
-    const parts = lastVolunteer.volunteerCode.split("-");
-    const lastSeq = Number(parts[2]);
-
-    if (!isNaN(lastSeq)) {
-      nextNumber = lastSeq + 1;
-    }
+  if (volunteers.length) {
+    const sequences = volunteers.map((v) => {
+      const parts = v.volunteerCode.split("-");
+      return Number(parts[2]) || 0; // take the numeric sequence
+    });
+    nextNumber = Math.max(...sequences) + 1;
   }
 
   const volunteerCode = `${initials}-${joinedYear}-${String(nextNumber).padStart(4, "0")}`;
-
-  return {
-    volunteerCode,
-    joinedYear,
-  };
+  return { volunteerCode, joinedYear };
 }
