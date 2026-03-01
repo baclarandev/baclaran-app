@@ -50,6 +50,7 @@ export interface Volunteer {
   joinedYearShrine: string;
   joinedYearMinistry?: string;
   createdAt: Date;
+  ministryHistories?: { ministry: Ministry & { parent?: Ministry } }[];
 }
 
 export interface Task {

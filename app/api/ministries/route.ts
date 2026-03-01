@@ -11,6 +11,7 @@ const MinistrySchema = z.object({
   icon: z.string().optional(),
   type: z.enum(["LITURGICAL", "PASTORAL"]),
   parentId: z.number().optional(), // 👈 allow sub-ministry
+  ministryCode: z.string().optional(), // for volunteer code generation
 });
 
 // ─── GET MINISTRIES ─────────────────────────
@@ -35,11 +36,20 @@ export async function GET(request: NextRequest) {
     // Admins see all ministries → no filter
 
     const ministries = await prisma.ministry.findMany({
-      where,
-      include: {
-        volunteers: true,
-        parent: true,
-        subMinistries: true,
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+        type: true,
+        ministryCode: true, // <-- select directly here
+        parentId: true,
+        parent: {
+          select: { id: true, name: true, ministryCode: true },
+        },
+        subMinistries: {
+          select: { id: true, name: true, ministryCode: true },
+        },
+        volunteers: true, // optional
       },
       orderBy: { name: "asc" },
     });

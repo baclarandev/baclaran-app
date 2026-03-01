@@ -92,3 +92,46 @@ export function useEvents() {
     archiving: archiveEventMutation.isPending,
   };
 }
+
+export function useEventById(id: number) {
+  return useQuery({
+    queryKey: ["event", id],
+    queryFn: async () => {
+      if (!id) throw new Error("No event ID provided");
+
+      const res = await fetch(`/api/events/${id}`);
+
+      // Parse JSON safely
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        console.error("Error fetching event:", data);
+        throw new Error(data?.error || "Failed to fetch event");
+      }
+
+      console.log("Fetched event data:", data); // <-- now this will show actual data
+      return data;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useUpdateAttendance(eventId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await fetch(`/api/events/${eventId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update attendance");
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["event", eventId] });
+    },
+  });
+}

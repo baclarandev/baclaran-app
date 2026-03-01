@@ -45,6 +45,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import { VolunteerWithBookings } from "@/app/types/volunteer";
 
 const cloudinaryOptimized = (url: string) => {
   if (!url) return url;
@@ -62,6 +63,11 @@ const formatVolunteerCode = (code: string) => {
   const yearLast2 = parts[1].slice(-2); // "26"
   return `${parts[0]}-${yearLast2}-${parts[2]}`;
 };
+interface MinistryWithVolunteers {
+  id: number;
+  name: string;
+  volunteers: VolunteerWithBookings[];
+}
 export default function Volunteer({ user }: any) {
   const {
     data: volunteers = [],
@@ -70,8 +76,9 @@ export default function Volunteer({ user }: any) {
   } = useVolunteers();
 
   const deleteVolunteer = useDeleteVolunteer();
-  const { data: ministries = [] } = useMinistries();
-  const [selectedVolunteer, setSelectedVolunteer] = useState<any>(null);
+
+  const [selectedVolunteer, setSelectedVolunteer] =
+    useState<VolunteerWithBookings | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -82,22 +89,26 @@ export default function Volunteer({ user }: any) {
 
   const searchParams = useSearchParams();
   const router = useRouter();
-
+  const allVolunteers = useMemo(() => {
+    return volunteers.flatMap((ministry: any) => ministry.volunteers);
+  }, [volunteers]);
   const filteredVolunteers = useMemo(() => {
-    return volunteers.filter((v) => {
+    return allVolunteers.filter((v) => {
       const matchesSearch =
         searchQuery === "" ||
         `${v.firstName} ${v.lastName}`
           .toLowerCase()
           .includes(searchQuery.toLowerCase()) ||
         v.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.ministryName?.toLowerCase().includes(searchQuery.toLowerCase());
+        v.ministryHistories?.some((h: any) =>
+          h.ministry.name.toLowerCase().includes(searchQuery.toLowerCase()),
+        );
 
       const matchesStatus = statusFilter === "all" || v.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [volunteers, searchQuery, statusFilter]);
+  }, [allVolunteers, searchQuery, statusFilter]);
   const perPage = 12;
 
   const paginatedVolunteers = useMemo(() => {

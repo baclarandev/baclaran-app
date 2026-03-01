@@ -3,18 +3,17 @@
 import { getSession } from "@/lib/auth";
 import EventInfo from "./event-info";
 
-// ---------------- Component ----------------
 export default async function EventAttendance({
   params,
 }: {
-  params: { eventId: string };
+  params: { id: string };
 }) {
-  const { eventId } = params;
-
+  const { id } = await params;
   const user = await getSession();
+
   return (
-    <div className="w-full bg-neutral-800 ">
-      <EventInfo eventId={eventId} user={user} />
+    <div className="w-full bg-neutral-800">
+      <EventInfo eventId={id} user={user} />
     </div>
   );
 }

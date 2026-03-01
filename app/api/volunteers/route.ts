@@ -3,28 +3,28 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { can } from "@/lib/rbac";
 import { z } from "zod";
-import { generateVolunteerCode } from "@/app/lib/generate-volunteer-code";
+
 import { SacramentName } from "@prisma/client";
-import { getRootMinistryId } from "@/lib/get-root-ministry";
 
 const currentYear = new Date().getFullYear();
 
-/* ================= SCHEMAS ================= */
+/* ================= ENUMS ================= */
 export enum VolunteerClassification {
   REGULAR = "REGULAR",
   SEASONAL = "SEASONAL",
 }
 
+/* ================= SCHEMAS ================= */
 const FormationSchema = z.object({
   name: z.string().min(1),
-  year: z.number().int().min(1900).max(currentYear),
+  year: z.coerce.number().int().min(1900).max(currentYear),
 });
 
 const TimelineSchema = z
   .object({
     organization: z.string().min(1),
-    startYear: z.number().int().min(1900).max(currentYear),
-    endYear: z.number().int().min(1900).max(currentYear).optional(),
+    startYear: z.coerce.number().int().min(1900).max(currentYear),
+    endYear: z.coerce.number().int().min(1900).max(currentYear).optional(),
     type: z.enum(["SHRINE", "OUTSIDE"]),
     parish: z.string().optional(),
   })
@@ -51,15 +51,23 @@ const CreateVolunteerSchema = z.object({
   ministryIds: z.array(z.number()).min(1),
   subMinistryId: z.number().optional(),
   sacraments: z.array(z.nativeEnum(SacramentName)).optional(),
-  joinedYearShrine: z.number().int().min(1900).max(currentYear).optional(),
-  joinedYearMinistry: z.number().int().min(1900).max(currentYear).optional(),
+  joinedYearShrine: z.coerce
+    .number()
+    .int()
+    .min(1900)
+    .max(currentYear)
+    .optional(),
+  joinedYearMinistry: z.coerce
+    .number()
+    .int()
+    .min(1900)
+    .max(currentYear)
+    .optional(),
   formations: z.array(FormationSchema).optional(),
   timelines: z.array(TimelineSchema).optional(),
 });
 
-/* ===================================================== */
-/* ======================== GET ========================= */
-/* ===================================================== */
+/* ================= GET VOLUNTEERS ================= */
 export async function GET() {
   try {
     const sessionUser = await getSession();
@@ -69,33 +77,36 @@ export async function GET() {
     if (!can.isStaff(sessionUser))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const where: any = {};
-
-    // STAFF: see their ministry + sub-ministries only
-    if (sessionUser.role === "STAFF") {
-      if (!sessionUser.ministryId)
-        return NextResponse.json(
-          { error: "Staff has no ministry assigned" },
-          { status: 403 },
-        );
-
+    // STAFF: only see their ministry + sub-ministries
+    let ministryFilter: number[] | undefined;
+    if (sessionUser.role === "STAFF" && sessionUser.ministryId) {
       const subMinistries = await prisma.ministry.findMany({
         where: { parentId: sessionUser.ministryId },
         select: { id: true },
       });
-
-      const ministryIds = [
+      ministryFilter = [
         sessionUser.ministryId,
         ...subMinistries.map((m) => m.id),
       ];
-
-      where.ministryHistories = {
-        some: { ministryId: { in: ministryIds }, status: "ACTIVE" },
-      };
     }
 
+    const ministryIdsToQuery = ministryFilter?.length
+      ? ministryFilter
+      : (await prisma.ministry.findMany({ select: { id: true } })).map(
+          (m) => m.id,
+        );
+
+    if (!ministryIdsToQuery.length) return NextResponse.json({ data: [] });
+
     const volunteers = await prisma.volunteer.findMany({
-      where,
+      where: {
+        ministryHistories: {
+          some: {
+            status: "ACTIVE",
+            ministryId: { in: ministryIdsToQuery },
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
       include: {
         ministryHistories: {
@@ -107,7 +118,25 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ data: volunteers });
+    // Group volunteers per ministry
+    const groupedByMinistry = volunteers.reduce<Record<string, any[]>>(
+      (acc, v) => {
+        const activeMinistry = v.ministryHistories[0]?.ministry;
+        if (!activeMinistry) return acc;
+        const key = `${activeMinistry.id}-${activeMinistry.name}`;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(v);
+        return acc;
+      },
+      {},
+    );
+
+    const result = Object.entries(groupedByMinistry).map(([key, vols]) => {
+      const [id, name] = key.split("-");
+      return { id: Number(id), name, volunteers: vols };
+    });
+
+    return NextResponse.json({ data: result });
   } catch (error: any) {
     console.error("[GET_VOLUNTEERS_ERROR]", error);
     return NextResponse.json(
@@ -117,11 +146,10 @@ export async function GET() {
   }
 }
 
-/* ===================================================== */
-/* ======================== POST ======================== */
-/* ===================================================== */
-export async function POST(request: NextRequest) {
+/* ================= CREATE VOLUNTEER ================= */
+export async function POST(req: Request) {
   try {
+    /* ===== AUTH ===== */
     const sessionUser = await getSession();
     if (!sessionUser)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -129,87 +157,136 @@ export async function POST(request: NextRequest) {
     if (!can.isStaff(sessionUser))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const body = await request.json();
+    /* ===== VALIDATE ===== */
+    const body = await req.json();
     const parsed = CreateVolunteerSchema.safeParse(body);
-    if (!parsed.success)
+
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Invalid volunteer data", details: parsed.error.format() },
+        { error: "Invalid data", details: parsed.error.flatten() },
         { status: 400 },
       );
-
-    const {
-      formations = [],
-      timelines = [],
-      ministryIds,
-      subMinistryId,
-      dateOfBirth,
-      joinedYearShrine: selectedYear,
-      joinedYearMinistry,
-      volunteerClassification,
-      ...data
-    } = parsed.data;
-
-    let parentMinistryId = ministryIds[0];
-    if (sessionUser.role === "STAFF")
-      parentMinistryId = sessionUser.ministryId!;
-    let finalMinistryId = parentMinistryId;
-
-    if (subMinistryId) {
-      const sub = await prisma.ministry.findUnique({
-        where: { id: subMinistryId },
-      });
-      if (!sub || sub.parentId !== parentMinistryId)
-        return NextResponse.json(
-          { error: "Invalid sub-ministry selected." },
-          { status: 400 },
-        );
-      finalMinistryId = subMinistryId;
     }
 
-    const existingEmail = await prisma.volunteer.findUnique({
-      where: { email: data.email },
-    });
-    if (existingEmail)
+    const data = parsed.data;
+    const { ministryIds, subMinistryId, joinedYearShrine } = data;
+
+    if (!joinedYearShrine) {
       return NextResponse.json(
-        { error: "Volunteer email already exists." },
+        { error: "joinedYearShrine is required for code generation" },
         { status: 400 },
       );
+    }
 
-    // Generate volunteerCode
-    const rootMinistryId = await getRootMinistryId(finalMinistryId);
-    const { volunteerCode, joinedYear } = await generateVolunteerCode(
-      rootMinistryId,
-      selectedYear ?? undefined,
+    /* ===== GET MAIN MINISTRY ===== */
+    const mainMinistry = await prisma.ministry.findUnique({
+      where: { id: ministryIds[0] },
+      include: { parent: true },
+    });
+
+    if (!mainMinistry) {
+      return NextResponse.json(
+        { error: "Main ministry not found" },
+        { status: 400 },
+      );
+    }
+
+    /* ===== DETERMINE CODE PREFIX ===== */
+    let ministryCode = mainMinistry.ministryCode;
+
+    if (subMinistryId) {
+      const subMinistry = await prisma.ministry.findUnique({
+        where: { id: subMinistryId },
+      });
+
+      if (subMinistry?.ministryCode) {
+        ministryCode = subMinistry.ministryCode;
+      }
+    }
+
+    /* =======================================================
+       ✅ GLOBAL SEQUENCE ACROSS ALL SIBLING MINISTRIES
+       ======================================================= */
+    const parentMinistryId = mainMinistry.parentId || mainMinistry.id;
+
+    // get all ministries under same parent (siblings + parent)
+    const ministriesUnderParent = await prisma.ministry.findMany({
+      where: {
+        OR: [{ id: parentMinistryId }, { parentId: parentMinistryId }],
+      },
+      select: { ministryCode: true },
+    });
+
+    // prepare prefixes for volunteerCode search
+    const ministryPrefixes = ministriesUnderParent.map(
+      (m) => `${m.ministryCode}-`,
     );
 
+    // find latest volunteer across all siblings
+    const lastVolunteer = await prisma.volunteer.findFirst({
+      where: {
+        OR: ministryPrefixes.map((prefix) => ({
+          volunteerCode: { startsWith: prefix },
+        })),
+      },
+      orderBy: { volunteerCode: "desc" },
+      select: { volunteerCode: true },
+    });
+
+    let nextSequence = 1;
+
+    if (lastVolunteer?.volunteerCode) {
+      const lastSeq = parseInt(
+        lastVolunteer.volunteerCode.split("-").pop() || "0",
+      );
+      nextSequence = lastSeq + 1;
+    }
+
+    const sequence = String(nextSequence).padStart(4, "0");
+
+    const volunteerCode = `${ministryCode}-${joinedYearShrine}-${sequence}`;
+
+    /* ===== CREATE VOLUNTEER ===== */
     const volunteer = await prisma.volunteer.create({
       data: {
-        ...data,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        middleInitial: data.middleInitial,
+        nickname: data.nickname,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+        sex: data.sex,
+        civilStatus: data.civilStatus,
+        occupation: data.occupation,
+        status: data.status || "ACTIVE",
+        profilePicture: data.profilePicture,
+        sacraments: data.sacraments,
         volunteerCode,
-        joinedYearShrine: joinedYear,
-        joinedYearMinistry: joinedYearMinistry ?? null,
-        classification: parsed.data.volunteerClassification ?? "REGULAR",
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        ministryHistories: {
-          create: { ministryId: finalMinistryId, status: "ACTIVE" },
-        },
-        ...(formations.length && {
-          formations: { createMany: { data: formations } },
-        }),
-        ...(timelines.length && {
-          timelines: {
-            createMany: {
-              data: timelines.map((t) => ({
-                organization: t.organization,
-                startYear: t.startYear,
-                endYear: t.endYear,
-                type: t.type,
-                parish: t.parish, // ← explicitly
-                totalYears: (t.endYear ?? currentYear) - t.startYear + 1,
+        joinedYearShrine: data.joinedYearShrine,
+        joinedYearMinistry: data.joinedYearMinistry,
+
+        formations: data.formations ? { create: data.formations } : undefined,
+
+        timelines: data.timelines
+          ? {
+              create: data.timelines.map((t) => ({
+                ...t,
+                totalYears: t.endYear ? t.endYear - t.startYear + 1 : 1,
               })),
+            }
+          : undefined,
+
+        ministryHistories: {
+          create: [
+            {
+              ministryId: subMinistryId || ministryIds[0],
+              joinedAt: new Date(),
+              status: "ACTIVE",
             },
-          },
-        }),
+          ],
+        },
       },
       include: {
         ministryHistories: { include: { ministry: true } },
@@ -218,18 +295,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(
-      { message: "Volunteer created successfully", data: volunteer },
-      { status: 201 },
-    );
+    return NextResponse.json({ volunteer }, { status: 201 });
   } catch (error: any) {
     console.error("[CREATE_VOLUNTEER_ERROR]", error);
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { error: "Volunteer code already exists. Please retry." },
-        { status: 400 },
-      );
-    }
+
     return NextResponse.json(
       { error: error.message || "Failed to create volunteer" },
       { status: 500 },

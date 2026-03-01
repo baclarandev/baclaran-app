@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
+// Schema for PATCH
 const AttendanceUpdateSchema = z.object({
   attendanceId: z.number(),
   session: z.enum(["AM", "PM"]).optional(),
@@ -11,6 +12,7 @@ const AttendanceUpdateSchema = z.object({
   response: z.nativeEnum(attendance_response).optional(),
 });
 
+// GET event + attendance
 export async function GET(
   _req: Request,
   context: { params: { id: string } | Promise<{ id: string }> },
@@ -18,6 +20,7 @@ export async function GET(
   try {
     const { id } = await Promise.resolve(context.params);
     const eventId = Number(id);
+
     if (isNaN(eventId)) {
       return NextResponse.json(
         { message: "Invalid event id" },
@@ -25,6 +28,7 @@ export async function GET(
       );
     }
 
+    // Fetch the event
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       select: {
@@ -42,31 +46,42 @@ export async function GET(
       return NextResponse.json({ message: "Event not found" }, { status: 404 });
     }
 
-    // Fetch all volunteers in the ministry (or all if null)
+    // Fetch all relevant volunteers
     const volunteers = await prisma.volunteer.findMany({
-      where: event.ministryId
-        ? { Ministry: { id: event.ministryId } } // ✅ use the capitalized relation field
-        : {}, // all volunteers
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-      },
+      where: event.ministryId ? { Ministry: { id: event.ministryId } } : {},
+      select: { id: true, firstName: true, lastName: true },
     });
 
-    // Merge existing attendance or create new entries
-    const attendance = volunteers.map((vol) => {
-      const existing = event.attendance.find((a) => a.volunteerId === vol.id);
-      return (
-        existing ?? {
-          id: -1, // temporary ID for new attendance (staff can create later)
-          volunteer: vol,
-          session: "AM",
-          status: "PENDING" as AttendanceStatus,
-          response: "NO_RESPONSE" as attendance_response,
-        }
-      );
-    });
+    // Determine missing attendance
+    const existingVolunteerIds = new Set(
+      event.attendance.map((a) => a.volunteerId),
+    );
+    const missingVolunteers = volunteers.filter(
+      (v) => !existingVolunteerIds.has(v.id),
+    );
+
+    // Create attendance records for missing volunteers
+    const newAttendances = await Promise.all(
+      missingVolunteers.map((v) =>
+        prisma.eventAttendance.create({
+          data: {
+            eventId,
+            volunteerId: v.id,
+            session: "AM",
+            status: "PENDING",
+            response: "NO_RESPONSE",
+          },
+          include: {
+            volunteer: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+        }),
+      ),
+    );
+
+    // Combine all attendance
+    const attendance = [...event.attendance, ...newAttendances];
 
     return NextResponse.json({ ...event, attendance });
   } catch (error) {
@@ -78,6 +93,7 @@ export async function GET(
   }
 }
 
+// PATCH attendance
 export async function PATCH(
   _req: Request,
   context: { params: { id: string } | Promise<{ id: string }> },
@@ -85,6 +101,7 @@ export async function PATCH(
   try {
     const { id } = await Promise.resolve(context.params);
     const eventId = Number(id);
+
     if (isNaN(eventId)) {
       return NextResponse.json(
         { message: "Invalid event id" },
@@ -100,18 +117,7 @@ export async function PATCH(
     const body = await _req.json();
     const data = AttendanceUpdateSchema.parse(body);
 
-    // Ensure attendance exists
-    const attendance = await prisma.eventAttendance.findFirst({
-      where: { id: data.attendanceId, eventId },
-    });
-
-    if (!attendance) {
-      return NextResponse.json(
-        { message: "Attendance not found in this event" },
-        { status: 404 },
-      );
-    }
-
+    // Update attendance
     const updated = await prisma.eventAttendance.update({
       where: { id: data.attendanceId },
       data: {
@@ -120,9 +126,7 @@ export async function PATCH(
         response: data.response,
       },
       include: {
-        volunteer: {
-          select: { id: true, firstName: true, lastName: true },
-        },
+        volunteer: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 

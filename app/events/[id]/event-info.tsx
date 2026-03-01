@@ -6,10 +6,10 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar } from "lucide-react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { useEventById, useUpdateAttendance } from "@/app/services/event";
 
 interface VolunteerAttendance {
   id: number;
@@ -29,15 +29,6 @@ interface VolunteerAttendance {
     | "NO_RESPONSE";
 }
 
-interface Event {
-  id: number;
-  title: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  attendance: VolunteerAttendance[];
-}
-
 export default function EventInfo({
   eventId,
   user,
@@ -45,62 +36,49 @@ export default function EventInfo({
   eventId: string;
   user: any;
 }) {
-  const fetchEvent = async (eventId: string): Promise<Event> => {
-    const res = await fetch(`/api/events/${eventId}`);
-    if (!res.ok) throw new Error("Failed to fetch event");
-    return res.json();
-  };
-
-  const updateAttendanceApi = async ({
-    eventId,
-    data,
-  }: {
-    eventId: string;
-    data: Partial<VolunteerAttendance>;
-  }) => {
-    const res = await fetch(`/api/events/${eventId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error("Failed to update attendance");
-    return res.json();
-  };
-
-  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Fetch Event
-  const { data: event, isLoading } = useQuery({
-    queryKey: ["event", eventId],
-    queryFn: () => fetchEvent(eventId),
-    enabled: !!eventId, // ⭐ FIX
-  });
-  console.log(event);
-  // Update Attendance
-  const updateAttendanceMutation = useMutation({
-    mutationFn: updateAttendanceApi,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["event", eventId] }),
-  });
+  // In event-info.tsx, at the top of your component:
+  const numericEventId = Number(eventId);
+  console.log("[v0] eventId prop:", eventId);
+  console.log("[v0] numericEventId:", numericEventId);
+  console.log("[v0] is NaN:", isNaN(numericEventId));
 
-  const [attendanceList, setAttendanceList] = useState<VolunteerAttendance[]>(
-    [],
-  );
+  const {
+    data: event,
+    isLoading,
+    isError,
+    error,
+  } = useEventById(numericEventId);
 
-  useEffect(() => {
-    if (event?.attendance) setAttendanceList(event.attendance);
-  }, [event]);
-
+  console.log("[v0] useEventById called with:", numericEventId);
+  console.log("[v0] event data:", event);
+  console.log("[v0] isLoading:", isLoading);
+  console.log("[v0] isError:", isError);
+  console.log("[v0] error:", error);
   const handleUpdate = (
     id: number,
     field: keyof VolunteerAttendance,
     value: any,
   ) => {
-    // Optimistic UI
-    setAttendanceList((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, [field]: value } : a)),
+    if (!event) return;
+
+    // Optimistically update cache
+    const updatedAttendance = event.attendance.map((a: any) =>
+      a.id === id ? { ...a, [field]: value } : a,
     );
-    updateAttendanceMutation.mutate({ eventId, data: { id, [field]: value } });
+
+    // Update cache immediately
+    updateAttendance.mutate(
+      { id, [field]: value },
+      {
+        // onMutate: async () => {
+        //   // Cancel any outgoing refetches
+        // },
+      },
+    );
+
+    // Update local cache
+    event.attendance = updatedAttendance;
   };
 
   const statusColors: Record<string, string> = {
@@ -118,36 +96,14 @@ export default function EventInfo({
     NO_RESPONSE: "bg-gray-600/30 text-gray-400",
   };
 
-  if (isLoading)
-    return (
-      <div className="min-h-screen bg-neutral-900 text-gray-200 animate-pulse">
-        <Sidebar user={user} isOpen={false} onOpenChange={() => {}} />
+  if (isLoading) return <div>Loading...</div>;
 
-        <div className="flex flex-col md:ml-64">
-          <Header user={user} onMenuClick={() => {}} />
-
-          <div className="p-6 space-y-6">
-            <div className="h-6 w-48 bg-neutral-800 rounded" />
-
-            <div className="flex gap-3">
-              <div className="h-10 w-40 bg-neutral-800 rounded" />
-              <div className="h-10 w-32 bg-neutral-800 rounded" />
-              <div className="h-10 w-48 bg-neutral-800 rounded" />
-              <div className="h-10 w-28 bg-neutral-800 rounded" />
-            </div>
-
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-10 bg-neutral-800 rounded" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
   return (
-    <div className="h-screen w-full ">
+    <div className="h-screen w-full">
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
-      <div className="flex-1  flex flex-col md:ml-64">
+      <div className="flex-1 flex flex-col md:ml-64">
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+
         <Card className="mb-6 m-6 p-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
           <CardHeader>
             <CardTitle>
@@ -157,14 +113,11 @@ export default function EventInfo({
           <CardContent>
             <p className="text-gray-400">{event?.description}</p>
             <p className="mt-2 text-sm text-gray-300">
-              {`${new Date(event?.startDate ?? "").toLocaleString()} - ${new Date(
-                event?.endDate ?? "",
-              ).toLocaleString()}`}
+              {`${new Date(event?.startDate).toLocaleString()} - ${new Date(event?.endDate).toLocaleString()}`}
             </p>
           </CardContent>
         </Card>
 
-        {/* Attendance Table */}
         <Card className="bg-blue-500/10 m-6 p-6 border border-blue-500/30 text-white backdrop-blur-md">
           <CardHeader>
             <CardTitle>Volunteers Attendance</CardTitle>
@@ -189,20 +142,20 @@ export default function EventInfo({
                   </tr>
                 </thead>
                 <tbody>
-                  {attendanceList.map((a) => (
+                  {event?.attendance.map((a: any) => (
                     <tr
                       key={a.id}
                       className="border-t border-white/6 hover:bg-gray-600 transition-colors"
                     >
                       <td className="py-4 px-6">
-                        {a.volunteer.firstName} {a.volunteer.lastName}{" "}
+                        {a.volunteer.firstName} {a.volunteer.lastName}
                         {a.volunteer.email && (
                           <span className="text-gray-400 text-sm">
+                            {" "}
                             ({a.volunteer.email})
                           </span>
                         )}
                       </td>
-
                       <td className="py-4 px-6">
                         <NativeSelect
                           value={a.session}
@@ -218,7 +171,6 @@ export default function EventInfo({
                           <NativeSelectOption value="PM">PM</NativeSelectOption>
                         </NativeSelect>
                       </td>
-
                       <td className="py-4 px-6">
                         <NativeSelect
                           value={a.status}
@@ -240,7 +192,6 @@ export default function EventInfo({
                           )}
                         </NativeSelect>
                       </td>
-
                       <td className="py-4 px-6">
                         <NativeSelect
                           value={a.response}

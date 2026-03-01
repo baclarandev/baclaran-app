@@ -48,7 +48,7 @@ interface FormData {
   address: string;
   dob: string;
   sex: string;
-  joinedYearShrine?: string;
+
   ministryIds: number[];
   sacraments: string[];
   profilePicture: string;
@@ -57,7 +57,8 @@ interface FormData {
   marriageType?: "CHURCH" | "CIVIL" | "";
   nickname: string;
   selectedSubMinistryId?: number; // ✅ add this
-  joinedYearMinistry?: string; // ✅ add this
+  joinedYearShrine?: { year: number; month: number } | null;
+  joinedYearMinistry?: { year: number; month: number } | null;
   classification?: "REGULAR" | "SEASONAL";
 }
 
@@ -85,7 +86,23 @@ interface Timeline {
   totalYears: number;
   type: TimelineType;
 }
+export interface Formation {
+  name: string;
+  year: number | "";
+  default?: boolean; // default formation
+  checked?: boolean; // for default formations
+}
 
+export const DEFAULT_FORMATIONS: Formation[] = [
+  {
+    name: "Basic Orientation Seminar",
+    year: "",
+    default: true,
+    checked: false,
+  },
+  { name: "Safeguarding Policy", year: "", default: true, checked: false },
+  { name: "Basic Diocesan Formation", year: "", default: true, checked: false },
+];
 const FormDataSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -128,7 +145,10 @@ export function AddVolunteerDialog({
   user,
   onSuccess,
 }: AddVolunteerDialogProps) {
-  // Data fetching
+  const [defaultFormations, setDefaultFormations] =
+    useState<Formation[]>(DEFAULT_FORMATIONS);
+  const [customFormations, setCustomFormations] = useState<Formation[]>([]);
+  const [allFormations, setAllFormations] = useState<Formation[]>([]);
   const { data: ministries = [] } = useMinistries();
 
   const createVolunteer = useCreateVolunteer();
@@ -157,8 +177,8 @@ export function AddVolunteerDialog({
     address: "",
     dob: "",
     sex: "",
-    joinedYearShrine: "",
-    joinedYearMinistry: "",
+    joinedYearShrine: null,
+    joinedYearMinistry: null,
     nickname: "",
     civilStatus: "",
     occupation: "",
@@ -205,82 +225,73 @@ export function AddVolunteerDialog({
   };
 
   // Mode toggle for existing volunteer
-  const handleModeToggle = (checked: boolean) => {
-    setIsExistingVolunteer(checked);
-    if (!checked) {
-      setSelectedVolunteer(null);
-      setUpdateVolunteerId(null);
-      setFormData({
-        lastName: "",
-        firstName: "",
-        middleInitial: "",
-        email: "",
-        phone: "",
-        address: "",
-        dob: "",
-        sex: "",
-        joinedYearMinistry: "",
-        nickname: "",
-        civilStatus: "",
-        occupation: "",
-        ministryIds: [],
-        sacraments: [],
-        profilePicture: "",
-        joinedYearShrine: "",
-      });
-    }
-  };
+  // const handleModeToggle = (checked: boolean) => {
+  //   setIsExistingVolunteer(checked);
+  //   if (!checked) {
+  //     setSelectedVolunteer(null);
+  //     setUpdateVolunteerId(null);
+  //     setFormData({
+  //       lastName: "",
+  //       firstName: "",
+  //       middleInitial: "",
+  //       email: "",
+  //       phone: "",
+  //       address: "",
+  //       dob: "",
+  //       sex: "",
+  //       joinedYearMinistry: null,
+  //       nickname: "",
+  //       civilStatus: "",
+  //       occupation: "",
+  //       ministryIds: [],
+  //       sacraments: [],
+  //       profilePicture: "",
+  //       joinedYearShrine: null,
+  //     });
+  //   }
+  // };
 
-  const handleVolunteerSelect = (volunteer: Volunteer) => {
-    setSelectedVolunteer(volunteer);
-    setUpdateVolunteerId(volunteer.id);
-    setFormData({
-      lastName: volunteer.lastName,
-      firstName: volunteer.firstName,
-      middleInitial: volunteer.middleInitial || "",
-      email: volunteer.email,
-      phone: volunteer.phone || "",
-      address: volunteer.address || "",
-      dob: volunteer.dateOfBirth
-        ? new Date(volunteer.dateOfBirth).toISOString().split("T")[0]
-        : "",
-      civilStatus: volunteer.civilStatus || "",
-      occupation: volunteer.occupation || "",
-      joinedYearShrine: volunteer.joinedYearShrine
-        ? String(volunteer.joinedYearShrine)
-        : "",
-      joinedYearMinistry: volunteer.joinedYearMinistry
-        ? String(volunteer.joinedYearMinistry)
-        : "",
-      sex: volunteer.sex.toLowerCase(),
-      ministryIds: [],
-      nickname: volunteer.nickname || "",
-      sacraments: volunteer.sacraments.map((s) => {
-        const reverseMap: Record<string, string> = {
-          BAPTISM: "Baptism",
-          EUCHARIST: "First Communion",
-          CONFIRMATION: "Confirmation",
-          MATRIMONY: "Matrimony",
-        };
-        return reverseMap[s] || s;
-      }),
-      profilePicture: volunteer.profilePicture || "",
-    });
-    setOpenCombobox(false);
-  };
+  // const handleVolunteerSelect = (volunteer: Volunteer) => {
+  //   setSelectedVolunteer(volunteer);
+  //   setUpdateVolunteerId(volunteer.id);
+  //   setFormData({
+  //     lastName: volunteer.lastName,
+  //     firstName: volunteer.firstName,
+  //     middleInitial: volunteer.middleInitial || "",
+  //     email: volunteer.email,
+  //     phone: volunteer.phone || "",
+  //     address: volunteer.address || "",
+  //     dob: volunteer.dateOfBirth
+  //       ? new Date(volunteer.dateOfBirth).toISOString().split("T")[0]
+  //       : "",
+  //     civilStatus: volunteer.civilStatus || "",
+  //     occupation: volunteer.occupation || "",
+  //     joinedYearShrine: volunteer.joinedYearShrine
+  //       ? String(volunteer.joinedYearShrine)
+  //       : "",
+  //     joinedYearMinistry: volunteer.joinedYearMinistry
+  //       ? String(volunteer.joinedYearMinistry)
+  //       : "",
+  //     sex: volunteer.sex.toLowerCase(),
+  //     ministryIds: [],
+  //     nickname: volunteer.nickname || "",
+  //     sacraments: volunteer.sacraments.map((s) => {
+  //       const reverseMap: Record<string, string> = {
+  //         BAPTISM: "Baptism",
+  //         EUCHARIST: "First Communion",
+  //         CONFIRMATION: "Confirmation",
+  //         MATRIMONY: "Matrimony",
+  //       };
+  //       return reverseMap[s] || s;
+  //     }),
+  //     profilePicture: volunteer.profilePicture || "",
+  //   });
+  //   setOpenCombobox(false);
+  // };
 
   // Formation management
-  const addFormation = () =>
-    setFormations([...formations, { name: "", year: "" }]);
-
-  const updateFormation = (
-    index: number,
-    field: "name" | "year",
-    value: any,
-  ) => {
-    const copy = [...formations];
-    copy[index] = { ...copy[index], [field]: value };
-    setFormations(copy);
+  const handleFormationsChange = (combined: Formation[]) => {
+    setAllFormations(combined);
   };
 
   const removeFormation = (index: number) => {
@@ -291,14 +302,22 @@ export function AddVolunteerDialog({
   const computeTotal = (start: number, end?: number) =>
     end ? end - start + 1 : new Date().getFullYear() - start + 1;
 
-  const isValidYear = (year: any) =>
-    Number.isInteger(Number(year)) &&
-    Number(year) >= 1900 &&
-    Number(year) <= new Date().getFullYear();
+  const isValidYear = (year: any) => {
+    const num = Number(year);
+    return (
+      year !== "" && Number.isInteger(num) && num >= 1900 && num <= CURRENT_YEAR
+    );
+  };
 
-  const validFormations = formations.filter(
-    (f) => f.name.trim() !== "" && isValidYear(f.year),
-  );
+  const validFormations = allFormations
+    .filter(
+      (f) =>
+        f.name.trim() !== "" &&
+        f.year !== "" &&
+        Number(f.year) >= 1900 &&
+        Number(f.year) <= CURRENT_YEAR,
+    )
+    .map((f) => ({ name: f.name.trim(), year: Number(f.year) }));
 
   const validTimelines = [...shrineTimelines, ...outsideTimelines].filter(
     (t) =>
@@ -409,11 +428,10 @@ export function AddVolunteerDialog({
         : staffMinistryIds.length > 0;
 
       const joinedYearShrineValid =
-        formData.joinedYearShrine !== "" && formData.joinedYearShrine !== null;
+        formData.joinedYearShrine?.year && formData.joinedYearShrine?.month;
 
       const joinedYearMinistryValid =
-        formData.joinedYearMinistry !== "" &&
-        formData.joinedYearMinistry !== null;
+        formData.joinedYearMinistry?.year && formData.joinedYearMinistry?.month;
 
       return (
         ministriesValid && joinedYearShrineValid && joinedYearMinistryValid
@@ -443,11 +461,27 @@ export function AddVolunteerDialog({
     : user?.ministry?.id
       ? [user.ministry.id]
       : [];
-  const computeYearsFromJoined = (year?: string | number | null) => {
-    if (!year) return 0;
-    const parsed = Number(year);
-    if (isNaN(parsed)) return 0;
-    return CURRENT_YEAR - parsed + 1;
+  const computeYearsFromJoined = (
+    joined?: { year: number; month: number } | null,
+  ) => {
+    if (!joined?.year || !joined?.month) return "";
+
+    const now = new Date();
+    const joinedDate = new Date(joined.year, joined.month - 1);
+
+    let totalMonths =
+      (now.getFullYear() - joinedDate.getFullYear()) * 12 +
+      (now.getMonth() - joinedDate.getMonth());
+
+    if (totalMonths <= 0) return "< 1 mo"; // Less than a month
+
+    const years = Math.floor(totalMonths / 12);
+    const months = totalMonths % 12;
+
+    if (years > 0 && months > 0)
+      return `${years} yr${years > 1 ? "s" : ""} ${months} mo${months > 1 ? "s" : ""}`;
+    if (years > 0) return `${years} yr${years > 1 ? "s" : ""}`;
+    return `${months} mo${months > 1 ? "s" : ""}`;
   };
   const handleSubmit = async () => {
     // Determine ministry IDs for payload
@@ -468,12 +502,9 @@ export function AddVolunteerDialog({
       lastName: formData.lastName,
       middleInitial: formData.middleInitial || null,
       email: formData.email,
-      joinedYearShrine: formData.joinedYearShrine
-        ? Number(formData.joinedYearShrine)
-        : null,
-      joinedYearMinistry: formData.joinedYearMinistry
-        ? Number(formData.joinedYearMinistry)
-        : null,
+      joinedYearShrine: formData.joinedYearShrine?.year ?? null,
+      joinedYearMinistry: formData.joinedYearMinistry?.year ?? null,
+      nickname: formData.nickname || "",
       sex:
         formData.sex === "male"
           ? "Male"
@@ -488,6 +519,7 @@ export function AddVolunteerDialog({
       address: formData.address || null,
       dateOfBirth: formData.dob ? new Date(formData.dob) : null,
       ministryIds,
+      formations: allFormations,
       subMinistryId: subMinistryId, // optional sub-ministry
       sacraments: formData.sacraments
         .map((s) => sacramentMap[s])
@@ -502,7 +534,9 @@ export function AddVolunteerDialog({
         year: Number(f.year),
       }));
     }
-
+    if (validFormations.length > 0) {
+      payload.formations = validFormations;
+    }
     // Attach timelines if valid
     if (validTimelines.length > 0) {
       payload.timelines = validTimelines.map((t) => ({
@@ -678,22 +712,47 @@ export function AddVolunteerDialog({
                     htmlFor="joinedYearShrine"
                     className="text-sm font-medium"
                   >
-                    Joined Year on Shrine
+                    Joined Month & Year on Shrine
                   </label>
 
                   <div className="flex items-center gap-3">
                     <select
-                      id="joinedYearShrine"
-                      value={formData.joinedYearShrine ?? ""}
+                      value={formData.joinedYearShrine?.month ?? ""}
                       onChange={(e) =>
-                        updateFormData(
-                          "joinedYearShrine",
-                          e.target.value === "" ? null : Number(e.target.value),
-                        )
+                        setFormData((prev) => ({
+                          ...prev,
+                          joinedYearShrine: {
+                            year: prev.joinedYearShrine?.year ?? CURRENT_YEAR,
+                            month: Number(e.target.value),
+                          },
+                        }))
                       }
-                      className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
+                      className="rounded-md bg-gray-700 border border-gray-600 px-2 py-1 text-gray-100"
                     >
-                      <option value="">Select Year</option>
+                      <option value="">Month</option>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {new Date(0, i).toLocaleString("default", {
+                            month: "long",
+                          })}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={formData.joinedYearShrine?.year ?? ""}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          joinedYearShrine: {
+                            month: prev.joinedYearShrine?.month ?? 1,
+                            year: Number(e.target.value),
+                          },
+                        }))
+                      }
+                      className="rounded-md bg-gray-700 border border-gray-600 px-2 py-1 text-gray-100"
+                    >
+                      <option value="">Year</option>
                       {YEARS.map((year) => (
                         <option key={year} value={year}>
                           {year}
@@ -701,34 +760,62 @@ export function AddVolunteerDialog({
                       ))}
                     </select>
 
-                    {formData.joinedYearShrine && (
-                      <span className="text-sm text-blue-400 whitespace-nowrap">
-                        {computeYearsFromJoined(formData.joinedYearShrine)} yrs
-                      </span>
-                    )}
+                    {formData.joinedYearShrine?.year &&
+                      formData.joinedYearShrine?.month && (
+                        <span className="text-sm text-blue-400 whitespace-nowrap">
+                          {computeYearsFromJoined(formData.joinedYearShrine)}
+                        </span>
+                      )}
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 mt-4">
                   <label
                     htmlFor="joinedYearMinistry"
                     className="text-sm font-medium"
                   >
-                    Joined Year on Ministry
+                    Joined Month & Year on Ministry
                   </label>
 
                   <div className="flex items-center gap-3">
+                    {/* Month */}
                     <select
-                      id="joinedYearMinistry"
-                      value={formData.joinedYearMinistry ?? ""}
+                      value={formData.joinedYearMinistry?.month ?? ""}
                       onChange={(e) =>
-                        updateFormData(
-                          "joinedYearMinistry",
-                          e.target.value === "" ? null : Number(e.target.value),
-                        )
+                        setFormData((prev) => ({
+                          ...prev,
+                          joinedYearMinistry: {
+                            year: prev.joinedYearMinistry?.year ?? CURRENT_YEAR,
+                            month: Number(e.target.value),
+                          },
+                        }))
                       }
-                      className="w-full rounded-md bg-gray-700 border border-gray-600 px-3 py-1 text-gray-100"
+                      className="rounded-md bg-gray-700 border border-gray-600 px-2 py-1 text-gray-100"
                     >
-                      <option value="">Select Year</option>
+                      <option value="">Month</option>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {new Date(0, i).toLocaleString("default", {
+                            month: "long",
+                          })}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Year */}
+                    <select
+                      value={formData.joinedYearMinistry?.year ?? ""}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          joinedYearMinistry: {
+                            month: prev.joinedYearMinistry?.month ?? 1,
+                            year: Number(e.target.value),
+                          },
+                        }))
+                      }
+                      className="rounded-md bg-gray-700 border border-gray-600 px-2 py-1 text-gray-100"
+                    >
+                      <option value="">Year</option>
                       {YEARS.map((year) => (
                         <option key={year} value={year}>
                           {year}
@@ -736,20 +823,40 @@ export function AddVolunteerDialog({
                       ))}
                     </select>
 
-                    {formData.joinedYearMinistry && (
-                      <span className="text-sm text-blue-400 whitespace-nowrap">
-                        {computeYearsFromJoined(formData.joinedYearMinistry)}{" "}
-                        yrs
-                      </span>
-                    )}
+                    {/* Display computed duration */}
+                    {formData.joinedYearMinistry?.year &&
+                      formData.joinedYearMinistry?.month && (
+                        <span className="text-sm text-blue-400 whitespace-nowrap">
+                          {computeYearsFromJoined(formData.joinedYearMinistry)}
+                        </span>
+                      )}
                   </div>
                 </div>
-
                 <FormationsSection
-                  formations={formations}
-                  onAddFormation={addFormation}
-                  onUpdateFormation={updateFormation}
-                  onRemoveFormation={removeFormation}
+                  defaultFormations={defaultFormations}
+                  customFormations={customFormations}
+                  onChange={handleFormationsChange}
+                  onAddCustomFormation={() =>
+                    setCustomFormations([
+                      ...customFormations,
+                      { name: "", year: "" },
+                    ])
+                  }
+                  onUpdateCustomFormation={(index, field, value) => {
+                    const copy = [...customFormations];
+                    copy[index] = { ...copy[index], [field]: value };
+                    setCustomFormations(copy);
+                  }}
+                  onRemoveCustomFormation={(index) => {
+                    const copy = [...customFormations];
+                    copy.splice(index, 1);
+                    setCustomFormations(copy);
+                  }}
+                  onUpdateDefaultFormation={(index, field, value) => {
+                    const copy = [...defaultFormations];
+                    copy[index] = { ...copy[index], [field]: value };
+                    setDefaultFormations(copy);
+                  }}
                 />
 
                 <TimelinesSection
