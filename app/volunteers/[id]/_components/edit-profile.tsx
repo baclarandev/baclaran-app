@@ -13,8 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Briefcase } from "lucide-react";
-
+import { User, Briefcase, Upload } from "lucide-react";
+import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,7 +30,31 @@ export function EditProfileDialog({
   onSave,
 }: EditProfileDialogProps) {
   const [formData, setFormData] = useState(volunteer);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
+  // Mini inline uploader (fake upload for sample)
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadProgress(30);
+
+      // Simulate async upload
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        setFormData({ ...formData, profilePicture: result });
+        setUploadProgress(100);
+        setTimeout(() => setUploadProgress(0), 500);
+        toast.success("Avatar updated (sample)");
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      toast.error("Failed to upload avatar");
+      setUploadProgress(0);
+    }
+  };
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({
@@ -86,6 +111,35 @@ export function EditProfileDialog({
 
           {/* ================= PERSONAL ================= */}
           <TabsContent value="personal" className="space-y-6 pt-6">
+            <div className="flex flex-col items-center gap-3">
+              <Avatar className="w-24 h-24">
+                <AvatarImage src={formData.profilePicture || undefined} />
+                <AvatarFallback className="bg-blue-600 text-white text-xl">
+                  {formData.firstName?.[0]}
+                  {formData.lastName?.[0]}
+                </AvatarFallback>
+              </Avatar>
+
+              <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-md transition-colors">
+                <Upload className="w-4 h-4" />
+                Upload Avatar
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                />
+              </label>
+
+              {uploadProgress > 0 && (
+                <div className="w-full bg-blue-700 rounded-full h-2 mt-2">
+                  <div
+                    className="bg-yellow-400 h-2 rounded-full transition-all"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <Label>First Name</Label>

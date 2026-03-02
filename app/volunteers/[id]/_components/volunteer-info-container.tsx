@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/card";
 import { ProfileDetails } from "./profile-details";
 
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 export default function VolunteerProfile({ user }: { user: any }) {
   const router = useRouter();
   const params = useParams();
@@ -73,7 +74,17 @@ export default function VolunteerProfile({ user }: { user: any }) {
       </div>
     );
   }
+  function getAvatarUrl(volunteer: any) {
+    if (volunteer.profilePicture) {
+      return volunteer.profilePicture;
+    }
 
+    const seed = `${volunteer.firstName}-${volunteer.lastName}`;
+
+    return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+      seed,
+    )}&backgroundColor=3b82f6&textColor=ffffff`;
+  }
   return (
     <div className="flex min-h-screen w-full">
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
@@ -93,6 +104,14 @@ export default function VolunteerProfile({ user }: { user: any }) {
 
           {/* Hero Section */}
           <div className="mb-8">
+            <Avatar className="h-24 w-24 ring-4 ring-blue-500/40 shadow-lg">
+              <AvatarImage src={getAvatarUrl(volunteer)} />
+              <AvatarFallback className="bg-blue-600 text-white text-xl">
+                {volunteer.firstName?.[0]}
+                {volunteer.lastName?.[0]}
+              </AvatarFallback>
+            </Avatar>
+
             <h1 className="text-4xl font-bold text-white mb-2">
               {volunteer.firstName} {volunteer.lastName}
             </h1>
