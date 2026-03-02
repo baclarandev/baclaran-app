@@ -68,7 +68,7 @@ export default function EventInfo({
     );
 
     // Update cache immediately
-    updateAttendance.mutate(
+    updatedAttendance.mutate(
       { id, [field]: value },
       {
         // onMutate: async () => {
