@@ -1,27 +1,25 @@
+"use client";
+
 import { useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { User, Briefcase } from "lucide-react";
 
-import { toast } from "sonner";
-import { CivilStatus, Sex, Volunteer } from "@/lib/data";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
-
-interface EditDialogProps {
+interface EditProfileDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  volunteer: Volunteer;
-  onSave: (updated: Partial<Volunteer>) => void;
+  volunteer: any;
+  onSave: (updated: any) => void;
 }
 
 export function EditProfileDialog({
@@ -29,203 +27,292 @@ export function EditProfileDialog({
   onOpenChange,
   volunteer,
   onSave,
-}: EditDialogProps) {
-  const [saving, setSaving] = useState(false);
+}: EditProfileDialogProps) {
+  const [formData, setFormData] = useState(volunteer);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSaving(true);
-    const form = e.currentTarget;
-    const fd = new FormData(form);
-
-    setTimeout(() => {
-      onSave({
-        firstName: fd.get("firstName") as string,
-        lastName: fd.get("lastName") as string,
-        middleInitial: fd.get("middleInitial") as string,
-        nickname: fd.get("nickname") as string,
-        email: fd.get("email") as string,
-        phone: fd.get("phone") as string,
-        address: fd.get("address") as string,
-        dateOfBirth: fd.get("dateOfBirth")
-          ? new Date(fd.get("dateOfBirth") as string)
-          : undefined, // handle optional
-        sex: fd.get("sex") as Sex,
-        civilStatus: fd.get("civilStatus") as CivilStatus,
-        occupation: fd.get("occupation") as string,
-        joinedYearShrine:
-          (fd.get("joinedYearShrine") as string) ||
-          new Date().getFullYear().toString(),
-        joinedYearMinistry:
-          (fd.get("joinedYearMinistry") as string) ||
-          new Date().getFullYear().toString(),
-      });
-      toast.success("Profile updated successfully");
-      setSaving(false);
-      onOpenChange(false);
-    }, 600);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev: any) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
+
+  const handleSave = () => {
+    onSave(formData);
+    onOpenChange(false);
+  };
+
+  const inputStyle =
+    "bg-blue-900/40 border-blue-700 text-white placeholder:text-blue-200 focus-visible:ring-blue-500";
+
+  const selectStyle =
+    "w-full px-3 py-2 rounded-md bg-blue-900/40 border border-blue-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] bg-blue-400/10 border-blue-500/30 border text-white backdrop-blur-md overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto
+       bg-blue-400/20 border-blue-500/30 border text-white backdrop-blur-md shadow-lg rounded-lg
+        "
+      >
+        {/* HEADER */}
         <DialogHeader>
-          <DialogTitle className="font-heading text-xl">
+          <DialogTitle className="text-xl font-semibold text-blue-100">
             Edit Profile
           </DialogTitle>
+          <DialogDescription className="text-blue-300">
+            Update volunteer information
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="First Name"
-              name="firstName"
-              defaultValue={volunteer.firstName}
-            />
-            <Field
-              label="Last Name"
-              name="lastName"
-              defaultValue={volunteer.lastName}
-            />
-          </div>
+        <Tabs defaultValue="personal" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-blue-900/60 border border-blue-800">
+            <TabsTrigger
+              value="personal"
+              className="data-[state=active]:bg-blue-600"
+            >
+              <User className="h-4 w-4 mr-2" />
+              Personal Info
+            </TabsTrigger>
+            <TabsTrigger
+              value="professional"
+              className="data-[state=active]:bg-blue-600"
+            >
+              <Briefcase className="h-4 w-4 mr-2" />
+              Ministry
+            </TabsTrigger>
+          </TabsList>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="Middle Initial"
-              name="middleInitial"
-              defaultValue={volunteer.middleInitial}
-            />
-            <Field
-              label="Nickname"
-              name="nickname"
-              defaultValue={volunteer.nickname}
-            />
-          </div>
+          {/* ================= PERSONAL ================= */}
+          <TabsContent value="personal" className="space-y-6 pt-6">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>First Name</Label>
+                <Input
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
 
-          <Field
-            label="Email"
-            name="email"
-            type="email"
-            defaultValue={volunteer.email}
-          />
+              <div>
+                <Label>Last Name</Label>
+                <Input
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Phone" name="phone" defaultValue={volunteer.phone} />
-            <Field
-              label="Date of Birth"
-              name="dateOfBirth"
-              type="date"
-              defaultValue={
-                volunteer.dateOfBirth
-                  ? new Date(volunteer.dateOfBirth).toISOString().split("T")[0]
-                  : ""
-              }
-            />
-          </div>
-
-          <Field
-            label="Address"
-            name="address"
-            defaultValue={volunteer.address}
-          />
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">
-                Sex
-              </Label>
-              <NativeSelect name="sex" defaultValue={volunteer.sex}>
-                <NativeSelectOption value="">
-                  Select a Gender
-                </NativeSelectOption>
-
-                <NativeSelectOption value="Male">Male</NativeSelectOption>
-                <NativeSelectOption value="Female">Female</NativeSelectOption>
-              </NativeSelect>
+              <div>
+                <Label>Middle Initial</Label>
+                <Input
+                  name="middleInitial"
+                  maxLength={1}
+                  value={formData.middleInitial}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold text-muted-foreground">
-                Civil Status
-              </Label>
-              <NativeSelect
-                name="civilStatus"
-                defaultValue={volunteer.civilStatus}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Nickname</Label>
+                <Input
+                  name="nickname"
+                  value={formData.nickname}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
+
+              <div>
+                <Label>Occupation</Label>
+                <Input
+                  name="occupation"
+                  value={formData.occupation}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                className={inputStyle}
+              />
+              <Input
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                className={inputStyle}
+              />
+            </div>
+
+            <Input
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              className={inputStyle}
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                type="date"
+                name="dateOfBirth"
+                value={formData.dateOfBirth}
+                onChange={handleChange}
+                className={inputStyle}
+              />
+
+              <select
+                name="sex"
+                value={formData.sex}
+                onChange={(e) =>
+                  setFormData({ ...formData, sex: e.target.value })
+                }
+                className={selectStyle}
               >
-                <NativeSelectOption value="">
-                  Select civil status
-                </NativeSelectOption>
-
-                <NativeSelectOption value="Single">Single</NativeSelectOption>
-                <NativeSelectOption value="Married">Married</NativeSelectOption>
-                <NativeSelectOption value="Widowed">Widowed</NativeSelectOption>
-                <NativeSelectOption value="Divorced">
-                  Divorced
-                </NativeSelectOption>
-              </NativeSelect>
+                <option>Male</option>
+                <option>Female</option>
+                <option>Other</option>
+              </select>
             </div>
-          </div>
 
-          <Field
-            label="Occupation"
-            name="occupation"
-            defaultValue={volunteer.occupation}
-          />
-          <Field
-            label="Joined Year"
-            name="joinedYear"
-            type="number"
-            defaultValue={
-              volunteer.joinedYearShrine ?? new Date().getFullYear().toString()
-            }
-          />
-          <Field
-            label="Joined Year (Ministry)"
-            name="joinedYearMinistry"
-            type="number"
-            defaultValue={
-              volunteer.joinedYearMinistry ??
-              new Date().getFullYear().toString()
-            }
-          />
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="bg-red-500/20 cursor-pointer"
+            <select
+              name="civilStatus"
+              value={formData.civilStatus}
+              onChange={(e) =>
+                setFormData({ ...formData, civilStatus: e.target.value })
+              }
+              className={selectStyle}
             >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={saving}
-              className="bg-blue-500/10 border-blue-500/30 border text-white backdrop-blur-md"
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          </DialogFooter>
-        </form>
+              <option>Single</option>
+              <option>Married</option>
+              <option>Divorced</option>
+              <option>Widowed</option>
+            </select>
+
+            {/* SACRAMENTS */}
+            <div>
+              <Label>Sacraments</Label>
+              <div className="space-y-2 pt-2">
+                {["BAPTISM", "CONFIRMATION", "EUCHARIST"].map((sacrament) => (
+                  <label
+                    key={sacrament}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-blue-500 w-4 h-4"
+                      checked={formData.sacraments.includes(sacrament)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({
+                            ...formData,
+                            sacraments: [...formData.sacraments, sacrament],
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            sacraments: formData.sacraments.filter(
+                              (s: any) => s !== sacrament,
+                            ),
+                          });
+                        }
+                      }}
+                    />
+                    <span className="text-blue-100 text-sm">{sacrament}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ================= MINISTRY ================= */}
+          <TabsContent value="professional" className="space-y-6 pt-6">
+            <Label>Volunteer Code</Label>
+            <Input
+              name="volunteerCode"
+              value={formData.volunteerCode}
+              disabled
+              className="bg-blue-950 border-blue-800 text-blue-300"
+            />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Label>Joined Year on Shrine</Label>
+              <Input
+                type="number"
+                name="joinedYearShrine"
+                value={formData.joinedYearShrine}
+                onChange={handleChange}
+                className={inputStyle}
+              />
+              <Label>Joined Year on Ministry</Label>
+              <Input
+                type="number"
+                name="joinedYearMinistry"
+                value={formData.joinedYearMinistry}
+                onChange={handleChange}
+                className={inputStyle}
+              />
+            </div>
+            <Label>Classification & Status</Label>
+            <div className="grid grid-cols-2 gap-4">
+              <select
+                className={selectStyle}
+                value={formData.classification}
+                onChange={(e) =>
+                  setFormData({ ...formData, classification: e.target.value })
+                }
+              >
+                <option>REGULAR</option>
+                <option>SEASONAL</option>
+              </select>
+
+              <select
+                className={selectStyle}
+                value={formData.status}
+                onChange={(e) =>
+                  setFormData({ ...formData, status: e.target.value })
+                }
+              >
+                <option>ACTIVE</option>
+                <option>INACTIVE</option>
+                <option>SUSPENDED</option>
+              </select>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* FOOTER BUTTONS */}
+        <DialogFooter className="gap-2 pt-4">
+          {/* Cancel */}
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="border-blue-600 text-blue-200 hover:bg-blue-800"
+          >
+            Cancel
+          </Button>
+
+          {/* Save */}
+          <Button
+            onClick={handleSave}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-lg"
+          >
+            Save Changes
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Field({
-  label,
-  name,
-  defaultValue,
-  type = "text",
-}: {
-  label: string;
-  name: string;
-  defaultValue?: string;
-  type?: string;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs font-semibold text-muted-foreground">
-        {label}
-      </Label>
-      <Input name={name} type={type} defaultValue={defaultValue} />
-    </div>
   );
 }

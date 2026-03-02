@@ -5,18 +5,24 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Edit2 } from "lucide-react";
 
 import { useVolunteerById, useUpdateVolunteer } from "@/app/services/volunteer";
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
-import { DetailsGrid } from "./details-grid";
-import { FormationsTimelines } from "./formations-timeline";
 import { EditProfileDialog } from "./edit-profile";
-import { HeroSection } from "./hero-section";
+
 import { useMinistries } from "@/app/services/ministries";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ProfileDetails } from "./profile-details";
 
 export default function VolunteerProfile({ user }: { user: any }) {
   const router = useRouter();
@@ -86,15 +92,36 @@ export default function VolunteerProfile({ user }: { user: any }) {
           </Button>
 
           {/* Hero Section */}
-          <HeroSection volunteer={volunteer} onEdit={() => setEditOpen(true)} />
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-white mb-2">
+              {volunteer.firstName} {volunteer.lastName}
+            </h1>
+            <p className="text-white italic">
+              Ministry: {volunteer.ministryName}
+            </p>
+          </div>
 
-          {/* Details */}
-          <DetailsGrid volunteer={volunteer} />
-
-          {/* Formations & Timelines */}
-          <FormationsTimelines volunteer={volunteer} />
-
-          {/* Edit Dialog */}
+          {/* Main Card */}
+          <Card className="mb-8 shadow-lg bg-blue-500/20 border-blue-500/30 border text-white backdrop-blur-md">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Profile Information</CardTitle>
+                <CardDescription>
+                  View and manage your volunteer profile
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => setEditOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <Edit2 className="h-4 w-4" />
+                Edit Profile
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <ProfileDetails volunteer={volunteer} />
+            </CardContent>
+          </Card>
           <EditProfileDialog
             open={editOpen}
             onOpenChange={setEditOpen}

@@ -46,17 +46,20 @@ export default function Dashboard({ user }: { user: any }) {
   //       );
   //     })
   // Metrics calculation
+  const allVolunteers = useMemo(() => {
+    return volunteers?.flatMap((ministry: any) => ministry.volunteers) || [];
+  }, [volunteers]);
   const currentMinistry = user.ministry?.name;
   const metrics = useMemo(() => {
     if (!volunteers || !ministries) return null;
 
-    const activeVolunteers = volunteers.filter(
+    const activeVolunteers = allVolunteers.filter(
       (v: any) => v.status === "ACTIVE",
     ).length;
-    const inactiveVolunteers = volunteers.length - activeVolunteers;
 
+    const inactiveVolunteers = allVolunteers.length - activeVolunteers;
     return {
-      totalVolunteers: volunteers.length,
+      totalVolunteers: allVolunteers.length,
       activeVolunteers,
       inactiveVolunteers,
       upcomingEvents: 0,

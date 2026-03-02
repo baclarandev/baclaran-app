@@ -216,7 +216,7 @@ export default function Volunteer({ user }: any) {
                     Total Volunteers
                   </p>
                   <p className="text-2xl font-bold text-white">
-                    {volunteers.length}
+                    {allVolunteers.length}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
