@@ -26,9 +26,11 @@ import { Header } from "@/components/layout/header";
 import { useMinistries } from "@/app/services/ministries";
 import { useEvents } from "@/app/services/event";
 import { useRouter } from "next/navigation";
+import { EventSkeletonGrid } from "./event-skeleton-grid";
 
 export default function Events({ user }: any) {
-  const { events, createEvent, deleteEvent, archiveEvent } = useEvents();
+  const { events, isError, isLoading, createEvent, deleteEvent, archiveEvent } =
+    useEvents();
   const { data: ministries = [] } = useMinistries();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -188,56 +190,57 @@ export default function Events({ user }: any) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEvents.map((event: any) => {
-                    const status = getEventStatus(event.status);
-                    return (
-                      <tr
-                        key={event.id}
-                        className="border-t border-white/6 hover:bg-gray-600 cursor-pointer"
-                        onClick={() => router.push(`/events/${event.id}`)}
-                      >
-                        <td className="py-4 px-6">
-                          <p className="font-medium">{event.title}</p>
-                          <p className="text-sm text-gray-400 line-clamp-1">
-                            {event.description}
-                          </p>
-                        </td>
-                        <td className="py-4 px-6 text-white text-sm">
-                          {new Date(event.startDate).toLocaleString()} -{" "}
-                          {new Date(event.endDate).toLocaleString()}
-                        </td>
-                        <td className="py-4 px-6">
-                          <Badge
-                            className={`px-3 py-1 rounded-full ${status.className}`}
-                          >
-                            {status.label}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-6 text-right flex gap-2 justify-end">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent row click
-                              setDeleteId(event.id);
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent row click
-                              archiveEvent(event.id);
-                            }}
-                          >
-                            <Archive className="w-4 h-4 text-orange-300" />
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={4} className="p-6">
+                        <EventSkeletonGrid />
+                      </td>
+                    </tr>
+                  ) : isError ? (
+                    <tr>
+                      <td colSpan={4} className="p-6 text-center text-red-400">
+                        Failed to load events.
+                      </td>
+                    </tr>
+                  ) : filteredEvents.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-6 text-center text-gray-400">
+                        No events found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredEvents.map((event: any) => {
+                      const status = getEventStatus(event.status);
+                      return (
+                        <tr
+                          key={event.id}
+                          className="border-t border-white/6 hover:bg-gray-600 cursor-pointer"
+                          onClick={() => router.push(`/events/${event.id}`)}
+                        >
+                          <td className="py-4 px-6">
+                            <p className="font-medium">{event.title}</p>
+                            <p className="text-sm text-gray-400 line-clamp-1">
+                              {event.description}
+                            </p>
+                          </td>
+                          <td className="py-4 px-6 text-white text-sm">
+                            {new Date(event.startDate).toLocaleString()} -{" "}
+                            {new Date(event.endDate).toLocaleString()}
+                          </td>
+                          <td className="py-4 px-6">
+                            <Badge
+                              className={`px-3 py-1 rounded-full ${status.className}`}
+                            >
+                              {status.label}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-6 text-right flex gap-2 justify-end">
+                            ...
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -272,7 +275,11 @@ export default function Events({ user }: any) {
                   All Ministries
                 </NativeSelectOption>
                 {ministries.map((m: any) => (
-                  <NativeSelectOption className="bg-blue-600/20" key={m.id} value={m.id}>
+                  <NativeSelectOption
+                    className="bg-blue-600/20"
+                    key={m.id}
+                    value={m.id}
+                  >
                     {m.name}
                   </NativeSelectOption>
                 ))}

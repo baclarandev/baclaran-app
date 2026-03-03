@@ -66,7 +66,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
     <header className="sticky print-hidden top-0 z-40 flex h-16 bg-neutral-900 items-center gap-4 px-6  backdrop-blur-md border-b border-white/20 shadow-md  ">
       {/* Mobile menu button */}
       <button
-        className="md:hidden p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
+        className="md:hidden p-2 rounded-lg  hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
         onClick={onMenuClick}
         aria-label="Toggle menu"
       >
@@ -74,7 +74,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
       </button>
 
       {/* Page title */}
-      <div className="flex items-center font-mono gap-2 sm:text-sm md:text-lg  text-white dark:text-red-400">
+      <div className="flex items-center font-mono gap-2 sm:text-sm md:text-lg  text-white ">
         {pageTitle}
       </div>
 
