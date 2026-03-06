@@ -77,7 +77,7 @@ export function EditProfileDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-  className="
+        className="
   w-[95vw]
   sm:max-w-2xl
   max-h-[90vh]
@@ -90,7 +90,7 @@ export function EditProfileDialog({
   shadow-lg
   rounded-lg
   "
->
+      >
         {/* HEADER */}
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-blue-100">
@@ -152,7 +152,7 @@ export function EditProfileDialog({
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label>First Name</Label>
+                <Label className="mb-2">First Name</Label>
                 <Input
                   name="firstName"
                   value={formData.firstName}
@@ -162,7 +162,7 @@ export function EditProfileDialog({
               </div>
 
               <div>
-                <Label>Last Name</Label>
+                <Label className="mb-2">Last Name</Label>
                 <Input
                   name="lastName"
                   value={formData.lastName}
@@ -172,7 +172,7 @@ export function EditProfileDialog({
               </div>
 
               <div>
-                <Label>Middle Initial</Label>
+                <Label className="mb-2">Middle Initial</Label>
                 <Input
                   name="middleInitial"
                   maxLength={1}
@@ -185,7 +185,7 @@ export function EditProfileDialog({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Nickname</Label>
+                <Label className="mb-2">Nickname</Label>
                 <Input
                   name="nickname"
                   value={formData.nickname}
@@ -195,7 +195,7 @@ export function EditProfileDialog({
               </div>
 
               <div>
-                <Label>Occupation</Label>
+                <Label className="mb-2">Occupation</Label>
                 <Input
                   name="occupation"
                   value={formData.occupation}
@@ -206,65 +206,79 @@ export function EditProfileDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="mb-2">Email </Label>
+                <Input
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
+              <div>
+                <Label className="mb-2">Phone </Label>
+                <Input
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="mb-2">Address</Label>
+
               <Input
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={inputStyle}
-              />
-              <Input
-                name="phone"
-                value={formData.phone}
+                name="address"
+                value={formData.address}
                 onChange={handleChange}
                 className={inputStyle}
               />
             </div>
-
-            <Input
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              className={inputStyle}
-            />
-
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                className={inputStyle}
-              />
-
+              <div>
+                <Label className="mb-2">Date of Birth</Label>
+                <Input
+                  type="date"
+                  name="dateOfBirth"
+                  value={formData.dateOfBirth}
+                  onChange={handleChange}
+                  className={inputStyle}
+                />
+              </div>
+              <div>
+                <Label className="mb-2">Sex</Label>
+                <select
+                  name="sex"
+                  value={formData.sex}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sex: e.target.value })
+                  }
+                  className={selectStyle}
+                >
+                  <option>Male</option>
+                  <option>Female</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label className="mb-2">Civil Status</Label>
               <select
-                name="sex"
-                value={formData.sex}
+                name="civilStatus"
+                value={formData.civilStatus}
                 onChange={(e) =>
-                  setFormData({ ...formData, sex: e.target.value })
+                  setFormData({ ...formData, civilStatus: e.target.value })
                 }
                 className={selectStyle}
               >
-                <option>Male</option>
-                <option>Female</option>
-                <option>Other</option>
-              </select>
+                <option>Single</option>
+                <option>Married</option>
+                <option>Divorced</option>
+                <option>Widowed</option>
+              </select>{" "}
             </div>
-
-            <select
-              name="civilStatus"
-              value={formData.civilStatus}
-              onChange={(e) =>
-                setFormData({ ...formData, civilStatus: e.target.value })
-              }
-              className={selectStyle}
-            >
-              <option>Single</option>
-              <option>Married</option>
-              <option>Divorced</option>
-              <option>Widowed</option>
-            </select>
-
             {/* SACRAMENTS */}
             <div>
               <Label>Sacraments</Label>

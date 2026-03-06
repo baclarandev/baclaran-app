@@ -13,9 +13,11 @@ interface SacramentsCheckboxesProps {
 export function SacramentsCheckboxes({
   selectedSacraments,
   civilStatus,
+  marriageType,
   onToggleSacrament,
-}: SacramentsCheckboxesProps) {
-  const isSacramentDisabled = civilStatus === "Married";
+}: SacramentsCheckboxesProps & { marriageType?: "CHURCH" | "CIVIL" | "" }) {
+  const isSacramentDisabled =
+    civilStatus === "Married" || marriageType === "CHURCH";
 
   return (
     <div className="space-y-2">
@@ -36,7 +38,8 @@ export function SacramentsCheckboxes({
       </div>
       {isSacramentDisabled && (
         <p className="text-xs text-gray-400">
-          All sacraments are automatically selected for married individuals
+          All sacraments are automatically selected for married individuals or
+          Church marriages
         </p>
       )}
     </div>

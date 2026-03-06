@@ -378,7 +378,10 @@ export function AddVolunteerDialog({
 
   // Auto-select all sacraments for married individuals
   useEffect(() => {
-    if (formData.civilStatus === "Married") {
+    if (
+      formData.civilStatus === "Married" ||
+      formData.marriageType === "CHURCH"
+    ) {
       const allSacraments = Object.keys(sacramentMap);
       const missing = allSacraments.filter(
         (s) => !formData.sacraments.includes(s),
@@ -391,7 +394,7 @@ export function AddVolunteerDialog({
         }));
       }
     }
-  }, [formData.civilStatus, formData.sacraments]);
+  }, [formData.civilStatus, formData.marriageType, formData.sacraments]);
 
   // Sync ministry IDs for staff
   useEffect(() => {
