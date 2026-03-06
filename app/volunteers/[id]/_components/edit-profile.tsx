@@ -77,10 +77,20 @@ export function EditProfileDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-2xl max-h-[90vh] overflow-y-auto
-       bg-blue-400/20 border-blue-500/30 border text-white backdrop-blur-md shadow-lg rounded-lg
-        "
-      >
+  className="
+  w-[95vw]
+  sm:max-w-2xl
+  max-h-[90vh]
+  overflow-y-auto
+  bg-blue-400/20
+  border-blue-500/30
+  border
+  text-white
+  backdrop-blur-md
+  shadow-lg
+  rounded-lg
+  "
+>
         {/* HEADER */}
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-blue-100">

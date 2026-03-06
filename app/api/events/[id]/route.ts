@@ -18,9 +18,12 @@ export async function GET(
   context: { params: { id: string } | Promise<{ id: string }> },
 ) {
   try {
+    const sessionUser = await getSession();
+    if (!sessionUser)
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
     const { id } = await Promise.resolve(context.params);
     const eventId = Number(id);
-
     if (isNaN(eventId)) {
       return NextResponse.json(
         { message: "Invalid event id" },
@@ -28,62 +31,49 @@ export async function GET(
       );
     }
 
-    // Fetch the event
+    // Fetch event with all attendance
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        startDate: true,
-        endDate: true,
-        ministryId: true,
-        attendance: { include: { volunteer: true } },
-      },
+      include: { attendance: { include: { volunteer: true } } },
     });
 
     if (!event) {
       return NextResponse.json({ message: "Event not found" }, { status: 404 });
     }
 
-    // Fetch all relevant volunteers
-    const volunteers = await prisma.volunteer.findMany({
-      where: event.ministryId ? { Ministry: { id: event.ministryId } } : {},
-      select: { id: true, firstName: true, lastName: true },
-    });
+    // Determine ministry filter for staff
+    let allowedVolunteerIds: number[] | undefined;
 
-    // Determine missing attendance
-    const existingVolunteerIds = new Set(
-      event.attendance.map((a) => a.volunteerId),
-    );
-    const missingVolunteers = volunteers.filter(
-      (v) => !existingVolunteerIds.has(v.id),
-    );
+    if (sessionUser.role === "STAFF" && sessionUser.ministryId) {
+      const subMinistries = await prisma.ministry.findMany({
+        where: { parentId: sessionUser.ministryId },
+        select: { id: true },
+      });
+      const ministryIds = [
+        sessionUser.ministryId,
+        ...subMinistries.map((m) => m.id),
+      ];
 
-    // Create attendance records for missing volunteers
-    const newAttendances = await Promise.all(
-      missingVolunteers.map((v) =>
-        prisma.eventAttendance.create({
-          data: {
-            eventId,
-            volunteerId: v.id,
-            session: "AM",
-            status: "PENDING",
-            response: "NO_RESPONSE",
+      const volunteersInMinistries = await prisma.volunteer.findMany({
+        where: {
+          ministryHistories: {
+            some: { ministryId: { in: ministryIds }, status: "ACTIVE" },
           },
-          include: {
-            volunteer: {
-              select: { id: true, firstName: true, lastName: true },
-            },
-          },
-        }),
-      ),
-    );
+        },
+        select: { id: true },
+      });
 
-    // Combine all attendance
-    const attendance = [...event.attendance, ...newAttendances];
+      allowedVolunteerIds = volunteersInMinistries.map((v) => v.id);
+    }
 
-    return NextResponse.json({ ...event, attendance });
+    // Filter attendance if staff
+    const filteredAttendance = allowedVolunteerIds
+      ? event.attendance.filter((a) =>
+          allowedVolunteerIds!.includes(a.volunteerId),
+        )
+      : event.attendance; // admins see all
+
+    return NextResponse.json({ ...event, attendance: filteredAttendance });
   } catch (error) {
     console.error("GET /api/events/[id] error:", error);
     return NextResponse.json(

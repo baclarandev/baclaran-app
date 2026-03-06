@@ -57,7 +57,6 @@ model Volunteer {
   joinedYearMinistry Int?
   eventAttendance    EventAttendance[]
   eventLinks         EventVolunteer[]
-  massBookings       MassBooking[]
   Ministry           Ministry?                  @relation(fields: [ministryId], references: [id], map: "volunteer_ministry_fk")
   attendances        VolunteerAttendance[]
   formations         VolunteerFormation[]
@@ -86,7 +85,6 @@ model Ministry {
   parentId      Int?
   ministryCode  String?                    @unique @db.VarChar(5)
   Event         Event[]
-  massBookings  MassBooking[]
   parent        Ministry?                  @relation("MinistryHierarchy", fields: [parentId], references: [id], onUpdate: NoAction, map: "ministry_parent_fk")
   subMinistries Ministry[]                 @relation("MinistryHierarchy")
   users         User[]
@@ -127,34 +125,6 @@ model VolunteerAttendanceSummary {
   served        Json?
 
   @@unique([volunteerId, month, year], name: "volunteer_summary_unique", map: "volunteer_summary_unique")
-}
-
-model Mass {
-  id        Int           @id @default(autoincrement())
-  date      DateTime
-  time      String
-  language  String
-  type      String
-  category  String
-  slots     Int
-  createdAt DateTime      @default(now())
-  qrOpenAt  DateTime
-  bookings  MassBooking[]
-}
-
-model MassBooking {
-  id          Int              @id @default(autoincrement())
-  massId      Int
-  volunteerId Int
-  ministryId  Int
-  status      AttendanceStatus @default(PENDING)
-  servedAt    DateTime?
-  qrToken     String?          @unique
-  confirmedBy Int?
-  createdAt   DateTime         @default(now())
-  mass        Mass             @relation(fields: [massId], references: [id])
-  ministry    Ministry         @relation(fields: [ministryId], references: [id])
-  volunteer   Volunteer        @relation(fields: [volunteerId], references: [id])
 }
 
 model Event {
@@ -217,6 +187,14 @@ model VolunteerTimeline {
   volunteer    Volunteer @relation(fields: [volunteerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([volunteerId])
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  email     String   @db.VarChar(255)
+  token     String   @unique @db.VarChar(255)
+  expiresat DateTime @db.Timestamp(6)
+  createdat DateTime @default(now()) @db.Timestamp(6)
 }
 
 enum Role {

@@ -1,176 +1,175 @@
 "use client";
 
 import {
-  User,
   Mail,
   Phone,
   MapPin,
-  Award,
-  Briefcase,
   Calendar,
+  Church,
+  Heart,
+  User,
+  BadgeCheck,
 } from "lucide-react";
 
-export function ProfileDetails({ volunteer }: { volunteer: any }) {
-  // ✅ Get ACTIVE ministry history
-  const activeHistory = volunteer.ministryHistories?.find(
-    (history: any) => history.status === "ACTIVE",
-  );
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-  const ministry = activeHistory?.ministry;
+type Props = {
+  volunteer: any;
+};
 
-  // ✅ Determine main + sub ministry
-  const mainMinistry = ministry?.parent ?? ministry;
-  const subMinistry = ministry?.parent ? ministry : null;
-
-  // ==============================
-  // Personal Details
-  // ==============================
-  const personalDetails = [
-    { icon: Mail, label: "Email", value: volunteer.email || "-" },
-    { icon: Phone, label: "Phone", value: volunteer.phone || "-" },
-    { icon: MapPin, label: "Address", value: volunteer.address || "-" },
-    { icon: User, label: "Occupation", value: volunteer.occupation || "-" },
-    {
-      icon: Calendar,
-      label: "Date of Birth",
-      value: volunteer.dateOfBirth
-        ? new Date(volunteer.dateOfBirth).toLocaleDateString()
-        : "-",
-    },
-    { icon: User, label: "Civil Status", value: volunteer.civilStatus || "-" },
-  ];
-
-  // ==============================
-  // Ministry Details
-  // ==============================
-  const ministryDetails = [
-    {
-      icon: Briefcase,
-      label: "Main Ministry",
-      value: mainMinistry?.name?.trim() || "-",
-    },
-    ...(subMinistry
-      ? [
-          {
-            icon: Briefcase,
-            label: "Sub Ministry",
-            value: subMinistry?.name?.trim(),
-          },
-        ]
-      : []),
-    {
-      icon: Award,
-      label: "Volunteer Code",
-      value: volunteer.volunteerCode || "-",
-    },
-    {
-      icon: Calendar,
-      label: "Joined Shrine",
-      value: volunteer.joinedYearShrine || "-",
-    },
-    {
-      icon: Calendar,
-      label: "Joined Ministry",
-      value: volunteer.joinedYearMinistry || "-",
-    },
-    {
-      icon: Award,
-      label: "Classification",
-      value: volunteer.classification || "-",
-    },
-    {
-      icon: Award,
-      label: "Status",
-      value: volunteer.status || "-",
-    },
-  ];
+export function ProfileDetails({ volunteer }: Props) {
+  const formatDate = (date: string) => {
+    if (!date) return "Not provided";
+    return new Date(date).toLocaleDateString();
+  };
 
   return (
-    <div className="space-y-8">
-      {/* ============================== */}
-      {/* Personal Section */}
-      {/* ============================== */}
-      <div>
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <User className="h-5 w-5" />
-          Personal Information
-        </h3>
+    <div className="space-y-6">
+      {/* Personal Information */}
+      <Card className="bg-white/5 border-white/10 text-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <User className="h-5 w-5 text-blue-400" />
+            Personal Information
+          </CardTitle>
+        </CardHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {personalDetails.map((detail, index) => {
-            const Icon = detail.icon;
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <InfoItem label="First Name" value={volunteer.firstName} />
+            <InfoItem label="Last Name" value={volunteer.lastName} />
 
-            return (
-              <div
-                key={index}
-                className="flex items-start gap-3 p-3 bg-gray-700 rounded-lg"
-              >
-                <Icon className="h-5 w-5 text-slate-400 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-slate-300">
-                    {detail.label}
-                  </p>
-                  <p className="text-slate-100 font-medium">{detail.value}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+            <InfoItem
+              icon={<Calendar className="h-4 w-4" />}
+              label="Date of Birth"
+              value={formatDate(volunteer.dateOfBirth)}
+            />
 
-      {/* ============================== */}
-      {/* Ministry Section */}
-      {/* ============================== */}
-      <div>
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Briefcase className="h-5 w-5" />
-          Ministry & Volunteer Information
-        </h3>
+            <InfoItem label="Civil Status" value={volunteer.civilStatus} />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {ministryDetails.map((detail, index) => {
-            const Icon = detail.icon;
-
-            return (
-              <div
-                key={index}
-                className="flex items-start gap-3 p-3 bg-gray-700 rounded-lg"
-              >
-                <Icon className="h-5 w-5 text-slate-400 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-slate-300">
-                    {detail.label}
-                  </p>
-                  <p className="text-slate-100 font-medium">{detail.value}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ============================== */}
-      {/* Sacraments Section */}
-      {/* ============================== */}
-      {volunteer.sacraments?.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-            <Award className="h-5 w-5" />
-            Sacraments
-          </h3>
-
-          <div className="flex flex-wrap gap-2">
-            {volunteer.sacraments.map((sacrament: string, index: number) => (
-              <span
-                key={index}
-                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-              >
-                {sacrament.replace(/_/g, " ")}
-              </span>
-            ))}
+            <InfoItem
+              icon={<MapPin className="h-4 w-4" />}
+              label="Address"
+              value={volunteer.address}
+              full
+            />
           </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
+
+      {/* Contact Information */}
+      <Card className="bg-white/5 border-white/10 text-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Phone className="h-5 w-5 text-blue-400" />
+            Contact Information
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <InfoItem
+              icon={<Mail className="h-4 w-4" />}
+              label="Email"
+              value={volunteer.email}
+            />
+
+            <InfoItem
+              icon={<Phone className="h-4 w-4" />}
+              label="Phone"
+              value={volunteer.phone}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Ministry Information */}
+      <Card className="bg-white/5 border-white/10 text-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Church className="h-5 w-5 text-blue-400" />
+            Ministry Information
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            <InfoItem
+              label="Ministry"
+              value={volunteer.ministryName || "Not assigned"}
+            />
+
+            <InfoItem label="Volunteer Code" value={volunteer.volunteerCode} />
+
+            <InfoItem
+              label="Joined Ministry"
+              value={volunteer.joinedYearMinistry || "Not provided"}
+            />
+
+            <InfoItem
+              label="Joined Shrine"
+              value={volunteer.joinedYearShrine || "Not provided"}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sacraments */}
+      <Card className="bg-white/5 border-white/10 text-white">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Heart className="h-5 w-5 text-blue-400" />
+            Sacraments
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {volunteer.sacraments?.length ? (
+              volunteer.sacraments.map((s: string, index: number) => (
+                <span
+                  key={index}
+                  className="flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-blue-500/20 border border-blue-500/30"
+                >
+                  <BadgeCheck className="h-3 w-3" />
+                  {s.replace(/_/g, " ")}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-gray-300">
+                No sacraments recorded
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* -------------------------------- */
+/* Reusable Info Row */
+/* -------------------------------- */
+
+function InfoItem({
+  icon,
+  label,
+  value,
+  full,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value?: any;
+  full?: boolean;
+}) {
+  return (
+    <div className={`${full ? "sm:col-span-2" : ""}`}>
+      <p className="text-xs text-gray-300 mb-1">{label}</p>
+
+      <div className="flex items-center gap-2 text-sm font-medium">
+        {icon}
+        {value || "Not provided"}
+      </div>
     </div>
   );
 }

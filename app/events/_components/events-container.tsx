@@ -124,21 +124,21 @@ export default function Events({ user }: any) {
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         {/* Event Controls */}
-        <Card className="m-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
-          <CardContent className="flex flex-col md:flex-row md:justify-between gap-4">
+        <Card className="mx-4 mt-6 md:m-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
+          <CardContent className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <p className="text-gray-400">
                 Manage church events and activities
               </p>
             </div>
-            <div className="flex gap-3 items-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:items-center w-full lg:w-auto">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
                   placeholder="Search events..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md"
+                  className="pl-10 w-full sm:w-64 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md"
                 />
               </div>
               <NativeSelect
@@ -146,11 +146,24 @@ export default function Events({ user }: any) {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-40 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md"
               >
-                <NativeSelectOption value="all">All Events</NativeSelectOption>
-                <NativeSelectOption value="upcoming">
+                <NativeSelectOption
+                  value="all"
+                  className="bg-blue-500/20 text-black"
+                >
+                  All Events
+                </NativeSelectOption>
+                <NativeSelectOption
+                  value="upcoming"
+                  className="bg-blue-500/20 text-black"
+                >
                   Upcoming
                 </NativeSelectOption>
-                <NativeSelectOption value="past">Past</NativeSelectOption>
+                <NativeSelectOption
+                  value="past"
+                  className="bg-blue-500/20 text-black"
+                >
+                  Past
+                </NativeSelectOption>
               </NativeSelect>
 
               {isAdmin && (
@@ -166,55 +179,40 @@ export default function Events({ user }: any) {
         </Card>
 
         {/* Event Table */}
-        <Card className="m-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
+        <Card className="mx-4 mt-6 md:m-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
           <CardHeader>
             <CardTitle>Recent Events</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[800px]">
-                <thead>
-                  <tr className="bg-gray-700">
-                    <th className="py-3 px-6 text-left text-gray-400">
-                      Event Details
-                    </th>
-                    <th className="py-3 px-6 text-left text-gray-400">
-                      Start - End
-                    </th>
-                    <th className="py-3 px-6 text-left text-gray-400">
-                      Status
-                    </th>
-                    <th className="py-3 px-6 text-right text-gray-400">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={4} className="p-6">
-                        <EventSkeletonGrid />
-                      </td>
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-700">
+                      <th className="py-3 px-6 text-left text-gray-400">
+                        Event Details
+                      </th>
+                      <th className="py-3 px-6 text-left text-gray-400">
+                        Start - End
+                      </th>
+                      <th className="py-3 px-6 text-left text-gray-400">
+                        Status
+                      </th>
+                      <th className="py-3 px-6 text-right text-gray-400">
+                        Actions
+                      </th>
                     </tr>
-                  ) : isError ? (
-                    <tr>
-                      <td colSpan={4} className="p-6 text-center text-red-400">
-                        Failed to load events.
-                      </td>
-                    </tr>
-                  ) : filteredEvents.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="p-6 text-center text-gray-400">
-                        No events found.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredEvents.map((event: any) => {
+                  </thead>
+
+                  <tbody>
+                    {filteredEvents.map((event: any) => {
                       const status = getEventStatus(event.status);
+
                       return (
                         <tr
                           key={event.id}
-                          className="border-t border-white/6 hover:bg-gray-600 cursor-pointer"
+                          className="border-t border-white/10 hover:bg-gray-600 cursor-pointer"
                           onClick={() => router.push(`/events/${event.id}`)}
                         >
                           <td className="py-4 px-6">
@@ -223,33 +221,68 @@ export default function Events({ user }: any) {
                               {event.description}
                             </p>
                           </td>
-                          <td className="py-4 px-6 text-white text-sm">
-                            {new Date(event.startDate).toLocaleString()} -{" "}
+
+                          <td className="py-4 px-6 text-sm">
+                            {new Date(event.startDate).toLocaleString()}
+                            <br />
                             {new Date(event.endDate).toLocaleString()}
                           </td>
+
                           <td className="py-4 px-6">
-                            <Badge
-                              className={`px-3 py-1 rounded-full ${status.className}`}
-                            >
+                            <Badge className={`${status.className}`}>
                               {status.label}
                             </Badge>
                           </td>
-                          <td className="py-4 px-6 text-right flex gap-2 justify-end">
-                            ...
-                          </td>
+
+                          <td className="py-4 px-6 text-right">...</td>
                         </tr>
                       );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="grid gap-4 md:hidden p-4">
+                {filteredEvents.map((event: any) => {
+                  const status = getEventStatus(event.status);
+
+                  return (
+                    <div
+                      key={event.id}
+                      className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 cursor-pointer"
+                      onClick={() => router.push(`/events/${event.id}`)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-semibold">{event.title}</h3>
+
+                        <Badge className={status.className}>
+                          {status.label}
+                        </Badge>
+                      </div>
+
+                      <p className="text-sm text-gray-400 mt-1 line-clamp-2">
+                        {event.description}
+                      </p>
+
+                      <p className="text-xs text-gray-300 mt-3">
+                        {new Date(event.startDate).toLocaleString()}
+                      </p>
+
+                      <p className="text-xs text-gray-300">
+                        {new Date(event.endDate).toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           </CardContent>
         </Card>
 
         {/* Create Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogContent className="max-w-lg bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
+          <DialogContent className="w-full  bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
             <DialogHeader>
               <DialogTitle>Create New Event</DialogTitle>
             </DialogHeader>
@@ -258,6 +291,7 @@ export default function Events({ user }: any) {
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Add a title"
               />
 
               <Label>Ministry</Label>
@@ -270,13 +304,14 @@ export default function Events({ user }: any) {
                       e.target.value === "all" ? null : Number(e.target.value),
                   })
                 }
+                className="bg-blue-500/20  text-white"
               >
-                <NativeSelectOption value="all">
+                <NativeSelectOption value="all" className="">
                   All Ministries
                 </NativeSelectOption>
                 {ministries.map((m: any) => (
                   <NativeSelectOption
-                    className="bg-blue-600/20"
+                    className="bg-blue-600/20 text-black"
                     key={m.id}
                     value={m.id}
                   >
@@ -291,6 +326,7 @@ export default function Events({ user }: any) {
                 onChange={(e) =>
                   setForm({ ...form, description: e.target.value })
                 }
+                placeholder="Add a description..."
               />
 
               <Label>Start Date & Time</Label>
@@ -320,10 +356,13 @@ export default function Events({ user }: any) {
               <Button
                 variant="outline"
                 onClick={() => setIsAddDialogOpen(false)}
+                className="bg-red-500/20 border-none"
               >
                 Cancel
               </Button>
-              <Button onClick={handleCreateEvent}>Create Event</Button>
+              <Button className="bg-blue-500/20" onClick={handleCreateEvent}>
+                Create Event
+              </Button>
             </div>
           </DialogContent>
         </Dialog>

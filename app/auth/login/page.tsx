@@ -55,8 +55,10 @@ const Page = () => {
       setTimeout(() => router.push("/dashboard"), 800);
     },
 
-    onError: (error: any) => {
-      toast.error("Login Failed");
+    onError: async (error: any) => {
+      const message = error?.message || "Invalid email or password";
+
+      toast.error(message);
     },
   });
 
@@ -219,7 +221,14 @@ const Page = () => {
                     "Sign In"
                   )}
                 </Button>
-
+                <p className="text-sm  text-center mt-2">
+                  <a
+                    href="/auth/forgot-password"
+                    className="text-blue-400 hover:underline"
+                  >
+                    Forgot Password?
+                  </a>
+                </p>
                 <div className="pt-4 border-t border-neutral-600/30">
                   <p className="text-center text-stone-400 text-sm mb-3">
                     Need help accessing your account?

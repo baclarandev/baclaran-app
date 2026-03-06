@@ -3,7 +3,11 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-const PUBLIC_PATHS = ["/auth/login"];
+const PUBLIC_PATHS = [
+  "/auth/login",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+];
 
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -45,6 +49,6 @@ export const config = {
     "/events/:path*",
     "/schedule/:path*",
     "/ministries/:path*",
-    "/auth/login",
+    "/auth/:path*",
   ],
 };
