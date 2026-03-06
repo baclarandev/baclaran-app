@@ -127,15 +127,13 @@ export function Sidebar({
           <div className="w-9 h-9  rounded-xl flex items-center justify-center shadow-md">
             <Image
               src={Logo}
-              alt="Baclaran Church Logo"
+              alt="National Shrine of Our Mother of Perpetual Help Logo"
               width={36}
               height={36}
             />
           </div>
           <div className="flex flex-col">
-            <span className="lg:text-lg font-bold text-gray-100">
-              Baclaran Church
-            </span>
+            <span className="lg:text-lg font-bold text-gray-100">OMPH</span>
             <span className="text-xs font-medium text-gray-400 -mt-0.5">
               Management System
             </span>

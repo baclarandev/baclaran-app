@@ -123,7 +123,8 @@ export default function Dashboard({ user }: { user: any }) {
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold text-white mb-2">
-                      Welcome back to Baclaran Church
+                      Welcome back to National Shrine of Our Mother of Perpetual
+                      Help Volunteer Management System
                     </h2>
                     <p className="text-stone-300">
                       Together we serve, inspire, and care for our community
