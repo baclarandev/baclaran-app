@@ -467,13 +467,7 @@ export default function Volunteer({ user }: any) {
                           >
                             <Edit className="w-4 h-4" />
                           </Button> */}
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(v)}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </Button>
+                      
                         </td>
                       </tr>
                     ))}
