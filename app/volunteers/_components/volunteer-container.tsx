@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Clock,
   Zap,
+  Trash,
 } from "lucide-react";
 import {
   NativeSelect,
@@ -470,7 +471,7 @@ export default function Volunteer({ user }: any) {
                             variant="outline"
                             onClick={() => handleDelete(v.id)}
                           >
-                            <Edit className="w-4 h-4" />
+                            <Trash className="w-4 h-4" />
                           </Button> 
                       
                         </td>
