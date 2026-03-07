@@ -543,7 +543,7 @@ export function AddVolunteerDialog({
     // Attach timelines if valid
     if (validTimelines.length > 0) {
       payload.timelines = validTimelines.map((t) => ({
-        parish: t.parish?.trim() || null,
+       parish: t.parish?.trim(),
         organization: t.organization.trim(),
         startYear: Number(t.startYear),
         endYear: t.endYear ? Number(t.endYear) : undefined,

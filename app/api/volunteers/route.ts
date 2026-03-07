@@ -20,18 +20,18 @@ const FormationSchema = z.object({
   year: z.coerce.number().int().min(1900).max(currentYear),
 });
 
-const TimelineSchema = z
-  .object({
-    organization: z.string().min(1),
-    startYear: z.coerce.number().int().min(1900).max(currentYear),
-    endYear: z.coerce.number().int().min(1900).max(currentYear).optional(),
-    type: z.enum(["SHRINE", "OUTSIDE"]),
-    parish: z.string().optional(),
-  })
-  .refine((d) => !d.endYear || d.endYear >= d.startYear, {
-    message: "endYear must be greater than or equal to startYear",
-    path: ["endYear"],
-  });
+// const TimelineSchema = z
+//   .object({
+//     organization: z.string().min(1),
+//     startYear: z.coerce.number().int().min(1900).max(currentYear),
+//     endYear: z.coerce.number().int().min(1900).max(currentYear).optional(),
+//     type: z.enum(["SHRINE", "OUTSIDE"]),
+//     parish: z.string().optional(),
+//   })
+//   .refine((d) => !d.endYear || d.endYear >= d.startYear, {
+//     message: "endYear must be greater than or equal to startYear",
+//     path: ["endYear"],
+//   });
 
 const CreateVolunteerSchema = z.object({
   firstName: z.string().min(1),
@@ -64,7 +64,7 @@ const CreateVolunteerSchema = z.object({
     .max(currentYear)
     .optional(),
   formations: z.array(FormationSchema).optional(),
-  timelines: z.array(TimelineSchema).optional(),
+  timelines: z.array(z.any()).optional(),
 });
 
 /* ================= GET VOLUNTEERS ================= */
