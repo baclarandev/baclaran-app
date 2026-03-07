@@ -36,8 +36,15 @@ export function TimelinesSection({
   onUpdateTimeline,
   onRemoveTimeline,
 }: TimelinesSectionProps) {
-  const computeTotal = (start: number, end?: number) =>
-    end ? end - start + 1 : CURRENT_YEAR - start + 1;
+  const computeTotal = (start?: number, end?: number) => {
+  if (!start) return 0;
+
+  const finalYear = end ?? CURRENT_YEAR;
+
+  if (finalYear < start) return 0;
+
+  return finalYear - start;
+};
 
   return (
     <div className="space-y-3">
