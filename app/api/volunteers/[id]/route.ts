@@ -264,9 +264,9 @@ export async function DELETE(
         { status: 404 },
       );
 
-    await prisma.volunteer.update({
+    await prisma.volunteer.delete({
       where: { id },
-      data: { status: "INACTIVE" },
+
     });
 
     return NextResponse.json({

@@ -46,6 +46,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { VolunteerWithBookings } from "@/app/types/volunteer";
+import { toast } from "sonner";
 
 const cloudinaryOptimized = (url: string) => {
   if (!url) return url;
@@ -133,7 +134,7 @@ export default function Volunteer({ user }: any) {
   const handleDelete = async (id: number) => {
   try {
     await deleteVolunteer.mutateAsync(id);
-    alert("Volunteer archived successfully");
+    toast("Volunteer Deleted successfully");
   } catch (err) {
     console.error(err);
   }
