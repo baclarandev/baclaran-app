@@ -56,13 +56,18 @@ export function useDeleteVolunteer() {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/volunteers/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/volunteers/${id}`, {
+        method: "DELETE",
+      });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete volunteer");
+
       return data;
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["volunteers"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["volunteers"] });
+    },
   });
 }
 export function useVolunteerById(id?: string) {

@@ -130,10 +130,14 @@ export default function Volunteer({ user }: any) {
     setOpenAddDialog(true);
   };
 
-  const handleDelete = (volunteer: any) => {
-    setSelectedVolunteer(volunteer);
-    setDeleteDialogOpen(true);
-  };
+  const handleDelete = async (id: number) => {
+  try {
+    await deleteVolunteer.mutateAsync(id);
+    alert("Volunteer archived successfully");
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const confirmDelete = () => {
     if (selectedVolunteer) {
@@ -460,13 +464,13 @@ export default function Volunteer({ user }: any) {
                         <td className="py-3 px-4">{v.email}</td>
                         <td className="py-3 px-4">{v.status}</td>
                         <td className="py-3 px-4 flex gap-2">
-                          {/* <Button
+                          <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleEdit(v)}
+                            onClick={() => handleDelete(v.id)}
                           >
                             <Edit className="w-4 h-4" />
-                          </Button> */}
+                          </Button> 
                       
                         </td>
                       </tr>
