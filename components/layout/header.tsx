@@ -103,7 +103,11 @@ export function Header({ user, onMenuClick }: HeaderProps) {
                   {user?.email}
                 </span>
                 <span className="text-xs truncate max-w-[100px] md:max-w-xs text-gray-500 dark:text-blue-200">
-                  {user?.role}
+                  {user?.role === "ADMIN"
+                    ? "Administrator"
+                    : user?.role === "STAFF"
+                      ? `Secretary of ${user?.ministry?.name || "Unknown Ministry"}`
+                      : "Volunteer"}
                 </span>
               </div>
 

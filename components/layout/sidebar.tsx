@@ -133,7 +133,9 @@ export function Sidebar({
             />
           </div>
           <div className="flex flex-col">
-            <span className="lg:text-lg font-bold text-gray-100">OMPH</span>
+            <span className="lg:text-lg font-bold text-gray-100">
+              OMPH Volunteer
+            </span>
             <span className="text-xs font-medium text-gray-400 -mt-0.5">
               Management System
             </span>

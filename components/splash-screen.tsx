@@ -118,7 +118,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
 
             <div className="text-center animate-fade-in-down">
               <h1 className="text-4xl font-light text-stone-50 tracking-wide mb-2">
-                Baclaran Church
+                National Shrine of Our Mother of Perpetual Help
               </h1>
               <p className="text-sm text-stone-400 tracking-widest uppercase">
                 Welcome to our community
@@ -127,12 +127,12 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           </div>
 
           <div className="w-full max-w-sm animate-fade-in-up">
-            <div className="bg-gradient-to-br from-amber-50/10 to-amber-100/5 backdrop-blur-sm border border-amber-100/20 rounded-lg p-6 space-y-4">
+            <div className="bg-gradient-to-br from-blue-50/10 to-blue-100/5 backdrop-blur-sm border border-blue-100/20 rounded-lg p-6 space-y-4">
               <p className="text-sm text-center text-amber-50/80 leading-relaxed italic">
                 "{currentVerse.text}"
               </p>
               <div className="flex items-center justify-center">
-                <p className="text-xs text-amber-100/60 text-center tracking-wide uppercase font-medium">
+                <p className="text-xs text-blue-100/60 text-center tracking-wide uppercase font-medium">
                   — {currentVerse.reference}
                 </p>
               </div>

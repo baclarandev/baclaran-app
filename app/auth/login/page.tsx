@@ -87,10 +87,11 @@ const Page = () => {
         {/* Left side - Content */}
         <div className="hidden md:flex flex-col space-y-8">
           <div className="space-y-4">
-            <h1 className="text-4xl lg:text-5xl font-light leading-tight">
+            <h1 className="text-3xl lg:text-4xl font-light leading-tight">
               Welcome to{" "}
               <span className="font-semibold text-blue-300">
-                National Shrine of Our Mother of Perpetual Help
+                National Shrine of Our Mother of Perpetual Help Volunteer
+                Management System
               </span>{" "}
             </h1>
             <p className="text-lg text-stone-300 leading-relaxed">
