@@ -42,56 +42,83 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const session = await getSession();
-    if (!session || session.role !== "ADMIN") {
+
+    if (!session || !["ADMIN", "STAFF"].includes(session.role)) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
     }
 
     const body = await req.json();
-    console.log("🧾 RAW BODY:", body);
 
     const {
-      title,
-      description,
-      startDate,
-      endDate,
-      startTime,
-      endTime,
+      firstName,
+      lastName,
+      email,
+      sex,
+      civilStatus,
+      volunteerCode,
       ministryId,
     } = body;
 
-    if (!title || !startDate || !endDate || !startTime || !endTime) {
+    if (!firstName || !lastName || !email || !volunteerCode) {
       return NextResponse.json(
-        {
-          message:
-            "title, startDate, endDate, startTime, and endTime are required",
-        },
+        { message: "Missing required fields" },
         { status: 400 },
       );
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const status = computeStatus(start, end);
+    /* =========================
+       1️⃣ CREATE VOLUNTEER
+    ========================= */
 
-    const newEvent = await prisma.event.create({
+    const volunteer = await prisma.volunteer.create({
       data: {
-        title,
-        description: description ?? null,
-        startDate: start,
-        endDate: end,
-        startTime,
-        endTime,
-        status, // 🔥 DB-driven status
+        firstName,
+        lastName,
+        email,
+        sex,
+        civilStatus,
+        volunteerCode,
         ministryId: ministryId ?? null,
-        archived: false,
       },
     });
 
-    return NextResponse.json(newEvent, { status: 201 });
+    /* =========================
+       2️⃣ FIND FUTURE EVENTS
+    ========================= */
+
+    const futureEvents = await prisma.event.findMany({
+      where: {
+        endDate: {
+          gte: new Date(),
+        },
+        archived: false,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    /* =========================
+       3️⃣ AUTO ADD TO ATTENDANCE
+    ========================= */
+
+    if (futureEvents.length > 0) {
+      await prisma.eventAttendance.createMany({
+        data: futureEvents.map((event) => ({
+          eventId: event.id,
+          volunteerId: volunteer.id,
+          session: "AM",
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    return NextResponse.json(volunteer, { status: 201 });
   } catch (error) {
-    console.error("[EVENT_CREATE_ERROR]", error);
+    console.error("[VOLUNTEER_CREATE_ERROR]", error);
+
     return NextResponse.json(
-      { message: "Failed to create event" },
+      { message: "Failed to create volunteer" },
       { status: 500 },
     );
   }

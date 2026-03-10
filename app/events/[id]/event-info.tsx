@@ -20,6 +20,11 @@ interface VolunteerAttendance {
     id: number;
     firstName: string;
     lastName: string;
+    email?: string;
+    ministry?: {
+      id: number;
+      name: string;
+    };
   };
   session: "AM" | "PM";
   status: "PENDING" | "CONFIRMED" | "CHECKED_IN" | "ABSENT";
@@ -38,15 +43,24 @@ export default function EventInfo({
   eventId: string;
   user: any;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const numericEventId = Number(eventId);
+  const [editedRows, setEditedRows] = useState<
+    Record<number, Partial<VolunteerAttendance>>
+  >({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const { data: event, isLoading, isError } = useEventById(numericEventId);
-  const updateAttendance = useUpdateAttendance(eventId);
 
-  const [timeLeft, setTimeLeft] = useState("");
-  const attendance = event?.attendance ?? [];
+  const {
+    data: event,
+    isLoading,
+    isError,
+    refetch,
+  } = useEventById(numericEventId);
+
+  const updateAttendance = useUpdateAttendance(numericEventId);
+
+  const attendance: VolunteerAttendance[] = event?.attendance ?? [];
 
   const totalPages = Math.ceil(attendance.length / pageSize);
 
@@ -54,6 +68,9 @@ export default function EventInfo({
     (page - 1) * pageSize,
     page * pageSize,
   );
+
+  const [timeLeft, setTimeLeft] = useState("");
+
   useEffect(() => {
     if (!event) return;
 
@@ -71,6 +88,7 @@ export default function EventInfo({
       }
 
       const distance = target - now;
+
       if (distance <= 0) {
         setTimeLeft("Event has ended");
         return;
@@ -86,12 +104,32 @@ export default function EventInfo({
     return () => clearInterval(interval);
   }, [event]);
 
-  const [editedRows, setEditedRows] = useState<
-    Record<number, Partial<VolunteerAttendance>>
-  >({});
-  const [savingRow, setSavingRow] = useState<number | null>(null);
+  /* =========================
+      UPDATE ATTENDANCE
+  ========================= */
 
-  const handleFieldChange = (
+  const handleUpdate = (
+    id: number,
+    field: keyof VolunteerAttendance,
+    value: any,
+  ) => {
+    updateAttendance.mutate(
+      {
+        attendanceId: id,
+        [field]: value,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Attendance updated");
+          refetch();
+        },
+        onError: () => {
+          toast.error("Update failed");
+        },
+      },
+    );
+  };
+  const handleChange = (
     id: number,
     field: keyof VolunteerAttendance,
     value: any,
@@ -104,18 +142,22 @@ export default function EventInfo({
       },
     }));
   };
-
   const handleSave = (id: number) => {
     const changes = editedRows[id];
-    if (!changes) return;
 
-    setSavingRow(id);
+    if (!changes) {
+      toast.info("No changes to save");
+      return;
+    }
 
     updateAttendance.mutate(
-      { attendanceId: id, ...changes },
+      {
+        attendanceId: id,
+        ...changes,
+      },
       {
         onSuccess: () => {
-          toast("Attendance updated");
+          toast.success("Attendance updated");
 
           setEditedRows((prev) => {
             const copy = { ...prev };
@@ -123,27 +165,17 @@ export default function EventInfo({
             return copy;
           });
 
-          setSavingRow(null);
+          refetch();
         },
         onError: () => {
-          toast("Update failed");
-          setSavingRow(null);
+          toast.error("Update failed");
         },
       },
     );
   };
-
-  const handleCancel = (id: number) => {
-    setEditedRows((prev) => {
-      const copy = { ...prev };
-      delete copy[id];
-      return copy;
-    });
-  };
-
-  /* ======================
-     PRINT FUNCTION
-  ====================== */
+  /* =========================
+      PRINT SHEET
+  ========================= */
 
   const handlePrint = () => {
     if (!event) return;
@@ -152,19 +184,87 @@ export default function EventInfo({
       (a: VolunteerAttendance) => a.response === "CAN_ATTEND",
     );
 
-    const printWindow = window.open("", "", "width=900,height=700");
+    // GROUP BY MINISTRY
+    const grouped: Record<string, VolunteerAttendance[]> = {};
 
-    const rows = attendees
-      .map(
-        (a: VolunteerAttendance, i: number) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td>${a.volunteer.firstName} ${a.volunteer.lastName}</td>
-          <td></td>
-        </tr>
-      `,
-      )
-      .join("");
+    attendees.forEach((a: any) => {
+      const ministry = a.volunteer.ministry?.name || "No Ministry";
+
+      if (!grouped[ministry]) {
+        grouped[ministry] = [];
+      }
+
+      grouped[ministry].push(a);
+    });
+
+    let content = "";
+
+    Object.entries(grouped).forEach(([ministry, volunteers]) => {
+      const am = volunteers.filter((v) => v.session === "AM");
+      const pm = volunteers.filter((v) => v.session === "PM");
+
+      const amRows = am
+        .map(
+          (v, i) => `
+<tr>
+<td>${i + 1}</td>
+<td>${v.volunteer.firstName} ${v.volunteer.lastName}</td>
+<td></td>
+</tr>`,
+        )
+        .join("");
+
+      const pmRows = pm
+        .map(
+          (v, i) => `
+<tr>
+<td>${i + 1}</td>
+<td>${v.volunteer.firstName} ${v.volunteer.lastName}</td>
+<td></td>
+</tr>`,
+        )
+        .join("");
+
+      content += `
+<div class="header">
+<h1>National Shrine of Perpetual Help</h1>
+<h2>${event.title}</h2>
+<h3>${ministry}</h3>
+</div>
+
+<h4>AM Session (${am.length})</h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Volunteer Name</th>
+<th>Signature</th>
+</tr>
+</thead>
+<tbody>
+${amRows}
+</tbody>
+</table>
+
+<h4 style="margin-top:25px;">PM Session (${pm.length})</h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Volunteer Name</th>
+<th>Signature</th>
+</tr>
+</thead>
+<tbody>
+${pmRows}
+</tbody>
+</table>
+
+<div class="page-break"></div>
+`;
+    });
+
+    const printWindow = window.open("", "", "width=900,height=700");
 
     printWindow!.document.write(`
 <html>
@@ -172,37 +272,37 @@ export default function EventInfo({
 <title>Attendance Sheet</title>
 
 <style>
+
 body{
-font-family: Arial;
+font-family:Arial;
 padding:30px;
 }
 
 .header{
 text-align:center;
-margin-bottom:25px;
+margin-bottom:20px;
 }
 
 .header h1{
-font-size:28px;
-font-weight:bold;
+font-size:26px;
 margin:0;
 }
 
 .header h2{
-font-size:22px;
-margin-top:4px;
+font-size:20px;
+margin:5px 0;
 }
 
 table{
 width:100%;
 border-collapse:collapse;
-margin-top:25px;
+margin-top:10px;
 }
 
 th,td{
 border:1px solid black;
-padding:14px;
-font-size:18px;
+padding:12px;
+font-size:16px;
 }
 
 th{
@@ -215,75 +315,32 @@ text-align:center;
 }
 
 td:nth-child(3){
-width:320px;
+width:300px;
 }
 
-.footer{
-margin-top:40px;
-font-size:14px;
+.page-break{
+page-break-before:always;
 }
 
-@page{
-margin:20mm;
-}
-
-@media print{
-body{
-margin:0;
-}
-
-table{
-page-break-inside:auto;
-}
-
-tr{
-page-break-inside:avoid;
-page-break-after:auto;
-}
-}
 </style>
 
 </head>
 
 <body>
 
-<div class="header">
-<h1>National Shrine of Perpetual Help</h1>
-<h2>${event.title}</h2>
-</div>
-
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Volunteer Name</th>
-<th>Signature</th>
-</tr>
-</thead>
-
-<tbody>
-${rows}
-</tbody>
-
-</table>
-
-<div class="footer">
-<p>Prepared by: _______________________</p>
-<p>Date: _______________________</p>
-</div>
+${content}
 
 </body>
 </html>
 `);
 
     printWindow!.document.close();
-    printWindow!.focus();
     printWindow!.print();
   };
 
   if (isLoading) {
     return (
-      <div className="h-screen w-full text-white">
+      <div className="min-h-screen w-full text-white">
         <Sidebar
           user={user}
           isOpen={sidebarOpen}
@@ -293,8 +350,8 @@ ${rows}
           <Header
             user={user}
             onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          />
-          <div className="flex-1 p-6">
+          />{" "}
+          <div className="m-6 p-6 bg-blue-500/10 border border-blue-500/30 backdrop-blur-md">
             <EventSkeletonGrid />
           </div>
         </div>
@@ -311,16 +368,16 @@ ${rows}
   }
 
   return (
-    <div className="h-screen w-full text-white">
+    <div className="min-h-screen w-full text-white">
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
 
       <div className="flex-1 flex flex-col md:ml-64">
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
-        {/* EVENT INFO */}
+        {/* EVENT CARD */}
 
         <Card className="mb-6 m-6 p-6 bg-blue-500/10 border border-blue-500/30 backdrop-blur-md">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex justify-between">
             <div>
               <CardTitle>
                 <Calendar className="inline w-5 h-5 mr-2" />
@@ -331,18 +388,16 @@ ${rows}
                 {timeLeft}
               </div>
             </div>
-
-            <Button
-              onClick={handlePrint}
-              className="flex items-center gap-2 bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-500 transition"
-            >
-              <Printer size={16} />
-              Print Sheet
-            </Button>
+            {user.role === "ADMIN" && (
+              <Button className="bg-blue-500" onClick={handlePrint}>
+                <Printer size={16} />
+                Print Sheet
+              </Button>
+            )}
           </CardHeader>
         </Card>
 
-        {/* TABLE */}
+        {/* ATTENDANCE TABLE */}
 
         <Card className="bg-blue-500/10 m-6 p-6 border border-blue-500/30 backdrop-blur-md">
           <CardHeader>
@@ -355,172 +410,126 @@ ${rows}
                 <thead>
                   <tr className="bg-gray-700">
                     <th className="py-3 px-6 text-left">Volunteer</th>
-                    <th className="py-3 px-6 text-left">Session</th>
-                    <th className="py-3 px-6 text-left">Status</th>
                     <th className="py-3 px-6 text-left">Response</th>
-                    <th className="py-3 px-6 text-left">Action</th>
+                    <th className="py-3 px-6 text-left">Status</th>
+                    <th className="py-3 px-6 text-left">Session</th>
+                    <th className="py-3 px-6 text-left">Actions</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {paginatedAttendance.map((a: VolunteerAttendance) => {
-                    const isEdited = !!editedRows[a.id];
-                    const responseValue =
-                      editedRows[a.id]?.response ?? a.response;
-                    const statusValue = editedRows[a.id]?.status ?? a.status;
-                    const sessionValue = editedRows[a.id]?.session ?? a.session;
+                  {paginatedAttendance.map((a) => (
+                    <tr key={a.id} className="border-t border-white/10">
+                      <td className="py-4 px-6">
+                        {a.volunteer.firstName} {a.volunteer.lastName}
+                      </td>
 
-                    // Show session only if Response is CAN_ATTEND and Status is CONFIRMED
-                    const showSession =
-                      responseValue === "CAN_ATTEND" &&
-                      statusValue === "CONFIRMED";
+                      <td className="py-4  px-6">
+                        <NativeSelect
+                          value={editedRows[a.id]?.status ?? a.status}
+                          onChange={(e) =>
+                            handleChange(a.id, "status", e.target.value)
+                          }
+                        >
+                          <NativeSelectOption value="PENDING">
+                            Pending
+                          </NativeSelectOption>
+                          <NativeSelectOption value="CONFIRMED">
+                            Confirmed
+                          </NativeSelectOption>
+                          <NativeSelectOption value="CHECKED_IN">
+                            Checked In
+                          </NativeSelectOption>
+                          <NativeSelectOption value="ABSENT">
+                            Absent
+                          </NativeSelectOption>
+                        </NativeSelect>
+                      </td>
 
-                    return (
-                      <tr
-                        key={a.id}
-                        className={`border-t border-white/10 ${isEdited ? "bg-blue-900/20" : ""}`}
-                      >
-                        {/* Volunteer Name */}
-                        <td className="py-4 px-6">
-                          {a.volunteer.firstName} {a.volunteer.lastName}
-                        </td>
-
-                        {/* Response */}
-                        <td className="py-4 px-6">
+                      <td className="py-4 px-6">
+                        <NativeSelect
+                          value={editedRows[a.id]?.response ?? a.response}
+                          onChange={(e) =>
+                            handleChange(a.id, "response", e.target.value)
+                          }
+                        >
+                          <NativeSelectOption value="CAN_ATTEND">
+                            Can Attend
+                          </NativeSelectOption>
+                          <NativeSelectOption value="CANT_ATTEND">
+                            Can't Attend
+                          </NativeSelectOption>
+                          <NativeSelectOption value="ON_LEAVE">
+                            On Leave
+                          </NativeSelectOption>
+                          <NativeSelectOption value="EXCUSE">
+                            Excuse
+                          </NativeSelectOption>
+                          <NativeSelectOption value="NO_RESPONSE">
+                            No Response
+                          </NativeSelectOption>
+                        </NativeSelect>
+                      </td>
+                      <td className="py-4 px-6">
+                        {a.status === "CONFIRMED" &&
+                        a.response === "CAN_ATTEND" ? (
                           <NativeSelect
-                            value={responseValue}
+                            value={editedRows[a.id]?.session ?? a.session}
                             onChange={(e) =>
-                              handleFieldChange(
-                                a.id,
-                                "response",
-                                e.target.value,
-                              )
+                              handleChange(a.id, "session", e.target.value)
                             }
                           >
-                            {[
-                              "ON_LEAVE",
-                              "EXCUSE",
-                              "CAN_ATTEND",
-                              "CANT_ATTEND",
-                              "NO_RESPONSE",
-                            ].map((r) => (
-                              <NativeSelectOption
-                                key={r}
-                                value={r}
-                                className="bg-blue-500/20 text-black"
-                              >
-                                {r.replace("_", " ")}
-                              </NativeSelectOption>
-                            ))}
+                            <NativeSelectOption value="AM">
+                              AM
+                            </NativeSelectOption>
+                            <NativeSelectOption value="PM">
+                              PM
+                            </NativeSelectOption>
                           </NativeSelect>
-                        </td>
-
-                        {/* Status */}
-                        <td className="py-4 px-6">
-                          <NativeSelect
-                            value={statusValue}
-                            onChange={(e) =>
-                              handleFieldChange(a.id, "status", e.target.value)
-                            }
-                          >
-                            {[
-                              "PENDING",
-                              "CONFIRMED",
-                              "CHECKED_IN",
-                              "ABSENT",
-                            ].map((s) => (
-                              <NativeSelectOption
-                                key={s}
-                                value={s}
-                                className="bg-blue-500/20 text-black"
-                              >
-                                {s}
-                              </NativeSelectOption>
-                            ))}
-                          </NativeSelect>
-                        </td>
-
-                        {/* Session (conditionally visible) */}
-                        <td className="py-4 px-6">
-                          {showSession ? (
-                            <NativeSelect
-                              value={sessionValue}
-                              onChange={(e) =>
-                                handleFieldChange(
-                                  a.id,
-                                  "session",
-                                  e.target.value,
-                                )
-                              }
-                            >
-                              <NativeSelectOption
-                                value="AM"
-                                className="bg-blue-500/20 text-black"
-                              >
-                                AM
-                              </NativeSelectOption>
-                              <NativeSelectOption
-                                value="PM"
-                                className="bg-blue-500/20 text-black"
-                              >
-                                PM
-                              </NativeSelectOption>
-                            </NativeSelect>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-
-                        {/* Actions */}
-                        <td className="py-4 px-6">
-                          {isEdited ? (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => handleSave(a.id)}
-                                className="px-3 py-1 bg-blue-600 rounded-md"
-                              >
-                                Save
-                              </button>
-
-                              <button
-                                onClick={() => handleCancel(a.id)}
-                                className="px-3 py-1 bg-gray-600 rounded-md"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-6">
+                        <Button
+                          size="sm"
+                          onClick={() => handleSave(a.id)}
+                          disabled={!editedRows[a.id]}
+                          className="bg-blue-500"
+                        >
+                          Save
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
+
+            {/* PAGINATION */}
+
+            <div className="flex justify-between mt-6">
+              <button
+                disabled={page === 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="px-4 py-2 bg-gray-700 rounded disabled:opacity-40"
+              >
+                Previous
+              </button>
+
+              <span>
+                Page {page} of {totalPages}
+              </span>
+
+              <button
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="px-4 py-2 bg-gray-700 rounded disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
           </CardContent>
-          <div className="flex justify-between items-center mt-6">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="px-4 py-2 bg-gray-700 rounded disabled:opacity-40"
-            >
-              Previous
-            </button>
-
-            <span className="text-sm text-gray-300">
-              Page {page} of {totalPages}
-            </span>
-
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="px-4 py-2 bg-gray-700 rounded disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
         </Card>
       </div>
     </div>

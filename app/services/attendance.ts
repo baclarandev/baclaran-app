@@ -14,21 +14,24 @@ import {
 /**
  * Volunteer with attendance info used by UI table
  */
+export type MeetingStatus = "P" | "E" | "A";
+
 export interface VolunteerWithAttendance extends Omit<Volunteer, "ministryId"> {
   ministryId: number;
   days: number[];
-  monthlyMeeting: boolean;
+  monthlyMeeting: MeetingStatus;
   remarks?: string;
 }
 
 /**
  * Payload sent to backend
  */
+
 export type AttendancePayload = {
   volunteerId: number;
   ministryId: number;
   days: number[];
-  monthlyMeeting: boolean;
+  monthlyMeeting: MeetingStatus;
   remarks?: string;
 };
 

@@ -116,7 +116,7 @@ export function useEventById(id: number) {
   });
 }
 
-export function useUpdateAttendance(eventId: string) {
+export function useUpdateAttendance(eventId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({

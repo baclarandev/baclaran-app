@@ -19,6 +19,14 @@ import { toast } from "sonner";
 import { AttendanceSkeleton } from "./attendance-skeleton";
 import { AttendanceRow } from "./attendance-row";
 
+export type AttendancePayload = {
+  volunteerId: number;
+  ministryId: number;
+  days: number[];
+  monthlyMeeting: "P" | "E" | "A";
+  remarks?: string;
+};
+
 export default function AttendanceSheet({ user }: any) {
   const [page, setPage] = useState(1);
   const [members, setMembers] = useState<VolunteerWithAttendance[]>([]);
@@ -27,12 +35,17 @@ export default function AttendanceSheet({ user }: any) {
 
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const userMinistry = user.ministry;
+
   const limit = 10;
+
   const { data: ministries } = useMinistries();
 
+  const userMinistry = user.ministry;
+
   const totalDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+
   const today = new Date().getDate();
+
   const isCurrentMonth =
     selectedMonth === new Date().getMonth() &&
     selectedYear === new Date().getFullYear();
@@ -46,20 +59,31 @@ export default function AttendanceSheet({ user }: any) {
       selectedYear,
     );
 
-  // Normalize volunteers to local state
+  /* =========================
+     Normalize API -> Local
+  ========================= */
+
   useEffect(() => {
     if (!volunteers) return;
 
     const normalized = volunteers.map((m: any) => {
       let days = m.days ?? [];
+
       if (days.length !== totalDays) {
         const newDays = Array(totalDays).fill(0);
+
         for (let i = 0; i < Math.min(days.length, totalDays); i++) {
           newDays[i] = days[i] ?? 0;
         }
+
         days = newDays;
       }
-      return { ...m, days, monthlyMeeting: m.monthlyMeeting ?? false };
+
+      return {
+        ...m,
+        days,
+        monthlyMeeting: m.monthlyMeeting ?? "A",
+      };
     });
 
     if (JSON.stringify(normalized) !== JSON.stringify(members)) {
@@ -67,10 +91,17 @@ export default function AttendanceSheet({ user }: any) {
     }
   }, [volunteers, totalDays]);
 
-  // Reset page when filters change
+  /* =========================
+     Reset page on filters
+  ========================= */
+
   useEffect(() => {
     setPage(1);
   }, [selectedMonth, selectedYear, ministryId]);
+
+  /* =========================
+     Day Increment
+  ========================= */
 
   const incrementDay = (id: number, index: number) => {
     setMembers((prev) =>
@@ -91,19 +122,28 @@ export default function AttendanceSheet({ user }: any) {
     setMembers((prev) =>
       prev.map((m) =>
         m.id === id
-          ? { ...m, days: m.days.map((v, i) => (i === index ? 0 : v)) }
+          ? {
+              ...m,
+              days: m.days.map((v, i) => (i === index ? 0 : v)),
+            }
           : m,
       ),
     );
   };
 
-  const toggleMonthlyMeeting = (id: number) => {
+  /* =========================
+     Monthly Meeting Dropdown
+  ========================= */
+
+  const updateMonthlyMeeting = (id: number, value: "P" | "E" | "A") => {
     setMembers((prev) =>
-      prev.map((m) =>
-        m.id === id ? { ...m, monthlyMeeting: !m.monthlyMeeting } : m,
-      ),
+      prev.map((m) => (m.id === id ? { ...m, monthlyMeeting: value } : m)),
     );
   };
+
+  /* =========================
+     Save
+  ========================= */
 
   const handleSave = async () => {
     try {
@@ -115,6 +155,7 @@ export default function AttendanceSheet({ user }: any) {
           monthlyMeeting: m.monthlyMeeting,
         })),
       );
+
       toast.success("Attendance saved!");
     } catch {
       toast.error("Save failed");
@@ -125,7 +166,7 @@ export default function AttendanceSheet({ user }: any) {
 
   return (
     <div className="min-h-screen bg-neutral-900 text-gray-200">
-      {/* Sidebar (hidden in print) */}
+      {/* Sidebar */}
       <div className="print-hidden">
         <Sidebar
           user={user}
@@ -135,7 +176,7 @@ export default function AttendanceSheet({ user }: any) {
       </div>
 
       <div className="flex flex-col md:ml-64">
-        {/* Header (hidden in print) */}
+        {/* Header */}
         <div className="print-hidden">
           <Header
             user={user}
@@ -143,20 +184,18 @@ export default function AttendanceSheet({ user }: any) {
           />
         </div>
 
-        {/* Filters (hidden in print) */}
+        {/* Filters */}
         <div className="p-6 space-y-4 print-hidden">
           <h1 className="text-xl font-semibold text-white">Attendance Sheet</h1>
+
           <div className="flex gap-3 flex-wrap">
+            {/* Month */}
             <NativeSelect
               value={selectedMonth.toString()}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
             >
               {Array.from({ length: 12 }).map((_, i) => (
-                <NativeSelectOption
-                  className="bg-blue-500/20"
-                  key={i}
-                  value={i.toString()}
-                >
+                <NativeSelectOption key={i} value={i.toString()}>
                   {new Date(2000, i).toLocaleString("default", {
                     month: "long",
                   })}
@@ -164,25 +203,23 @@ export default function AttendanceSheet({ user }: any) {
               ))}
             </NativeSelect>
 
+            {/* Year */}
             <NativeSelect
               value={selectedYear.toString()}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="bg-blue-500/20"
             >
               {Array.from({ length: 5 }).map((_, i) => {
                 const year = new Date().getFullYear() - 2 + i;
+
                 return (
-                  <NativeSelectOption
-                    className="bg-blue-500/20"
-                    key={year}
-                    value={year.toString()}
-                  >
+                  <NativeSelectOption key={year} value={year.toString()}>
                     {year}
                   </NativeSelectOption>
                 );
               })}
             </NativeSelect>
 
+            {/* Ministry */}
             <NativeSelect
               value={ministryId}
               onChange={(e) => setMinistryId(e.target.value)}
@@ -190,6 +227,7 @@ export default function AttendanceSheet({ user }: any) {
               <NativeSelectOption value="all">
                 All Ministries
               </NativeSelectOption>
+
               {ministries?.map((m: any) => (
                 <NativeSelectOption key={m.id} value={m.id.toString()}>
                   {m.name}
@@ -197,18 +235,22 @@ export default function AttendanceSheet({ user }: any) {
               ))}
             </NativeSelect>
 
+            {/* Save */}
             <Button onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "💾 Save"}
             </Button>
-            <Button
-              onClick={() => window.print()}
-              variant="outline"
-              className="print-hidden"
-            >
+
+            {/* Print */}
+            <Button onClick={() => window.print()} variant="outline">
               🖨️ Print
+            </Button>
+            <Button onClick={() => window.print()} variant="outline">
+              Summary of Attendance
             </Button>
           </div>
         </div>
+
+        {/* Print Header */}
         {user.role === "STAFF" && ministryId !== "all" && (
           <div className="hidden print:block text-center text-lg font-semibold mb-2">
             {userMinistry} Attendance -{" "}
@@ -218,21 +260,24 @@ export default function AttendanceSheet({ user }: any) {
             })}
           </div>
         )}
-        {/* Attendance Table */}
-        <div className="p-6 printable-table overflow-x-auto w-full print:overflow-visible print:w-full print:block">
-          <table className="w-full table-auto border-collapse text-sm print:text-xs print:w-full">
+
+        {/* Table */}
+        <div className="p-6 overflow-x-auto">
+          <table className="w-full table-auto border-collapse text-sm">
             <thead>
-              <tr className="bg-neutral-800 print:bg-neutral-200">
-                <th className="sticky left-0 bg-neutral-900 px-2 print:static print:bg-none print:px-1">
-                  Member
-                </th>
+              <tr className="bg-neutral-800">
+                <th className="sticky left-0 bg-neutral-900 px-2">Member</th>
+
                 <th>Monthly</th>
+
                 {Array.from({ length: totalDays }).map((_, i) => (
                   <th key={i}>{i + 1}</th>
                 ))}
+
                 <th>Total</th>
               </tr>
             </thead>
+
             <tbody>
               {members.map((member) => (
                 <AttendanceRow
@@ -242,7 +287,7 @@ export default function AttendanceSheet({ user }: any) {
                   isCurrentMonth={isCurrentMonth}
                   incrementDay={incrementDay}
                   resetDay={resetDay}
-                  toggleMonthlyMeeting={toggleMonthlyMeeting}
+                  updateMonthlyMeeting={updateMonthlyMeeting}
                 />
               ))}
             </tbody>
@@ -250,7 +295,7 @@ export default function AttendanceSheet({ user }: any) {
 
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="flex justify-end gap-2 mt-4 print:hidden">
+            <div className="flex justify-end gap-2 mt-4">
               <Button
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
                 disabled={page === 1}
@@ -258,6 +303,7 @@ export default function AttendanceSheet({ user }: any) {
               >
                 Prev
               </Button>
+
               {Array.from({ length: pagination.totalPages }).map((_, i) => (
                 <Button
                   key={i}
@@ -267,6 +313,7 @@ export default function AttendanceSheet({ user }: any) {
                   {i + 1}
                 </Button>
               ))}
+
               <Button
                 onClick={() =>
                   setPage((p) => Math.min(p + 1, pagination.totalPages))

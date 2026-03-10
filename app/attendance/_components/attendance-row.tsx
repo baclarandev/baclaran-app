@@ -1,7 +1,12 @@
 "use client";
+
 import React from "react";
 import { AttendanceCell } from "./attendance-cell";
 import { VolunteerWithAttendance } from "@/app/services/attendance";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 
 type Props = {
   member: VolunteerWithAttendance;
@@ -9,7 +14,7 @@ type Props = {
   isCurrentMonth: boolean;
   incrementDay: (id: number, index: number) => void;
   resetDay: (id: number, index: number) => void;
-  toggleMonthlyMeeting: (id: number) => void;
+  updateMonthlyMeeting: (id: number, value: "P" | "E" | "A") => void;
 };
 
 export const AttendanceRow = React.memo(
@@ -19,31 +24,53 @@ export const AttendanceRow = React.memo(
     isCurrentMonth,
     incrementDay,
     resetDay,
-    toggleMonthlyMeeting,
+    updateMonthlyMeeting,
   }: Props) => {
+
+    const monthlyValue =
+      member.monthlyMeeting === "P" || member.monthlyMeeting === "E" ? 1 : 0;
+
     const total =
-      member.days.reduce((a, b) => a + b, 0) + (member.monthlyMeeting ? 1 : 0);
+      member.days.reduce((a, b) => a + b, 0) + monthlyValue;
 
     return (
       <tr className="border-b border-gray-700">
+
         {/* Name */}
-        <td className="sticky left-0 bg-neutral-900 print-bg-none px-2 py-1 max-w-[180px]">
+        <td className="sticky left-0 bg-neutral-900 px-2 py-1 max-w-[180px]">
           <div className="truncate font-medium">
             {member.firstName} {member.lastName}
           </div>
         </td>
 
-        {/* Monthly meeting */}
+        {/* Monthly Meeting Dropdown */}
         <td className="text-center">
-          <button
-            onClick={() => toggleMonthlyMeeting(member.id)}
-            className="w-8 h-8 rounded-md bg-blue-500 text-white text-base font-medium"
+
+          <NativeSelect
+            value={member.monthlyMeeting}
+            onChange={(e) =>
+              updateMonthlyMeeting(
+                member.id,
+                e.target.value as "P" | "E" | "A",
+              )
+            }
+            className={`text-sm font-semibold
+              ${
+                member.monthlyMeeting === "P"
+                  ? "text-green-400"
+                  : member.monthlyMeeting === "E"
+                  ? "text-yellow-400"
+                  : "text-red-400"
+              }`}
           >
-            {member.monthlyMeeting ? 1 : 0}
-          </button>
+            <NativeSelectOption value="P">P</NativeSelectOption>
+            <NativeSelectOption value="E">E</NativeSelectOption>
+            <NativeSelectOption value="A">A</NativeSelectOption>
+          </NativeSelect>
+
         </td>
 
-        {/* Attendance days */}
+        {/* Days */}
         {member.days.map((day, index) => {
           const isPast = isCurrentMonth && index + 1 < today;
           const isToday = isCurrentMonth && index + 1 === today;
@@ -62,7 +89,10 @@ export const AttendanceRow = React.memo(
         })}
 
         {/* Total */}
-        <td className="text-center font-semibold text-lg">{total}</td>
+        <td className="text-center font-semibold text-lg">
+          {total}
+        </td>
+
       </tr>
     );
   },
