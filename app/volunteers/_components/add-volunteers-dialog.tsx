@@ -59,7 +59,7 @@ interface FormData {
   selectedSubMinistryId?: number; // ✅ add this
   joinedYearShrine?: { year: number; month: number } | null;
   joinedYearMinistry?: { year: number; month: number } | null;
-  classification?: "REGULAR" | "SEASONAL";
+  classification?: "REGULAR" | "SEASONAL" | "EMERITUS";
 }
 
 interface AddVolunteerDialogProps {
@@ -543,7 +543,7 @@ export function AddVolunteerDialog({
     // Attach timelines if valid
     if (validTimelines.length > 0) {
       payload.timelines = validTimelines.map((t) => ({
-       parish: t.parish?.trim(),
+        parish: t.parish?.trim(),
         organization: t.organization.trim(),
         startYear: Number(t.startYear),
         endYear: t.endYear ? Number(t.endYear) : undefined,
@@ -707,6 +707,9 @@ export function AddVolunteerDialog({
 
                     <NativeSelectOption value="SEASONAL">
                       Seasonal
+                    </NativeSelectOption>
+                    <NativeSelectOption value="EMERITUS">
+                      Emeritus
                     </NativeSelectOption>
                   </NativeSelect>
                 </div>

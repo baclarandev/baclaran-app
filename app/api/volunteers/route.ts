@@ -12,6 +12,7 @@ const currentYear = new Date().getFullYear();
 export enum VolunteerClassification {
   REGULAR = "REGULAR",
   SEASONAL = "SEASONAL",
+  EMERITUS = "EMERITUS",
 }
 
 /* ================= SCHEMAS ================= */
@@ -66,7 +67,24 @@ const CreateVolunteerSchema = z.object({
   formations: z.array(FormationSchema).optional(),
   timelines: z.array(z.any()).optional(),
 });
+async function generateVolunteerCode(
+  tx: any,
+  ministryCode: string,
+  joinedYearShrine: number,
+  parentMinistryId: number,
+) {
+  const groupKey = `GROUP-${parentMinistryId}-${joinedYearShrine}`;
 
+  const seq = await tx.volunteerCodeSequence.upsert({
+    where: { groupKey },
+    update: { lastValue: { increment: 1 } },
+    create: { groupKey, lastValue: 1 },
+  });
+
+  const sequence = String(seq.lastValue).padStart(4, "0");
+
+  return `${ministryCode}-${joinedYearShrine}-${sequence}`;
+}
 /* ================= GET VOLUNTEERS ================= */
 export async function GET() {
   try {
@@ -149,15 +167,14 @@ export async function GET() {
 /* ================= CREATE VOLUNTEER ================= */
 export async function POST(req: Request) {
   try {
-    /* ===== AUTH ===== */
     const sessionUser = await getSession();
+
     if (!sessionUser)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     if (!can.isStaff(sessionUser))
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    /* ===== VALIDATE ===== */
     const body = await req.json();
     const parsed = CreateVolunteerSchema.safeParse(body);
 
@@ -169,130 +186,100 @@ export async function POST(req: Request) {
     }
 
     const data = parsed.data;
+
     const { ministryIds, subMinistryId, joinedYearShrine } = data;
 
     if (!joinedYearShrine) {
       return NextResponse.json(
-        { error: "joinedYearShrine is required for code generation" },
+        { error: "joinedYearShrine required" },
         { status: 400 },
       );
     }
 
-    /* ===== GET MAIN MINISTRY ===== */
     const mainMinistry = await prisma.ministry.findUnique({
       where: { id: ministryIds[0] },
       include: { parent: true },
     });
 
-    if (!mainMinistry) {
+    if (!mainMinistry)
       return NextResponse.json(
         { error: "Main ministry not found" },
         { status: 400 },
       );
-    }
 
-    /* ===== DETERMINE CODE PREFIX ===== */
     let ministryCode = mainMinistry.ministryCode;
 
     if (subMinistryId) {
-      const subMinistry = await prisma.ministry.findUnique({
+      const sub = await prisma.ministry.findUnique({
         where: { id: subMinistryId },
       });
 
-      if (subMinistry?.ministryCode) {
-        ministryCode = subMinistry.ministryCode;
-      }
+      if (sub?.ministryCode) ministryCode = sub.ministryCode;
     }
 
-    /* =======================================================
-       ✅ GLOBAL SEQUENCE ACROSS ALL SIBLING MINISTRIES
-       ======================================================= */
     const parentMinistryId = mainMinistry.parentId || mainMinistry.id;
 
-    // get all ministries under same parent (siblings + parent)
-    const ministriesUnderParent = await prisma.ministry.findMany({
-      where: {
-        OR: [{ id: parentMinistryId }, { parentId: parentMinistryId }],
-      },
-      select: { ministryCode: true },
-    });
-
-    // prepare prefixes for volunteerCode search
-    const ministryPrefixes = ministriesUnderParent.map(
-      (m) => `${m.ministryCode}-`,
-    );
-
-    // find latest volunteer across all siblings
-    const lastVolunteer = await prisma.volunteer.findFirst({
-      where: {
-        OR: ministryPrefixes.map((prefix) => ({
-          volunteerCode: { startsWith: prefix },
-        })),
-      },
-      orderBy: { volunteerCode: "desc" },
-      select: { volunteerCode: true },
-    });
-
-    let nextSequence = 1;
-
-    if (lastVolunteer?.volunteerCode) {
-      const lastSeq = parseInt(
-        lastVolunteer.volunteerCode.split("-").pop() || "0",
+    const volunteer = await prisma.$transaction(async (tx) => {
+      const volunteerCode = await generateVolunteerCode(
+        tx,
+        ministryCode!,
+        joinedYearShrine,
+        parentMinistryId,
       );
-      nextSequence = lastSeq + 1;
-    }
 
-    const sequence = String(nextSequence).padStart(4, "0");
+      return tx.volunteer.create({
+        data: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          middleInitial: data.middleInitial,
+          nickname: data.nickname,
+          email: data.email,
+          phone: data.phone,
+          address: data.address,
+          dateOfBirth: data.dateOfBirth
+            ? new Date(data.dateOfBirth)
+            : undefined,
+          sex: data.sex,
+          civilStatus: data.civilStatus,
+          occupation: data.occupation,
+          status: data.status || "ACTIVE",
+          profilePicture: data.profilePicture,
+          sacraments: data.sacraments,
 
-    const volunteerCode = `${ministryCode}-${joinedYearShrine}-${sequence}`;
+          volunteerCode,
 
-    /* ===== CREATE VOLUNTEER ===== */
-    const volunteer = await prisma.volunteer.create({
-      data: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        middleInitial: data.middleInitial,
-        nickname: data.nickname,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-        sex: data.sex,
-        civilStatus: data.civilStatus,
-        occupation: data.occupation,
-        status: data.status || "ACTIVE",
-        profilePicture: data.profilePicture,
-        sacraments: data.sacraments,
-        volunteerCode,
-        joinedYearShrine: data.joinedYearShrine,
-        joinedYearMinistry: data.joinedYearMinistry,
+          joinedYearShrine: data.joinedYearShrine,
+          joinedYearMinistry: data.joinedYearMinistry,
 
-        formations: data.formations ? { create: data.formations } : undefined,
+          classification: data.volunteerClassification,
 
-        timelines: data.timelines
-          ? {
-              create: data.timelines.map((t) => ({
-                ...t,
-                totalYears: t.endYear ? t.endYear - t.startYear + 1 : 1,
-              })),
-            }
-          : undefined,
+          formations: data.formations ? { create: data.formations } : undefined,
 
-        ministryHistories: {
-          create: [
-            {
-              ministryId: subMinistryId || ministryIds[0],
-              joinedAt: new Date(),
-              status: "ACTIVE",
-            },
-          ],
+          timelines: data.timelines
+            ? {
+                create: data.timelines.map((t) => ({
+                  ...t,
+                  totalYears: t.endYear ? t.endYear - t.startYear + 1 : 1,
+                })),
+              }
+            : undefined,
+
+          ministryHistories: {
+            create: [
+              {
+                ministryId: subMinistryId || ministryIds[0],
+                joinedAt: new Date(),
+                status: "ACTIVE",
+              },
+            ],
+          },
         },
-      },
-      include: {
-        ministryHistories: { include: { ministry: true } },
-        formations: true,
-        timelines: true,
-      },
+        include: {
+          ministryHistories: { include: { ministry: true } },
+          formations: true,
+          timelines: true,
+        },
+      });
     });
 
     return NextResponse.json({ volunteer }, { status: 201 });
