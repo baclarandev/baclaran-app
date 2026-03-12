@@ -24,26 +24,26 @@ export async function GET(
 
     const { id } = await Promise.resolve(context.params);
     const eventId = Number(id);
-    if (isNaN(eventId)) {
+    if (isNaN(eventId))
       return NextResponse.json(
         { message: "Invalid event id" },
         { status: 400 },
       );
-    }
 
-    // Fetch event with all attendance
+    // 1️⃣ Fetch event with linked volunteers and attendance records
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      include: { attendance: { include: { volunteer: true } } },
+      include: {
+        volunteers: { include: { volunteer: true } }, // EventVolunteer table
+        attendance: { include: { volunteer: true } }, // EventAttendance table
+      },
     });
 
-    if (!event) {
+    if (!event)
       return NextResponse.json({ message: "Event not found" }, { status: 404 });
-    }
 
-    // Determine ministry filter for staff
+    // 2️⃣ Determine allowed volunteers if staff
     let allowedVolunteerIds: number[] | undefined;
-
     if (sessionUser.role === "STAFF" && sessionUser.ministryId) {
       const subMinistries = await prisma.ministry.findMany({
         where: { parentId: sessionUser.ministryId },
@@ -66,14 +66,44 @@ export async function GET(
       allowedVolunteerIds = volunteersInMinistries.map((v) => v.id);
     }
 
-    // Filter attendance if staff
-    const filteredAttendance = allowedVolunteerIds
-      ? event.attendance.filter((a) =>
-          allowedVolunteerIds!.includes(a.volunteerId),
-        )
-      : event.attendance; // admins see all
+    // 3️⃣ Merge volunteers with attendance info
+    const mergedVolunteers = event.volunteers
+      .filter(
+        (ev) =>
+          !allowedVolunteerIds || allowedVolunteerIds.includes(ev.volunteerId),
+      )
+      .map((ev) => {
+        const attendanceRecord = event.attendance.find(
+          (a) => a.volunteerId === ev.volunteerId,
+        );
 
-    return NextResponse.json({ ...event, attendance: filteredAttendance });
+        return {
+          id: attendanceRecord?.id ?? 0, // 0 if no attendance exists yet
+          volunteer: {
+            id: ev.volunteer.id,
+            firstName: ev.volunteer.firstName,
+            lastName: ev.volunteer.lastName,
+          },
+          status: attendanceRecord?.status ?? "PENDING",
+          response: attendanceRecord?.response ?? "NO_RESPONSE",
+          session: attendanceRecord?.session ?? "AM",
+        };
+      });
+
+    return NextResponse.json({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      archived: event.archived,
+      createdAt: event.createdAt,
+      status: event.status,
+      ministryId: event.ministryId,
+      volunteers: mergedVolunteers,
+    });
   } catch (error) {
     console.error("GET /api/events/[id] error:", error);
     return NextResponse.json(

@@ -13,6 +13,7 @@ import { useEventById, useUpdateAttendance } from "@/app/services/event";
 import { EventSkeletonGrid } from "../_components/event-skeleton-grid";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Volunteer } from "@/lib/data";
 
 interface VolunteerAttendance {
   id: number;
@@ -59,12 +60,28 @@ export default function EventInfo({
   } = useEventById(numericEventId);
 
   const updateAttendance = useUpdateAttendance(numericEventId);
+  const volunteerWithResponse =
+    event?.volunteers.map((ev: any) => {
+      const attendanceRecord = event.attendance?.find(
+        (a: any) => a.volunteerId === ev.volunteerId,
+      );
 
-  const attendance: VolunteerAttendance[] = event?.attendance ?? [];
+      return {
+        id: attendanceRecord?.id ?? 0,
+        volunteer: {
+          id: ev.volunteer.id,
+          firstName: ev.volunteer.firstName,
+          lastName: ev.volunteer.lastName,
+        },
+        status: attendanceRecord?.status ?? "PENDING",
+        response: attendanceRecord?.response ?? "NO_RESPONSE",
+        session: attendanceRecord?.session ?? "AM",
+      };
+    }) || [];
 
-  const totalPages = Math.ceil(attendance.length / pageSize);
+  const totalPages = Math.ceil(volunteerWithResponse.length / pageSize);
 
-  const paginatedAttendance = attendance.slice(
+  const paginatedAttendance = volunteerWithResponse.slice(
     (page - 1) * pageSize,
     page * pageSize,
   );
@@ -418,7 +435,7 @@ ${content}
                 </thead>
 
                 <tbody>
-                  {paginatedAttendance.map((a) => (
+                  {paginatedAttendance.map((a: any) => (
                     <tr key={a.id} className="border-t border-white/10">
                       <td className="py-4 px-6">
                         {a.volunteer.firstName} {a.volunteer.lastName}
