@@ -399,16 +399,28 @@ export default function Volunteer({ user }: any) {
                           {v.nickname}
                         </p>
                       )}
-                      <Badge
-                        variant="outline"
-                        className={
-                          v.status === "ACTIVE"
-                            ? "border-green-400 bg-green-800 text-green-400"
-                            : "border-red-400 bg-red-800 text-red-400"
-                        }
-                      >
-                        {v.status}
-                      </Badge>
+                      <div className="gap-2 flex">
+                        <Badge
+                          variant="outline"
+                          className={
+                            v.status === "ACTIVE"
+                              ? "border-green-400 bg-green-800 text-green-400"
+                              : "border-red-400 bg-red-800 text-red-400"
+                          }
+                        >
+                          {v.status}
+                        </Badge>
+                        {v.classification && (
+                          <Badge
+                            variant="outline"
+                            className="border-purple-400 bg-purple-900 text-purple-300"
+                          >
+                            {v.classification}
+                          </Badge>
+                        )}
+                      </div>
+                      {/* NEW: Classification */}
+
                       <p className="text-sm text-gray-400 text-center">
                         {getMinistryDisplay(v)}
                       </p>

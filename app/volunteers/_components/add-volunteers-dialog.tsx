@@ -452,7 +452,7 @@ export function AddVolunteerDialog({
       classification: formData.classification ?? "REGULAR",
       civilStatus: formData.civilStatus,
       occupation: formData.occupation || null,
-      status: "ACTIVE",
+      status: formData.classification === "EMERITUS" ? "INACTIVE" : "ACTIVE",
       phone: formData.phone || null,
       address: formData.address || null,
       dateOfBirth: formData.dob ? new Date(formData.dob) : null,

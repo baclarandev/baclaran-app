@@ -75,16 +75,29 @@ async function generateVolunteerCode(
 ) {
   const groupKey = `GROUP-${parentMinistryId}`;
 
-  const seq = await tx.volunteerCodeSequence.upsert({
+  // Try to find existing sequence
+  let seq = await tx.volunteerCodeSequence.findUnique({
     where: { groupKey },
-    update: { lastValue: { increment: 1 } },
-    create: { groupKey, lastValue: 1 },
   });
 
-  const nextNumber = seq.lastValue;
+  let nextNumber = 1;
+
+  if (seq) {
+    // Sequence exists → increment manually
+    nextNumber = seq.lastValue + 1;
+
+    await tx.volunteerCodeSequence.update({
+      where: { groupKey },
+      data: { lastValue: nextNumber },
+    });
+  } else {
+    // Sequence does not exist → create starting at 1
+    await tx.volunteerCodeSequence.create({
+      data: { groupKey, lastValue: nextNumber },
+    });
+  }
 
   const padded = nextNumber.toString().padStart(4, "0");
-
   return `${ministryCode}-${joinedYearShrine}-${padded}`;
 }
 /* ================= GET VOLUNTEERS ================= */
