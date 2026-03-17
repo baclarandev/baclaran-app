@@ -122,7 +122,7 @@ export default function Volunteer({ user }: any) {
     const pageParam = searchParams.get("page");
     if (pageParam) setCurrentPage(parseInt(pageParam, 10));
   }, [searchParams]);
-  console.log(paginatedVolunteers);
+
   const goToPage = (page: number) => {
     setCurrentPage(page);
     router.push(`/volunteers?page=${page}`, { scroll: false });
@@ -133,13 +133,13 @@ export default function Volunteer({ user }: any) {
   };
 
   const handleDelete = async (id: number) => {
-  try {
-    await deleteVolunteer.mutateAsync(id);
-    toast("Volunteer Deleted successfully");
-  } catch (err) {
-    console.error(err);
-  }
-};
+    try {
+      await deleteVolunteer.mutateAsync(id);
+      toast("Volunteer Deleted successfully");
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const confirmDelete = () => {
     if (selectedVolunteer) {
@@ -472,8 +472,7 @@ export default function Volunteer({ user }: any) {
                             onClick={() => handleDelete(v.id)}
                           >
                             <Trash className="w-4 h-4" />
-                          </Button> 
-                      
+                          </Button>
                         </td>
                       </tr>
                     ))}

@@ -224,71 +224,6 @@ export function AddVolunteerDialog({
     }));
   };
 
-  // Mode toggle for existing volunteer
-  // const handleModeToggle = (checked: boolean) => {
-  //   setIsExistingVolunteer(checked);
-  //   if (!checked) {
-  //     setSelectedVolunteer(null);
-  //     setUpdateVolunteerId(null);
-  //     setFormData({
-  //       lastName: "",
-  //       firstName: "",
-  //       middleInitial: "",
-  //       email: "",
-  //       phone: "",
-  //       address: "",
-  //       dob: "",
-  //       sex: "",
-  //       joinedYearMinistry: null,
-  //       nickname: "",
-  //       civilStatus: "",
-  //       occupation: "",
-  //       ministryIds: [],
-  //       sacraments: [],
-  //       profilePicture: "",
-  //       joinedYearShrine: null,
-  //     });
-  //   }
-  // };
-
-  // const handleVolunteerSelect = (volunteer: Volunteer) => {
-  //   setSelectedVolunteer(volunteer);
-  //   setUpdateVolunteerId(volunteer.id);
-  //   setFormData({
-  //     lastName: volunteer.lastName,
-  //     firstName: volunteer.firstName,
-  //     middleInitial: volunteer.middleInitial || "",
-  //     email: volunteer.email,
-  //     phone: volunteer.phone || "",
-  //     address: volunteer.address || "",
-  //     dob: volunteer.dateOfBirth
-  //       ? new Date(volunteer.dateOfBirth).toISOString().split("T")[0]
-  //       : "",
-  //     civilStatus: volunteer.civilStatus || "",
-  //     occupation: volunteer.occupation || "",
-  //     joinedYearShrine: volunteer.joinedYearShrine
-  //       ? String(volunteer.joinedYearShrine)
-  //       : "",
-  //     joinedYearMinistry: volunteer.joinedYearMinistry
-  //       ? String(volunteer.joinedYearMinistry)
-  //       : "",
-  //     sex: volunteer.sex.toLowerCase(),
-  //     ministryIds: [],
-  //     nickname: volunteer.nickname || "",
-  //     sacraments: volunteer.sacraments.map((s) => {
-  //       const reverseMap: Record<string, string> = {
-  //         BAPTISM: "Baptism",
-  //         EUCHARIST: "First Communion",
-  //         CONFIRMATION: "Confirmation",
-  //         MATRIMONY: "Matrimony",
-  //       };
-  //       return reverseMap[s] || s;
-  //     }),
-  //     profilePicture: volunteer.profilePicture || "",
-  //   });
-  //   setOpenCombobox(false);
-  // };
-
   // Formation management
   const handleFormationsChange = (combined: Formation[]) => {
     setAllFormations(combined);
@@ -560,6 +495,13 @@ export function AddVolunteerDialog({
           toast.success("Volunteer saved successfully");
           setIsOpen(false);
           resetForm();
+          setDefaultFormations(
+            DEFAULT_FORMATIONS.map((f) => ({
+              ...f,
+              year: "",
+              checked: false,
+            })),
+          );
           setShrineTimelines([]);
           setOutsideTimelines([]);
           setFormations([{ name: "", year: "" }]);

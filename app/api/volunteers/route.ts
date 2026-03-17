@@ -48,7 +48,7 @@ const CreateVolunteerSchema = z.object({
   occupation: z.string().optional(),
   status: z.string().optional(),
   profilePicture: z.string().optional(),
-  volunteerClassification: z.enum(VolunteerClassification).optional(),
+  classification: z.enum(VolunteerClassification).optional(),
   ministryIds: z.array(z.number()).min(1),
   subMinistryId: z.number().optional(),
   sacraments: z.array(z.nativeEnum(SacramentName)).optional(),
@@ -73,7 +73,7 @@ async function generateVolunteerCode(
   joinedYearShrine: number,
   parentMinistryId: number,
 ) {
-  const groupKey = `GROUP-${parentMinistryId}-${joinedYearShrine}`;
+  const groupKey = `GROUP-${parentMinistryId}`;
 
   const seq = await tx.volunteerCodeSequence.upsert({
     where: { groupKey },
@@ -81,9 +81,11 @@ async function generateVolunteerCode(
     create: { groupKey, lastValue: 1 },
   });
 
-  const sequence = String(seq.lastValue).padStart(4, "0");
+  const nextNumber = seq.lastValue;
 
-  return `${ministryCode}-${joinedYearShrine}-${sequence}`;
+  const padded = nextNumber.toString().padStart(4, "0");
+
+  return `${ministryCode}-${joinedYearShrine}-${padded}`;
 }
 /* ================= GET VOLUNTEERS ================= */
 export async function GET() {
@@ -251,7 +253,7 @@ export async function POST(req: Request) {
           joinedYearShrine: data.joinedYearShrine,
           joinedYearMinistry: data.joinedYearMinistry,
 
-          classification: data.volunteerClassification,
+          classification: data.classification,
 
           formations: data.formations ? { create: data.formations } : undefined,
 
