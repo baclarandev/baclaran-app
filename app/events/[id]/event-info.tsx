@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   NativeSelect,
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 interface VolunteerAttendance {
-  id: number | string;
+  id: number;
   volunteer: {
     id: number;
     firstName: string;
@@ -49,6 +49,9 @@ export default function EventInfo({
   >({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [filterMinistry, setFilterMinistry] = useState("ALL");
+  const [filterSession, setFilterSession] = useState("ALL");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const pageSize = 10;
 
   const {
@@ -59,24 +62,18 @@ export default function EventInfo({
   } = useEventById(numericEventId);
 
   const updateAttendance = useUpdateAttendance(numericEventId);
-
+  const ministryOptions = useMemo(() => {
+    const ministries = new Set(
+      event?.volunteers
+        .map((v: any) => v.volunteer.ministry?.name)
+        .filter(Boolean),
+    );
+    return ["ALL", ...Array.from(ministries)]; // add ALL option
+  }, [event]);
   /* =========================
      MERGE DATA (FIXED ID)
   ========================= */
-  const volunteerWithResponse =
-    event?.volunteers.map((ev: any) => {
-      const attendanceRecord = event.attendance?.find(
-        (a: any) => a.volunteerId === ev.volunteerId,
-      );
-
-      return {
-        id: attendanceRecord?.id ?? ev.volunteer.id, // ✅ FIXED
-        volunteer: ev.volunteer,
-        status: attendanceRecord?.status ?? "PENDING",
-        response: attendanceRecord?.response ?? "NO_RESPONSE",
-        session: attendanceRecord?.session ?? "AM",
-      };
-    }) || [];
+  const volunteerWithResponse = event?.volunteers || [];
 
   const totalPages = Math.ceil(volunteerWithResponse.length / pageSize);
 
@@ -129,13 +126,13 @@ export default function EventInfo({
   const handleChange = (
     id: number | string,
     field: keyof VolunteerAttendance,
-    value: any,
+    value: string,
   ) => {
     setEditedRows((prev) => ({
       ...prev,
       [id]: {
         ...prev[id],
-        [field]: value,
+        [field]: value as any,
       },
     }));
   };
@@ -150,7 +147,7 @@ export default function EventInfo({
 
     updateAttendance.mutate(
       {
-        attendanceId: id,
+        attendanceId: Number(id),
         ...changes,
       },
       {
@@ -312,6 +309,7 @@ export default function EventInfo({
     printWindow!.focus();
     printWindow!.print();
   };
+
   /* =========================
      LOADING / ERROR
   ========================= */
@@ -375,7 +373,73 @@ export default function EventInfo({
             )}
           </CardHeader>
         </Card>
+        <Card className="m-6 p-6 bg-blue-500/10 border flex-row border-blue-500/30 flex flex-wrap gap-4 items-center">
+          <div>
+            <label className="mr-2">Filter by Ministry:</label>
+            <NativeSelect
+              value={filterMinistry}
+              onChange={(e) => setFilterMinistry(e.target.value)}
+            >
+              {ministryOptions.map((m: any) => (
+                <NativeSelectOption
+                  className="bg-stone-900 text-white"
+                  key={m}
+                  value={m}
+                >
+                  {m}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </div>
 
+          <div>
+            <label className="mr-2">Filter by Session:</label>
+            <NativeSelect
+              value={filterSession}
+              onChange={(e) => setFilterSession(e.target.value)}
+            >
+              <NativeSelectOption
+                className="bg-stone-900 text-white"
+                value="ALL"
+              >
+                All
+              </NativeSelectOption>
+              <NativeSelectOption
+                className="bg-stone-900 text-white"
+                value="AM"
+              >
+                AM
+              </NativeSelectOption>
+              <NativeSelectOption
+                className="bg-stone-900 text-white"
+                value="PM"
+              >
+                PM
+              </NativeSelectOption>
+            </NativeSelect>
+          </div>
+
+          <div>
+            <label className="mr-2">Sort by Last Name:</label>
+            <NativeSelect
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+            >
+              <NativeSelectOption
+                className="bg-stone-900 text-white"
+                value="asc"
+              >
+                Ascending
+              </NativeSelectOption>
+              <NativeSelectOption
+                className="bg-stone-900 text-white"
+                value="desc"
+              >
+                Descending
+              </NativeSelectOption>
+            </NativeSelect>
+          </div>
+        </Card>
         {/* TABLE */}
         <Card className="m-6 p-6 bg-blue-500/10 border border-blue-500/30">
           <CardHeader>
@@ -425,19 +489,34 @@ export default function EventInfo({
                               handleChange(a.id, "response", e.target.value)
                             }
                           >
-                            <NativeSelectOption value="CAN_ATTEND">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="CAN_ATTEND"
+                            >
                               Can Attend
                             </NativeSelectOption>
-                            <NativeSelectOption value="CANT_ATTEND">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="CANT_ATTEND"
+                            >
                               Can't Attend
                             </NativeSelectOption>
-                            <NativeSelectOption value="ON_LEAVE">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="ON_LEAVE"
+                            >
                               On Leave
                             </NativeSelectOption>
-                            <NativeSelectOption value="EXCUSE">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="EXCUSE"
+                            >
                               Excuse
                             </NativeSelectOption>
-                            <NativeSelectOption value="NO_RESPONSE">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="NO_RESPONSE"
+                            >
                               No Response
                             </NativeSelectOption>
                           </NativeSelect>
@@ -452,16 +531,28 @@ export default function EventInfo({
                               handleChange(a.id, "status", e.target.value)
                             }
                           >
-                            <NativeSelectOption value="PENDING">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="PENDING"
+                            >
                               Pending
                             </NativeSelectOption>
-                            <NativeSelectOption value="CONFIRMED">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="CONFIRMED"
+                            >
                               Confirmed
                             </NativeSelectOption>
-                            <NativeSelectOption value="CHECKED_IN">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="CHECKED_IN"
+                            >
                               Checked In
                             </NativeSelectOption>
-                            <NativeSelectOption value="ABSENT">
+                            <NativeSelectOption
+                              className="bg-stone-900 text-white"
+                              value="ABSENT"
+                            >
                               Absent
                             </NativeSelectOption>
                           </NativeSelect>
@@ -478,10 +569,16 @@ export default function EventInfo({
                                 handleChange(a.id, "session", e.target.value)
                               }
                             >
-                              <NativeSelectOption value="AM">
+                              <NativeSelectOption
+                                className="bg-stone-900 text-white"
+                                value="AM"
+                              >
                                 AM
                               </NativeSelectOption>
-                              <NativeSelectOption value="PM">
+                              <NativeSelectOption
+                                className="bg-stone-900 text-white"
+                                value="PM"
+                              >
                                 PM
                               </NativeSelectOption>
                             </NativeSelect>

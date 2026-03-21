@@ -120,39 +120,59 @@ export function useUpdateAttendance(eventId: number) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: any) => {
-      // Determine correct payload shape
-      const body: any = {};
-
-      if (payload.attendanceId) {
-        // Existing attendance → send attendanceId
-        body.attendanceId = payload.attendanceId;
-      } else {
-        // New attendance → must send volunteerId
-        if (!payload.volunteerId) {
-          throw new Error("volunteerId is required for new attendance");
-        }
-        body.volunteerId = payload.volunteerId;
-        body.session = payload.session ?? "AM";
+    mutationFn: async (payload: {
+      attendanceId: number;
+      status?: string;
+      response?: string;
+      session?: "AM" | "PM";
+    }) => {
+      if (!payload.attendanceId) {
+        throw new Error("attendanceId is required");
       }
-
-      // Include optional fields if provided
-      if (payload.status) body.status = payload.status;
-      if (payload.response) body.response = payload.response;
 
       const res = await fetch(`/api/events/${eventId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
-      if (!res.ok)
+
+      if (!res.ok) {
+        console.error("PATCH error:", data);
         throw new Error(data.message || "Failed to update attendance");
+      }
 
       return data;
     },
-    onSuccess: () => {
+
+    // ⚡ Optimistic UI (optional but recommended)
+    onMutate: async (newData) => {
+      await queryClient.cancelQueries({ queryKey: ["event", eventId] });
+
+      const previous = queryClient.getQueryData<any>(["event", eventId]);
+
+      queryClient.setQueryData(["event", eventId], (old: any) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          volunteers: old.volunteers.map((v: any) =>
+            v.id === newData.attendanceId ? { ...v, ...newData } : v,
+          ),
+        };
+      });
+
+      return { previous };
+    },
+
+    onError: (_err, _newData, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["event", eventId], context.previous);
+      }
+    },
+
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["event", eventId] });
     },
   });
