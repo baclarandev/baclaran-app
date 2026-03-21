@@ -38,7 +38,7 @@ model Volunteer {
   civilStatus            String
   createdAt              DateTime                   @default(now())
   dateOfBirth            DateTime?
-  email                  String                     @unique
+  email                  String?                    @unique
   firstName              String
   lastName               String
   middleInitial          String?

@@ -103,41 +103,41 @@ export const DEFAULT_FORMATIONS: Formation[] = [
   { name: "Safeguarding Policy", year: "", default: true, checked: false },
   { name: "Basic Diocesan Formation", year: "", default: true, checked: false },
 ];
-const FormDataSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email"),
-  sex: z.enum(["male", "female"], "Please select sex"),
-  civilStatus: z.string().min(1, "Civil status is required"),
-  ministryIds: z.array(z.number()).min(1, "Select at least one ministry"),
-  formations: z.array(
-    z.object({
-      name: z.string().min(1, "Formation name required"),
-      year: z
-        .number()
-        .int()
-        .min(1900)
-        .max(new Date().getFullYear(), "Invalid year"),
-    }),
-  ),
-  nickname: z.string().optional(),
-  timelines: z.array(
-    z.object({
-      parish: z.string().optional(),
-      organization: z.string().min(1, "Organization required"),
-      startYear: z
-        .number()
-        .min(1900)
-        .max(new Date().getFullYear(), "Invalid start year"),
-      endYear: z
-        .number()
-        .min(1900)
-        .max(new Date().getFullYear(), "Invalid end year")
-        .optional(),
-      type: z.enum(["SHRINE", "OUTSIDE"]),
-    }),
-  ),
-});
+// const FormDataSchema = z.object({
+//   firstName: z.string().min(1, "First name is required"),
+//   lastName: z.string().min(1, "Last name is required"),
+//   email: z.string().email("Invalid email"),
+//   sex: z.enum(["male", "female"], "Please select sex"),
+//   civilStatus: z.string().min(1, "Civil status is required"),
+//   ministryIds: z.array(z.number()).min(1, "Select at least one ministry"),
+//   formations: z.array(
+//     z.object({
+//       name: z.string().min(1, "Formation name required"),
+//       year: z
+//         .number()
+//         .int()
+//         .min(1900)
+//         .max(new Date().getFullYear(), "Invalid year"),
+//     }),
+//   ),
+//   nickname: z.string().optional(),
+//   timelines: z.array(
+//     z.object({
+//       parish: z.string().optional(),
+//       organization: z.string().min(1, "Organization required"),
+//       startYear: z
+//         .number()
+//         .min(1900)
+//         .max(new Date().getFullYear(), "Invalid start year"),
+//       endYear: z
+//         .number()
+//         .min(1900)
+//         .max(new Date().getFullYear(), "Invalid end year")
+//         .optional(),
+//       type: z.enum(["SHRINE", "OUTSIDE"]),
+//     }),
+//   ),
+// });
 
 export function AddVolunteerDialog({
   open,
@@ -356,8 +356,7 @@ export function AddVolunteerDialog({
       return (
         formData.firstName.trim() !== "" &&
         formData.lastName.trim() !== "" &&
-        formData.sex !== "" &&
-        formData.email.trim() !== ""
+        formData.sex !== ""
       );
     }
     if (currentStep === 2) {

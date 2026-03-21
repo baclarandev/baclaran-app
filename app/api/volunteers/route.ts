@@ -39,7 +39,7 @@ const CreateVolunteerSchema = z.object({
   lastName: z.string().min(1),
   middleInitial: z.string().optional(),
   nickname: z.string().optional(),
-  email: z.string(),
+  email: z.string().optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
   dateOfBirth: z.string().optional(),
@@ -210,7 +210,8 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-
+    const normalizedEmail =
+      data.email && data.email.trim() !== "" ? data.email.toLowerCase() : null;
     const mainMinistry = await prisma.ministry.findUnique({
       where: { id: ministryIds[0] },
       include: { parent: true },
@@ -248,7 +249,7 @@ export async function POST(req: Request) {
           lastName: data.lastName,
           middleInitial: data.middleInitial,
           nickname: data.nickname,
-          email: data.email,
+          email: normalizedEmail,
           phone: data.phone,
           address: data.address,
           dateOfBirth: data.dateOfBirth
