@@ -121,13 +121,35 @@ export function useUpdateAttendance(eventId: number) {
 
   return useMutation({
     mutationFn: async (payload: any) => {
+      // Determine correct payload shape
+      const body: any = {};
+
+      if (payload.attendanceId) {
+        // Existing attendance → send attendanceId
+        body.attendanceId = payload.attendanceId;
+      } else {
+        // New attendance → must send volunteerId
+        if (!payload.volunteerId) {
+          throw new Error("volunteerId is required for new attendance");
+        }
+        body.volunteerId = payload.volunteerId;
+        body.session = payload.session ?? "AM";
+      }
+
+      // Include optional fields if provided
+      if (payload.status) body.status = payload.status;
+      if (payload.response) body.response = payload.response;
+
       const res = await fetch(`/api/events/${eventId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
+
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update attendance");
+      if (!res.ok)
+        throw new Error(data.message || "Failed to update attendance");
+
       return data;
     },
     onSuccess: () => {

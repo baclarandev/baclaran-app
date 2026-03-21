@@ -113,7 +113,6 @@ export async function GET(
   }
 }
 
-// PATCH attendance
 export async function PATCH(
   _req: Request,
   context: { params: { id: string } | Promise<{ id: string }> },
@@ -129,26 +128,80 @@ export async function PATCH(
       );
     }
 
-    const session = await getSession();
-    if (!session || !["ADMIN", "STAFF"].includes(session.role)) {
+    const sessionUser = await getSession();
+    if (!sessionUser || !["ADMIN", "STAFF"].includes(sessionUser.role)) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
     }
 
     const body = await _req.json();
     const data = AttendanceUpdateSchema.parse(body);
 
-    // Update attendance
-    const updated = await prisma.eventAttendance.update({
-      where: { id: data.attendanceId },
-      data: {
-        session: data.session,
-        status: data.status,
-        response: data.response,
-      },
-      include: {
-        volunteer: { select: { id: true, firstName: true, lastName: true } },
-      },
-    });
+    // ❗ volunteerId is required if creating new attendance
+    if (!data.attendanceId && !body.volunteerId) {
+      return NextResponse.json(
+        { message: "volunteerId is required for new attendance" },
+        { status: 400 },
+      );
+    }
+
+    let updated;
+
+    if (data.attendanceId && data.attendanceId !== 0) {
+      // 🔹 UPDATE existing attendance
+      const existing = await prisma.eventAttendance.findUnique({
+        where: { id: data.attendanceId },
+      });
+
+      if (!existing) {
+        return NextResponse.json(
+          { message: "Attendance record not found" },
+          { status: 404 },
+        );
+      }
+
+      updated = await prisma.eventAttendance.update({
+        where: { id: data.attendanceId },
+        data: {
+          session: data.session ?? existing.session,
+          status: data.status ?? existing.status,
+          response: data.response ?? existing.response,
+        },
+        include: {
+          volunteer: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
+      });
+    } else {
+      // 🔹 UPSERT by unique constraint [eventId, volunteerId, session]
+      const sessionValue = data.session ?? "AM";
+
+      updated = await prisma.eventAttendance.upsert({
+        where: {
+          eventId_volunteerId_session: {
+            eventId,
+            volunteerId: body.volunteerId!,
+            session: sessionValue,
+          },
+        },
+        create: {
+          eventId,
+          volunteerId: body.volunteerId!,
+          session: sessionValue,
+          status: data.status ?? "PENDING",
+          response: data.response ?? "NO_RESPONSE",
+        },
+        update: {
+          status: data.status,
+          response: data.response,
+        },
+        include: {
+          volunteer: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+        },
+      });
+    }
 
     return NextResponse.json(updated);
   } catch (error) {

@@ -39,7 +39,7 @@ const CreateVolunteerSchema = z.object({
   lastName: z.string().min(1),
   middleInitial: z.string().optional(),
   nickname: z.string().optional(),
-  email: z.string().email(),
+  email: z.string(),
   phone: z.string().optional(),
   address: z.string().optional(),
   dateOfBirth: z.string().optional(),
