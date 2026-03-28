@@ -63,58 +63,98 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   const sessionUser = await getSession();
-  if (!sessionUser)
+
+  if (!sessionUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const params = await context.params;
-    const volunteerId = Number((await params).id);
+    const volunteerId = Number(params.id);
 
-    if (!volunteerId || isNaN(volunteerId))
+    if (!volunteerId || isNaN(volunteerId)) {
       return NextResponse.json(
         { error: "Invalid volunteer ID" },
         { status: 400 },
       );
+    }
 
+    // ================= FETCH VOLUNTEER =================
     const volunteer = await prisma.volunteer.findUnique({
       where: { id: volunteerId },
-      include: { ministryHistories: { where: { status: "ACTIVE" } } },
+      include: {
+        ministryHistories: {
+          where: { status: "ACTIVE" },
+        },
+      },
     });
 
-    if (!volunteer)
+    if (!volunteer) {
       return NextResponse.json(
         { error: "Volunteer not found" },
         { status: 404 },
       );
+    }
 
+    // ================= AUTHORIZATION =================
     const volunteerMinistryId = volunteer.ministryHistories[0]?.ministryId;
+
     const isAdmin = sessionUser.role === "ADMIN";
     const isStaffOfSameMinistry =
       sessionUser.role === "STAFF" &&
       sessionUser.ministryId === volunteerMinistryId;
 
-    if (!isAdmin && !isStaffOfSameMinistry)
+    if (!isAdmin && !isStaffOfSameMinistry) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const body = await req.json();
     const data: any = {};
 
+    // ================= BASIC FIELDS =================
     if (body.firstName !== undefined) data.firstName = body.firstName;
     if (body.lastName !== undefined) data.lastName = body.lastName;
+    if (body.middleInitial !== undefined)
+      data.middleInitial = body.middleInitial;
+    if (body.nickname !== undefined) data.nickname = body.nickname;
     if (body.email !== undefined) data.email = body.email;
     if (body.phone !== undefined) data.phone = body.phone;
     if (body.address !== undefined) data.address = body.address;
     if (body.profilePicture !== undefined)
       data.profilePicture = body.profilePicture;
-    if (body.nickname !== undefined) data.nickname = body.nickname;
-    if (body.dateOfBirth) data.dateOfBirth = new Date(body.dateOfBirth);
-    if (body.volunteerClassification !== undefined)
-      data.volunteerClassification = body.volunteerClassification;
+    if (body.sex !== undefined) data.sex = body.sex;
+    if (body.civilStatus !== undefined) data.civilStatus = body.civilStatus;
+    if (body.occupation !== undefined) data.occupation = body.occupation;
+    if (body.status !== undefined) data.status = body.status;
+    if (body.sacraments !== undefined) data.sacraments = body.sacraments;
 
-    // Update timelines if provided
+    if (body.dateOfBirth !== undefined) {
+      data.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : null;
+    }
+
+    // ================= CLASSIFICATION =================
+    if (body.classification !== undefined) {
+      data.classification = body.classification;
+    }
+
+    if (body.volunteerClassification !== undefined) {
+      data.volunteerClassification = body.volunteerClassification;
+    }
+
+    // ================= YEARS =================
+    // ✅ DO NOT regenerate volunteerCode here
+    if (body.joinedYearShrine !== undefined) {
+      data.joinedYearShrine = body.joinedYearShrine;
+    }
+
+    if (body.joinedYearMinistry !== undefined) {
+      data.joinedYearMinistry = body.joinedYearMinistry;
+    }
+
+    // ================= TIMELINES =================
     if (body.timelines !== undefined && Array.isArray(body.timelines)) {
       data.timelines = {
-        deleteMany: { volunteerId }, // remove old timelines
+        deleteMany: { volunteerId },
         createMany: {
           data: body.timelines.map((t: any) => ({
             ...t,
@@ -124,30 +164,19 @@ export async function PATCH(
       };
     }
 
-    // Handle joinedYearShrine update and regenerate volunteerCode
-    if (body.joinedYearShrine !== undefined) {
-      const rootMinistryId = await getRootMinistryId(volunteerMinistryId!);
-      const { volunteerCode, joinedYear } = await generateVolunteerCode(
-        rootMinistryId,
-        body.joinedYearShrine,
-      );
-      data.volunteerCode = volunteerCode;
-      data.joinedYearShrine = joinedYear;
-    }
-
-    if (body.joinedYearMinistry !== undefined) {
-      data.joinedYearMinistry = body.joinedYearMinistry;
-    }
-
+    // ================= UPDATE =================
     const updated = await prisma.volunteer.update({
       where: { id: volunteerId },
       data,
-      include: { timelines: true },
+      include: {
+        timelines: true,
+      },
     });
 
     return NextResponse.json(updated);
   } catch (err: any) {
     console.error("[PATCH_VOLUNTEER_ERROR]", err);
+
     return NextResponse.json(
       { error: "Failed to update volunteer" },
       { status: 500 },
@@ -266,7 +295,6 @@ export async function DELETE(
 
     await prisma.volunteer.delete({
       where: { id },
-
     });
 
     return NextResponse.json({
