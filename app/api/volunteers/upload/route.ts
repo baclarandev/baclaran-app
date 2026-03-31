@@ -42,7 +42,12 @@ export async function POST(req: Request) {
               ),
             );
           } else {
-            resolve(NextResponse.json({ url: result?.secure_url }));
+            resolve(
+              NextResponse.json({
+                url: result?.secure_url,
+                publicId: result?.public_id, // 🔥 REQUIRED
+              }),
+            );
           }
         },
       );

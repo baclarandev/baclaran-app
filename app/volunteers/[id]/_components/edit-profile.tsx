@@ -38,20 +38,35 @@ export function EditProfileDialog({
     if (!file) return;
 
     try {
-      setUploadProgress(30);
+      setUploadProgress(20);
 
-      // Simulate async upload
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setFormData({ ...formData, profilePicture: result });
-        setUploadProgress(100);
-        setTimeout(() => setUploadProgress(0), 500);
-        toast.success("Avatar updated (sample)");
-      };
-      reader.readAsDataURL(file);
+      const formDataUpload = new FormData();
+      formDataUpload.append("file", file);
+
+      const res = await fetch("/api/volunteers/upload", {
+        method: "POST",
+        body: formDataUpload,
+      });
+
+      if (!res.ok) throw new Error("Upload failed");
+
+      const data = await res.json();
+
+      setUploadProgress(80);
+
+      // ✅ SAVE CLOUDINARY RESULT
+      setFormData((prev: any) => ({
+        ...prev,
+        profilePicture: data.url,
+      }));
+
+      setUploadProgress(100);
+      setTimeout(() => setUploadProgress(0), 500);
+      console.log("upload response", data);
+      toast.success("Avatar uploaded!");
     } catch (err) {
-      toast.error("Failed to upload avatar");
+      console.error(err);
+      toast.error("Upload failed");
       setUploadProgress(0);
     }
   };
