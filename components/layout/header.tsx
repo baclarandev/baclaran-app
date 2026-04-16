@@ -119,17 +119,19 @@ export function Header({ user, onMenuClick }: HeaderProps) {
             align="end"
             className="w-56 bg-white dark:bg-blue-900 border border-gray-200 dark:border-blue-700 rounded-lg shadow-lg"
           >
-            <DropdownMenuItem asChild>
-              <Link
-                href="/settings"
-                className="flex items-center gap-3 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-300"
-              >
-                <Settings className="w-4 h-4" />
-                Account Settings
-              </Link>
-            </DropdownMenuItem>
+            {user.role === "ADMIN" && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/settings"
+                  className="flex items-center gap-3 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-300"
+                >
+                  <Settings className="w-4 h-4" />
+                  Account Settings
+                </Link>
+              </DropdownMenuItem>
+            )}
 
-            {user?.role === "ADMIN" && (
+            {/* {user?.role === "ADMIN" && (
               <>
                 <DropdownMenuItem asChild>
                   <Link
@@ -150,7 +152,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
                   </Link>
                 </DropdownMenuItem>
               </>
-            )}
+            )} */}
 
             <DropdownMenuSeparator className="border-gray-200 dark:border-blue-700" />
 

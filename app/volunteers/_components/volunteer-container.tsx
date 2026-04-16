@@ -5,20 +5,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Search,
-  Plus,
   LayoutGrid,
   List,
-  Download,
-  Edit,
-  Trash2,
   Users,
   CheckCircle2,
   Clock,
   Zap,
   Trash,
+  MoreVertical,
+  Eye,
 } from "lucide-react";
 import {
   NativeSelect,
@@ -447,91 +450,85 @@ export default function Volunteer({ user }: any) {
             viewMode === "grid" ? (
               <div className="grid mt-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {paginatedVolunteers.map((v) => (
-                  <Link
-                    key={v.id}
-                    href={`/volunteers/${v.id}`}
-                    className="block"
-                  >
-                    <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors">
-                      <div className="absolute top-2 right-2 flex gap-2">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="w-8 h-8 bg-red-600/10 border-red-500/30 hover:bg-red-600/20"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSelectedVolunteer(v);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash className="w-4 h-4 text-red-400" />
-                        </Button>
-                      </div>
-                      <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
-                        {v.profilePicture || true ? (
-                          <Image
-                            src={
-                              v.profilePicture
-                                ? cloudinaryOptimized(v.profilePicture)
-                                : `https://api.dicebear.com/7.x/avataaars/png?size=160&seed=${v.email}`
-                            }
-                            alt={`${v.firstName} ${v.lastName}`}
-                            fill
-                            sizes="80px"
-                            className="object-cover"
-                            placeholder="blur"
-                            blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDE2MCAxNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbGw9IiM0MDRiN2YiIC8+PC9zdmc+"
-                          />
-                        ) : (
-                          <span className="text-lg font-semibold text-gray-300">
-                            {v.firstName[0]}
-                            {v.lastName[0]}
-                          </span>
-                        )}
-                      </div>
-                      <h3 className="font-semibold font-mono text-white">
-                        {v.firstName} {v.lastName}
-                      </h3>
-                      {v.nickname && (
-                        <p className="text-sm text-gray-400 italic">
-                          {v.nickname}
-                        </p>
+                  <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors">
+                    <div className="absolute top-2 right-2 flex gap-2">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="w-8 h-8 bg-red-600/10 border-red-500/30 hover:bg-red-600/20"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedVolunteer(v);
+                          setDeleteDialogOpen(true);
+                        }}
+                      >
+                        <Trash className="w-4 h-4 text-red-400" />
+                      </Button>
+                    </div>
+                    <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
+                      {v.profilePicture || true ? (
+                        <Image
+                          src={
+                            v.profilePicture
+                              ? cloudinaryOptimized(v.profilePicture)
+                              : `https://api.dicebear.com/7.x/avataaars/png?size=160&seed=${v.email}`
+                          }
+                          alt={`${v.firstName} ${v.lastName}`}
+                          fill
+                          sizes="80px"
+                          className="object-cover"
+                          placeholder="blur"
+                          blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDE2MCAxNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE2MCIgaGVpZ2h0PSIxNjAiIGZpbGw9IiM0MDRiN2YiIC8+PC9zdmc+"
+                        />
+                      ) : (
+                        <span className="text-lg font-semibold text-gray-300">
+                          {v.firstName[0]}
+                          {v.lastName[0]}
+                        </span>
                       )}
-                      <div className="gap-2 flex">
+                    </div>
+                    <h3 className="font-semibold font-mono text-white">
+                      {v.firstName} {v.lastName}
+                    </h3>
+                    {v.nickname && (
+                      <p className="text-sm text-gray-400 italic">
+                        {v.nickname}
+                      </p>
+                    )}
+                    <div className="gap-2 flex">
+                      <Badge
+                        variant="outline"
+                        className={
+                          v.status === "ACTIVE"
+                            ? "border-green-400 bg-green-800 text-green-400"
+                            : "border-red-400 bg-red-800 text-red-400"
+                        }
+                      >
+                        {v.status}
+                      </Badge>
+                      {v.classification && (
                         <Badge
                           variant="outline"
-                          className={
-                            v.status === "ACTIVE"
-                              ? "border-green-400 bg-green-800 text-green-400"
-                              : "border-red-400 bg-red-800 text-red-400"
-                          }
+                          className="border-purple-400 bg-purple-900 text-purple-300"
                         >
-                          {v.status}
+                          {v.classification}
                         </Badge>
-                        {v.classification && (
-                          <Badge
-                            variant="outline"
-                            className="border-purple-400 bg-purple-900 text-purple-300"
-                          >
-                            {v.classification}
-                          </Badge>
-                        )}
-                      </div>
-                      {/* NEW: Classification */}
-
-                      {isAdmin && (
-                        <p className="text-sm text-gray-400 text-center">
-                          {getMinistryDisplay(v)}
-                        </p>
                       )}
-                      <p>
-                        <Badge className="bg-purple-900">
-                          {formatVolunteerCode(v?.volunteerCode as any)}
-                        </Badge>
+                    </div>
+                    {/* NEW: Classification */}
+
+                    {isAdmin && (
+                      <p className="text-sm text-gray-400 text-center">
+                        {getMinistryDisplay(v)}
                       </p>
-                    </Card>
-                  </Link>
+                    )}
+                    <p>
+                      <Badge className="bg-purple-900">
+                        {formatVolunteerCode(v?.volunteerCode as any)}
+                      </Badge>
+                    </p>
+                  </Card>
                 ))}
               </div>
             ) : (
