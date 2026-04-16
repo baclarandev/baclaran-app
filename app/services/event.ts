@@ -82,7 +82,7 @@ export function useEvents() {
     isError: eventsQuery.isError,
 
     createEvent: createEventMutation.mutate,
-    updatingEvent: updateEventMutation.mutate,
+    updateEvent: updateEventMutation.mutate,
     deleteEvent: deleteEventMutation.mutate,
     archiveEvent: archiveEventMutation.mutate,
 

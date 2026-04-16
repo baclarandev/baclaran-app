@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/card";
 
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { EventSkeletonGrid } from "@/app/events/_components/event-skeleton-grid";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function VolunteerProfile({ user }: { user: any }) {
   const router = useRouter();
@@ -76,8 +78,52 @@ export default function VolunteerProfile({ user }: { user: any }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary"></div>
+      <div className="flex min-h-screen w-full overflow-x-hidden">
+        {/* Sidebar skeleton placeholder */}
+        <div className="hidden md:block w-64 border-r" />
+
+        <div className="flex flex-1 flex-col">
+          {/* Header skeleton placeholder */}
+          <div className="h-16 border-b" />
+
+          <main className="w-full p-4 py-6 md:p-8 space-y-8">
+            {/* Back button skeleton */}
+            <div className="h-9 w-24 rounded-md bg-white/5 animate-pulse" />
+
+            {/* Hero skeleton */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-white/5 animate-pulse" />
+
+              <div className="space-y-3">
+                <div className="h-7 w-56 bg-white/5 rounded animate-pulse" />
+                <div className="h-4 w-40 bg-white/5 rounded animate-pulse" />
+                <div className="h-3 w-24 bg-white/5 rounded animate-pulse" />
+              </div>
+            </div>
+
+            {/* Card skeleton */}
+            <div className="rounded-lg border p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <div className="h-5 w-40 bg-white/5 rounded animate-pulse" />
+                  <div className="h-3 w-60 bg-white/5 rounded animate-pulse" />
+                </div>
+
+                <div className="h-9 w-28 bg-white/5 rounded animate-pulse" />
+              </div>
+
+              {/* Profile fields skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-3 w-24 bg-white/5 rounded animate-pulse" />
+                    <div className="h-4 w-full bg-white/5 rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </main>
+        </div>
       </div>
     );
   }

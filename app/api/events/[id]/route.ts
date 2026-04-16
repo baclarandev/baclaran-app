@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { AttendanceStatus, attendance_response } from "@prisma/client";
+
+/* =========================================================
+   GET EVENT + ATTENDANCE
+========================================================= */
 export async function GET(
   _req: Request,
   context: { params: { id: string } | Promise<{ id: string }> },
@@ -15,6 +19,7 @@ export async function GET(
 
     const { id } = await Promise.resolve(context.params);
     const eventId = Number(id);
+
     if (isNaN(eventId)) {
       return NextResponse.json(
         { message: "Invalid event id" },
@@ -22,12 +27,24 @@ export async function GET(
       );
     }
 
-    // 1️⃣ Fetch event + volunteers
+    /* =========================
+       1️⃣ FETCH EVENT + VOLUNTEERS
+    ========================= */
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: {
         volunteers: {
-          include: { volunteer: true },
+          include: {
+            volunteer: {
+              include: {
+                ministryHistories: {
+                  where: { status: "ACTIVE" },
+                  include: { ministry: true },
+                  take: 1,
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -36,8 +53,14 @@ export async function GET(
       return NextResponse.json({ message: "Event not found" }, { status: 404 });
     }
 
-    // 2️⃣ STAFF filtering
-    let allowedVolunteerIds: number[] | undefined;
+    /* =========================
+       2️⃣ FILTER VOLUNTEERS (ROLE BASED)
+    ========================= */
+    let allowedMinistryIds: number[] = [];
+
+    if (sessionUser.role === "ADMIN" && sessionUser.ministryId) {
+      allowedMinistryIds = [sessionUser.ministryId];
+    }
 
     if (sessionUser.role === "STAFF" && sessionUser.ministryId) {
       const subMinistries = await prisma.ministry.findMany({
@@ -45,81 +68,86 @@ export async function GET(
         select: { id: true },
       });
 
-      const ministryIds = [
+      allowedMinistryIds = [
         sessionUser.ministryId,
         ...subMinistries.map((m) => m.id),
       ];
-
-      const volunteers = await prisma.volunteer.findMany({
-        where: {
-          ministryHistories: {
-            some: {
-              ministryId: { in: ministryIds },
-              status: "ACTIVE",
-            },
-          },
-        },
-        select: { id: true },
-      });
-
-      allowedVolunteerIds = volunteers.map((v) => v.id);
     }
 
-    const filteredVolunteers = event.volunteers.filter(
-      (ev) =>
-        !allowedVolunteerIds || allowedVolunteerIds.includes(ev.volunteerId),
-    );
+    const filteredVolunteers =
+      sessionUser.role === "ADMIN" || sessionUser.role === "STAFF"
+        ? event.volunteers.filter((ev) => {
+            const ministryId = ev.volunteer.ministryHistories[0]?.ministryId;
 
-    // 3️⃣ AUTO-CREATE attendance (only AM)
+            if (allowedMinistryIds.length === 0) return true;
+            return allowedMinistryIds.includes(ministryId);
+          })
+        : [];
+
+    /* =========================
+       3️⃣ ENSURE 1 RECORD PER VOLUNTEER
+    ========================= */
     await prisma.$transaction(
       filteredVolunteers.map((ev) =>
         prisma.eventAttendance.upsert({
           where: {
-            eventId_volunteerId_session: {
+            eventId_volunteerId: {
               eventId,
               volunteerId: ev.volunteerId,
-              session: "AM", // single session only
             },
           },
-          update: {},
           create: {
             eventId,
             volunteerId: ev.volunteerId,
-            session: "AM",
             status: "PENDING",
             response: "NO_RESPONSE",
+            session: null, // 👈 important
           },
+          update: {}, // do nothing if exists
         }),
       ),
     );
 
-    // 4️⃣ Fetch attendance (AM only)
+    /* =========================
+       4️⃣ FETCH ATTENDANCE
+    ========================= */
     const attendance = await prisma.eventAttendance.findMany({
       where: {
         eventId,
-        session: "AM",
-        ...(allowedVolunteerIds && {
-          volunteerId: { in: allowedVolunteerIds },
-        }),
+        volunteerId: {
+          in: filteredVolunteers.map((v) => v.volunteerId),
+        },
       },
       include: {
-        volunteer: true,
+        volunteer: {
+          include: {
+            ministryHistories: {
+              where: { status: "ACTIVE" },
+              include: { ministry: true },
+              take: 1,
+            },
+          },
+        },
       },
-      orderBy: [{ volunteer: { lastName: "asc" } }],
+      orderBy: {
+        volunteer: { lastName: "asc" },
+      },
     });
 
-    // 5️⃣ Format response
+    /* =========================
+       5️⃣ FORMAT RESPONSE
+    ========================= */
     const formatted = attendance.map((a) => ({
       id: a.id,
       volunteer: {
         id: a.volunteer.id,
         firstName: a.volunteer.firstName,
         lastName: a.volunteer.lastName,
-        ministry: a.volunteer.ministryId,
+        ministry: a.volunteer.ministryHistories[0]?.ministry || null,
       },
       status: a.status,
       response: a.response,
-      session: a.session,
+      session: a.session, // null initially
     }));
 
     return NextResponse.json({
@@ -140,6 +168,10 @@ export async function GET(
     );
   }
 }
+
+/* =========================================================
+   PATCH UPDATE ATTENDANCE
+========================================================= */
 const AttendanceUpdateSchema = z.object({
   attendanceId: z.number(),
   session: z.enum(["AM", "PM"]).optional(),
@@ -147,10 +179,7 @@ const AttendanceUpdateSchema = z.object({
   response: z.nativeEnum(attendance_response).optional(),
 });
 
-export async function PATCH(
-  req: Request,
-  context: { params: { id: string } | Promise<{ id: string }> },
-) {
+export async function PATCH(req: Request) {
   try {
     const sessionUser = await getSession();
 
@@ -167,32 +196,100 @@ export async function PATCH(
 
     if (!existing) {
       return NextResponse.json(
-        { message: "Attendance record not found" },
+        { message: "Attendance not found" },
         { status: 404 },
       );
     }
 
+    /* =========================
+       🎯 AUTO STATUS LOGIC
+    ========================= */
+    let finalStatus = data.status ?? existing.status;
+    let finalResponse = data.response ?? existing.response;
+
+    if (data.response) {
+      finalStatus = data.response === "CAN_ATTEND" ? "CONFIRMED" : "PENDING";
+    }
+
+    /* =========================
+       ✅ UPDATE SINGLE RECORD
+    ========================= */
     const updated = await prisma.eventAttendance.update({
       where: { id: data.attendanceId },
       data: {
         session: data.session ?? existing.session,
-        status: data.status ?? existing.status,
-        response: data.response ?? existing.response,
+        status: finalStatus,
+        response: finalResponse,
       },
       include: {
         volunteer: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
+          include: {
+            ministryHistories: {
+              where: { status: "ACTIVE" },
+              include: { ministry: true },
+              take: 1,
+            },
           },
         },
       },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json({
+      id: updated.id,
+      volunteer: {
+        id: updated.volunteer.id,
+        firstName: updated.volunteer.firstName,
+        lastName: updated.volunteer.lastName,
+        ministry: updated.volunteer.ministryHistories[0]?.ministry || null,
+      },
+      status: updated.status,
+      response: updated.response,
+      session: updated.session,
+    });
   } catch (error) {
-    console.error("PATCH attendance error:", error);
+    console.error("PATCH error:", error);
     return NextResponse.json({ message: "Update failed" }, { status: 500 });
+  }
+}
+
+/* =========================================================
+   DELETE EVENT
+========================================================= */
+export async function DELETE(
+  _req: Request,
+  context: { params: { id: string } | Promise<{ id: string }> },
+) {
+  try {
+    const sessionUser = await getSession();
+
+    if (!sessionUser || sessionUser.role !== "ADMIN") {
+      return NextResponse.json({ message: "Unauthorized" }, { status: 403 });
+    }
+
+    const { id } = await Promise.resolve(context.params);
+    const eventId = Number(id);
+
+    if (isNaN(eventId)) {
+      return NextResponse.json(
+        { message: "Invalid event id" },
+        { status: 400 },
+      );
+    }
+
+    await prisma.eventAttendance.deleteMany({
+      where: { eventId },
+    });
+
+    await prisma.event.delete({
+      where: { id: eventId },
+    });
+
+    return NextResponse.json({ message: "Event deleted successfully" });
+  } catch (error) {
+    console.error("DELETE error:", error);
+    return NextResponse.json(
+      { message: "Failed to delete event" },
+      { status: 500 },
+    );
   }
 }

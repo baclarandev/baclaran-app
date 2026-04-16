@@ -48,6 +48,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { VolunteerWithBookings } from "@/app/types/volunteer";
 import { toast } from "sonner";
+import { th } from "date-fns/locale";
 
 const cloudinaryOptimized = (url: string) => {
   if (!url) return url;
@@ -76,7 +77,8 @@ export default function Volunteer({ user }: any) {
     isLoading: loadingVolunteers,
     refetch,
   } = useVolunteers();
-
+  const isStaff = user?.role === "STAFF";
+  const isAdmin = user?.role === "ADMIN";
   const deleteVolunteer = useDeleteVolunteer();
 
   const [selectedVolunteer, setSelectedVolunteer] =
@@ -88,14 +90,16 @@ export default function Volunteer({ user }: any) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-
+  const [sortBy, setSortBy] = useState<
+    "name-asc" | "name-desc" | "code-asc" | "code-desc"
+  >("name-asc");
   const searchParams = useSearchParams();
   const router = useRouter();
   const allVolunteers = useMemo(() => {
     return volunteers.flatMap((ministry: any) => ministry.volunteers);
   }, [volunteers]);
   const filteredVolunteers = useMemo(() => {
-    return allVolunteers.filter((v) => {
+    let result = allVolunteers.filter((v) => {
       const matchesSearch =
         searchQuery === "" ||
         `${v.firstName} ${v.lastName}`
@@ -110,7 +114,30 @@ export default function Volunteer({ user }: any) {
 
       return matchesSearch && matchesStatus;
     });
-  }, [allVolunteers, searchQuery, statusFilter]);
+
+    // ✅ SORTING
+    result = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case "name-asc":
+          return `${a.firstName} ${a.lastName}`.localeCompare(
+            `${b.firstName} ${b.lastName}`,
+          );
+        case "name-desc":
+          return `${b.firstName} ${b.lastName}`.localeCompare(
+            `${a.firstName} ${a.lastName}`,
+          );
+        case "code-asc":
+          return (a.volunteerCode || "").localeCompare(b.volunteerCode || "");
+        case "code-desc":
+          return (b.volunteerCode || "").localeCompare(a.volunteerCode || "");
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [allVolunteers, searchQuery, statusFilter, sortBy]);
+
   const perPage = 12;
 
   const paginatedVolunteers = useMemo(() => {
@@ -171,6 +198,9 @@ export default function Volunteer({ user }: any) {
       ? `${ministry.parent.name} / ${ministry.name}`
       : ministry.name;
   };
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortBy]);
   return (
     <>
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
@@ -338,17 +368,71 @@ export default function Volunteer({ user }: any) {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
-                <NativeSelectOption className="bg-blue-500/20" value="all">
+                <NativeSelectOption
+                  className="bg-blue-500/20 text-stone-950"
+                  value="all"
+                >
                   All Status
                 </NativeSelectOption>
-                <NativeSelectOption value="ACTIVE">Active</NativeSelectOption>
-                <NativeSelectOption value="INACTIVE">
+                <NativeSelectOption
+                  value="ACTIVE"
+                  className="bg-blue-500/20 text-stone-950"
+                >
+                  Active
+                </NativeSelectOption>
+                <NativeSelectOption
+                  value="INACTIVE"
+                  className="bg-blue-500/20 text-stone-950"
+                >
                   Inactive
                 </NativeSelectOption>
               </NativeSelect>
+              <NativeSelect
+                className="w-44 bg-blue-500/30 backdrop-blur-md text-white"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+              >
+                <NativeSelectOption
+                  value="name-asc"
+                  className="bg-blue-500/20 text-stone-950"
+                >
+                  Name (A → Z)
+                </NativeSelectOption>
+                <NativeSelectOption
+                  value="name-desc"
+                  className="bg-blue-500/20 text-stone-950"
+                >
+                  Name (Z → A)
+                </NativeSelectOption>
+                <NativeSelectOption
+                  value="code-asc"
+                  className="bg-blue-500/20 text-stone-950"
+                >
+                  Code (Ascending)
+                </NativeSelectOption>
+                <NativeSelectOption
+                  value="code-desc"
+                  className="bg-blue-500/20 text-stone-950"
+                >
+                  Code (Descending)
+                </NativeSelectOption>
+              </NativeSelect>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("");
+                  setStatusFilter("all");
+                  setSortBy("name-asc");
+                }}
+                className="border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+              >
+                Reset
+              </Button>
             </CardContent>
           </Card>
-
+          <p className="text-sm font-bold text-gray-400">
+            Showing {filteredVolunteers.length} volunteers
+          </p>
           {/* Volunteer Cards / List */}
           {loadingVolunteers ? (
             <div className="grid mt-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -369,6 +453,21 @@ export default function Volunteer({ user }: any) {
                     className="block"
                   >
                     <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors">
+                      <div className="absolute top-2 right-2 flex gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="w-8 h-8 bg-red-600/10 border-red-500/30 hover:bg-red-600/20"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setSelectedVolunteer(v);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
+                          <Trash className="w-4 h-4 text-red-400" />
+                        </Button>
+                      </div>
                       <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
                         {v.profilePicture || true ? (
                           <Image
@@ -421,9 +520,11 @@ export default function Volunteer({ user }: any) {
                       </div>
                       {/* NEW: Classification */}
 
-                      <p className="text-sm text-gray-400 text-center">
-                        {getMinistryDisplay(v)}
-                      </p>
+                      {isAdmin && (
+                        <p className="text-sm text-gray-400 text-center">
+                          {getMinistryDisplay(v)}
+                        </p>
+                      )}
                       <p>
                         <Badge className="bg-purple-900">
                           {formatVolunteerCode(v?.volunteerCode as any)}
@@ -438,9 +539,14 @@ export default function Volunteer({ user }: any) {
                 <table className="w-full text-gray-100">
                   <thead>
                     <tr className="border-b border-gray-700">
-                      <th className="py-3 px-4 text-left">Volunteer</th>
-                      <th className="py-3 px-4 text-left">Ministry</th>
-                      <th className="py-3 px-4 text-left">Email</th>
+                      <th className="py-3 px-4 text-left">Volunteer Name</th>
+                      {isAdmin && (
+                        <th className="py-3 px-4 text-left">Ministry</th>
+                      )}
+                      {isStaff && (
+                        <th className="py-3 px-4 text-left">Volunteer Code</th>
+                      )}
+                      {/* <th className="py-3 px-4 text-left">Email</th> */}
                       <th className="py-3 px-4 text-left">Status</th>
                       <th className="py-3 px-4 text-left">Actions</th>
                     </tr>
@@ -452,7 +558,7 @@ export default function Volunteer({ user }: any) {
                         className="border-b bg-blue-700/10 border-blue-500/30 border text-white-400 backdrop-blur-md hover:bg-blue-400/20 "
                       >
                         <td className="py-3 px-4 flex items-center gap-3">
-                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-blue-500/10 backdrop-blur-md flex items-center justify-center">
+                          {/* <div className="relative w-10 h-10 rounded-full overflow-hidden bg-blue-500/10 backdrop-blur-md flex items-center justify-center">
                             {v.profilePicture ? (
                               <Image
                                 src={cloudinaryOptimized(v.profilePicture)}
@@ -467,21 +573,36 @@ export default function Volunteer({ user }: any) {
                                 {v.lastName[0]}
                               </span>
                             )}
-                          </div>
+                          </div> */}
                           <span>
                             {v.firstName} {v.lastName}
                           </span>
                         </td>
-                        <p className="text-sm text-gray-400 text-center">
-                          {getMinistryDisplay(v)}
-                        </p>
-                        <td className="py-3 px-4">{v.email}</td>
+                        {isAdmin && (
+                          <td>
+                            <p className="text-sm text-gray-400 italic">
+                              {getMinistryDisplay(v)}
+                            </p>
+                          </td>
+                        )}
+                        {isStaff && (
+                          <td className="py-3 px-4">
+                            <Badge className="bg-purple-900">
+                              {formatVolunteerCode(v?.volunteerCode as any)}
+                            </Badge>
+                          </td>
+                        )}
+                        {/* <td className="py-3 px-4">{v.email}</td> */}
                         <td className="py-3 px-4">{v.status}</td>
                         <td className="py-3 px-4 flex gap-2">
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleDelete(v.id)}
+                            disabled={deleteVolunteer.isPending}
+                            onClick={() => {
+                              setSelectedVolunteer(v);
+                              setDeleteDialogOpen(true);
+                            }}
                           >
                             <Trash className="w-4 h-4" />
                           </Button>
@@ -496,7 +617,9 @@ export default function Volunteer({ user }: any) {
             <Card className="p-12 text-center bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30 border backdrop-blur-md mt-4">
               <div className="flex flex-col items-center justify-center space-y-3">
                 <Users className="w-12 h-12 text-stone-400" />
-                <p className="text-gray-300 text-lg">No volunteers found.</p>
+                <p className="text-gray-300 text-lg">
+                  No results found for your filters.
+                </p>
                 <p className="text-gray-500 text-sm">
                   Try adjusting your search filters or add a new volunteer to
                   get started.
@@ -575,12 +698,40 @@ export default function Volunteer({ user }: any) {
           <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
             <DialogContent className="bg-gray-800 text-gray-100 border-gray-700">
               <DialogHeader>
-                <DialogTitle>Delete Volunteer</DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to delete {selectedVolunteer?.firstName}{" "}
-                  {selectedVolunteer?.lastName}?
+                <DialogTitle className="text-red-400 flex items-center gap-2">
+                  <Trash className="w-4 h-4" />
+                  Delete Volunteer
+                </DialogTitle>
+
+                <DialogDescription className="space-y-2">
+                  <p>
+                    Are you sure you want to delete{" "}
+                    <span className="font-semibold text-white">
+                      {selectedVolunteer?.firstName}{" "}
+                      {selectedVolunteer?.lastName}
+                    </span>
+                    ?
+                  </p>
+
+                  <p className="text-red-400 font-medium">
+                    ⚠️ This action is irreversible.
+                  </p>
+
+                  <p className="text-gray-400 text-sm">
+                    The volunteer will be permanently removed from the system.
+                    Their{" "}
+                    <span className="text-yellow-400 font-semibold">
+                      Volunteer Code
+                    </span>{" "}
+                    (
+                    <span className="font-mono">
+                      {selectedVolunteer?.volunteerCode}
+                    </span>
+                    ) will also be permanently invalid and cannot be reused.
+                  </p>
                 </DialogDescription>
               </DialogHeader>
+
               <div className="flex justify-end gap-2 mt-4">
                 <Button
                   variant="outline"
@@ -588,12 +739,13 @@ export default function Volunteer({ user }: any) {
                 >
                   Cancel
                 </Button>
+
                 <Button
                   variant="destructive"
-                  className="bg-red-600"
+                  className="bg-red-600 hover:bg-red-700"
                   onClick={confirmDelete}
                 >
-                  Delete
+                  Yes, Delete Permanently
                 </Button>
               </div>
             </DialogContent>

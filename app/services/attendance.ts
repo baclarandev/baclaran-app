@@ -169,7 +169,7 @@ export function useAttendance(
 
     isLoading: volunteersQuery.isLoading,
     isFetching: volunteersQuery.isFetching,
-
+    isError: volunteersQuery.isError,
     saveAttendance: saveMutation.mutateAsync,
     saving: saveMutation.isPending,
   };

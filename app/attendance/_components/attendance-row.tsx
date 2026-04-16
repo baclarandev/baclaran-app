@@ -26,16 +26,13 @@ export const AttendanceRow = React.memo(
     resetDay,
     updateMonthlyMeeting,
   }: Props) => {
-
     const monthlyValue =
       member.monthlyMeeting === "P" || member.monthlyMeeting === "E" ? 1 : 0;
 
-    const total =
-      member.days.reduce((a, b) => a + b, 0) + monthlyValue;
+    const total = member.days.reduce((a, b) => a + b, 0) + monthlyValue;
 
     return (
       <tr className="border-b border-gray-700">
-
         {/* Name */}
         <td className="sticky left-0 bg-neutral-900 px-2 py-1 max-w-[180px]">
           <div className="truncate font-medium">
@@ -45,29 +42,24 @@ export const AttendanceRow = React.memo(
 
         {/* Monthly Meeting Dropdown */}
         <td className="text-center">
-
           <NativeSelect
             value={member.monthlyMeeting}
             onChange={(e) =>
-              updateMonthlyMeeting(
-                member.id,
-                e.target.value as "P" | "E" | "A",
-              )
+              updateMonthlyMeeting(member.id, e.target.value as "P" | "E" | "A")
             }
             className={`text-sm font-semibold
               ${
                 member.monthlyMeeting === "P"
                   ? "text-green-400"
                   : member.monthlyMeeting === "E"
-                  ? "text-yellow-400"
-                  : "text-red-400"
+                    ? "text-yellow-400"
+                    : "text-red-400"
               }`}
           >
             <NativeSelectOption value="P">P</NativeSelectOption>
             <NativeSelectOption value="E">E</NativeSelectOption>
             <NativeSelectOption value="A">A</NativeSelectOption>
           </NativeSelect>
-
         </td>
 
         {/* Days */}
@@ -89,10 +81,7 @@ export const AttendanceRow = React.memo(
         })}
 
         {/* Total */}
-        <td className="text-center font-semibold text-lg">
-          {total}
-        </td>
-
+        <td className="text-center font-semibold text-lg">{total}</td>
       </tr>
     );
   },

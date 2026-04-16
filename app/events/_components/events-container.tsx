@@ -13,13 +13,27 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogOverlay,
 } from "@/components/ui/dialog";
 import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
-import { Search, Plus, Edit, Archive, Trash2 } from "lucide-react";
-
+import {
+  Search,
+  Plus,
+  Ellipsis,
+  Edit,
+  Archive,
+  Trash2,
+  Check,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 
@@ -29,8 +43,15 @@ import { useRouter } from "next/navigation";
 import { EventSkeletonGrid } from "./event-skeleton-grid";
 
 export default function Events({ user }: any) {
-  const { events, isError, isLoading, createEvent, deleteEvent, archiveEvent } =
-    useEvents();
+  const {
+    events,
+    isError,
+    isLoading,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    archiveEvent,
+  } = useEvents();
   const { data: ministries = [] } = useMinistries();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -213,11 +234,18 @@ export default function Events({ user }: any) {
                         <tr
                           key={event.id}
                           className="border-t border-white/10 hover:bg-gray-600 cursor-pointer"
-                          onClick={() => router.push(`/events/${event.id}`)}
                         >
                           <td className="py-4 px-6">
-                            <p className="font-medium">{event.title}</p>
-                            <p className="text-sm text-gray-400 line-clamp-1">
+                            <p
+                              className="font-medium"
+                              onClick={() => router.push(`/events/${event.id}`)}
+                            >
+                              {event.title}
+                            </p>
+                            <p
+                              className="text-sm text-gray-400 line-clamp-1"
+                              onClick={() => router.push(`/events/${event.id}`)}
+                            >
                               {event.description}
                             </p>
                           </td>
@@ -234,7 +262,102 @@ export default function Events({ user }: any) {
                             </Badge>
                           </td>
 
-                          <td className="py-4 px-6 text-right">...</td>
+                          <td
+                            className="py-4 px-6 text-right"
+                            onClick={(e) => e.stopPropagation()} // ✅ prevent row click
+                          >
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-2 hover:bg-gray-600 cursor-pointer rounded">
+                                  <Ellipsis className="w-5 h-5" />
+                                </button>
+                              </DropdownMenuTrigger>
+
+                              <DropdownMenuContent className="bg-gray-800 text-white border border-gray-700">
+                                {/* EDIT */}
+                                <DropdownMenuItem
+                                  onClick={() => setEditEvent(event)}
+                                  className="cursor-pointer hover:bg-gray-700"
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+
+                                {/* ARCHIVE */}
+                                <DropdownMenuItem
+                                  onClick={() => archiveEvent(event.id)}
+                                  className="cursor-pointer hover:bg-gray-700 text-green-600"
+                                  disabled
+                                >
+                                  <Check className="w-4 h-4 mr-2 " />
+                                  Mark as done
+                                </DropdownMenuItem>
+
+                                {/* DELETE */}
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteId(event.id)}
+                                  className="text-red-400 cursor-pointer hover:bg-gray-700"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                          <Dialog
+                            open={!!editEvent}
+                            onOpenChange={() => setEditEvent(null)}
+                          >
+                            <DialogOverlay className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+                            <DialogContent className="bg-blue-500/10 border border-blue-500/30 text-white">
+                              <DialogHeader>
+                                <DialogTitle>Edit Event</DialogTitle>
+                              </DialogHeader>
+
+                              <div className="space-y-4 mt-4">
+                                <Label>Title</Label>
+                                <Input
+                                  value={form.title}
+                                  onChange={(e) =>
+                                    setForm({ ...form, title: e.target.value })
+                                  }
+                                />
+
+                                <Label>Description</Label>
+                                <Textarea
+                                  value={form.description}
+                                  onChange={(e) =>
+                                    setForm({
+                                      ...form,
+                                      description: e.target.value,
+                                    })
+                                  }
+                                />
+                              </div>
+
+                              <div className="flex justify-end gap-3 mt-6">
+                                <Button
+                                  onClick={() => setEditEvent(null)}
+                                  className="bg-red-600"
+                                >
+                                  Cancel
+                                </Button>
+
+                                <Button
+                                  onClick={() => {
+                                    updateEvent({
+                                      id: editEvent.id,
+                                      ...form,
+                                    });
+                                    setEditEvent(null);
+                                  }}
+                                  className="bg-blue-600"
+                                >
+                                  Save Changes
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                         </tr>
                       );
                     })}
@@ -282,6 +405,7 @@ export default function Events({ user }: any) {
 
         {/* Create Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogOverlay className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
           <DialogContent className="w-full  bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
             <DialogHeader>
               <DialogTitle>Create New Event</DialogTitle>
@@ -373,8 +497,18 @@ export default function Events({ user }: any) {
             <DialogContent className="bg-gray-800 border border-gray-700 text-white">
               <p>Are you sure you want to delete this event?</p>
               <div className="flex justify-end gap-3 mt-4">
-                <Button onClick={() => setDeleteId(null)}>Cancel</Button>
-                <Button onClick={handleDeleteEvent}>Delete</Button>
+                <Button
+                  className="cursor-pointer"
+                  onClick={() => setDeleteId(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-red-600 cursor-pointer"
+                  onClick={handleDeleteEvent}
+                >
+                  Delete
+                </Button>
               </div>
             </DialogContent>
           </Dialog>

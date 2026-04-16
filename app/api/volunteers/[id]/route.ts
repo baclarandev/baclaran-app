@@ -16,14 +16,16 @@ export async function GET(
     if (!sessionUser)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { id } = await context.params;
-    const volunteerId = Number(id);
-
-    if (!volunteerId || isNaN(volunteerId))
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    const params = await context.params;
+    const id = Number((await params).id);
+    if (!id || isNaN(id))
+      return NextResponse.json(
+        { error: "Invalid volunteer ID" },
+        { status: 400 },
+      );
 
     const volunteer = await prisma.volunteer.findUnique({
-      where: { id: volunteerId },
+      where: { id },
       include: {
         formations: true,
         timelines: true,
@@ -36,16 +38,22 @@ export async function GET(
     });
 
     if (!volunteer)
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Volunteer not found" },
+        { status: 404 },
+      );
 
     return NextResponse.json({
       ...volunteer,
       ministryName:
         volunteer.ministryHistories[0]?.ministry?.name ?? "No Ministry",
     });
-  } catch (err) {
-    console.error("[GET]", err);
-    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  } catch (err: any) {
+    console.error("[GET_VOLUNTEER_ERROR]", err);
+    return NextResponse.json(
+      { error: "Failed to fetch volunteer" },
+      { status: 500 },
+    );
   }
 }
 
