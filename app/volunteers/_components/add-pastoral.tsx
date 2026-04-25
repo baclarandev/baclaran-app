@@ -93,7 +93,7 @@ export function AddPastoralAssignmentDialog({
 
         <div className="space-y-4">
           {/* Volunteer Selector */}
-          <ExistingVolunteerSelector
+          {/* <ExistingVolunteerSelector
             volunteers={volunteers}
             isExistingVolunteer={true}
             selectedVolunteer={selectedVolunteer}
@@ -101,7 +101,7 @@ export function AddPastoralAssignmentDialog({
             onModeToggle={() => {}}
             onSelectVolunteer={setSelectedVolunteer}
             onOpenComboboxChange={setOpenCombobox}
-          />
+          /> */}
 
           {/* Ministry Select */}
           <div className="space-y-2">
