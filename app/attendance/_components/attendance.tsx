@@ -17,16 +17,19 @@ import {
 
 import { toast } from "sonner";
 import { AttendanceSkeleton } from "./attendance-skeleton";
-import { AttendanceRow } from "./attendance-row";
-import Link from "next/link";
 
-export type AttendancePayload = {
-  volunteerId: number;
-  ministryId: number;
-  days: number[];
-  monthlyMeeting: "P" | "E" | "A";
-  remarks?: string;
-};
+import Link from "next/link";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { AttendanceRow } from "./attendance-row";
+import { AttendanceModal } from "./attendance-modal";
 
 export default function AttendanceSheet({ user }: any) {
   const [page, setPage] = useState(1);
@@ -37,12 +40,17 @@ export default function AttendanceSheet({ user }: any) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [hasChanges, setHasChanges] = useState(false);
-
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] =
+    useState<VolunteerWithAttendance | null>(null);
+  const [selectedDateIndex, setSelectedDateIndex] = useState<number | null>(
+    null,
+  );
   const limit = 10;
 
   const { data: ministries } = useMinistries();
 
-  const userMinistry = user.ministry;
+  const userMinistry = user?.ministry;
 
   const totalDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
   const today = new Date().getDate();
@@ -50,37 +58,49 @@ export default function AttendanceSheet({ user }: any) {
     selectedMonth === new Date().getMonth() &&
     selectedYear === new Date().getFullYear();
 
-  const { volunteers, isLoading, saveAttendance, saving, pagination } =
-    useAttendance(
-      page,
-      limit,
-      ministryId === "all" ? undefined : Number(ministryId),
-      selectedMonth + 1,
-      selectedYear,
-    );
-  console.log(pagination, "pagination");
-  console.log(volunteers, "data volunteer");
-  /* =========================
-     Normalize API -> Local
-  ========================= */
+  const {
+    volunteers,
+    isLoading,
+    saveAttendance,
+    addService,
+    // deleteService,
+    // isSaving,
+    // isDeletingService,
+    pagination,
+  } = useAttendance(
+    page,
+    limit,
+    ministryId === "all" ? undefined : Number(ministryId),
+    selectedMonth + 1,
+    selectedYear,
+  );
+
   useEffect(() => {
     if (!volunteers) return;
 
     const normalized = volunteers.map((m: any) => {
-      let days = m.days ?? [];
-      if (days.length !== totalDays) {
-        const newDays = Array(totalDays).fill(0);
-        for (let i = 0; i < Math.min(days.length, totalDays); i++) {
-          newDays[i] = days[i] ?? 0;
-        }
-        days = newDays;
+      // Ensure days array has all month days
+      const dayMap = new Map<number, any>();
+
+      if (Array.isArray(m.days)) {
+        m.days.forEach((dayObj: any) => {
+          dayMap.set(dayObj.day, dayObj);
+        });
       }
-      return { ...m, days, monthlyMeeting: m.monthlyMeeting ?? "A" };
+
+      // Fill in missing days
+      const days = Array.from({ length: totalDays }, (_, i) => {
+        const dayNum = i + 1;
+        return dayMap.get(dayNum) || { day: dayNum, services: [] };
+      });
+
+      return {
+        ...m,
+        days,
+      };
     });
 
-    if (JSON.stringify(normalized) !== JSON.stringify(members)) {
-      setMembers(normalized);
-    }
+    setMembers(normalized);
   }, [volunteers, totalDays]);
 
   /* =========================
@@ -90,66 +110,56 @@ export default function AttendanceSheet({ user }: any) {
     setPage(1);
   }, [selectedMonth, selectedYear, ministryId]);
 
-  /* =========================
-     Day Increment / Reset
-  ========================= */
-  const incrementDay = (id: number, index: number) => {
-    setHasChanges(true);
-    setMembers((prev) =>
-      prev.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              days: m.days.map((v, i) =>
-                i === index ? Math.min(v + 1, 8) : v,
-              ),
-            }
-          : m,
-      ),
-    );
+  const handleOpenModal = (member: VolunteerWithAttendance, index: number) => {
+    setSelectedMember(member);
+    setSelectedDateIndex(index);
+    setModalOpen(true);
   };
 
-  const resetDay = (id: number, index: number) => {
-    setHasChanges(true);
-    setMembers((prev) =>
-      prev.map((m) =>
-        m.id === id
-          ? { ...m, days: m.days.map((v, i) => (i === index ? 0 : v)) }
-          : m,
-      ),
-    );
-  };
+  const selectedDay =
+    selectedMember && selectedDateIndex !== null ? selectedDateIndex + 1 : null;
 
-  /* =========================
-     Monthly Meeting Dropdown
-  ========================= */
+  const selectedDayData =
+    selectedMember && selectedDateIndex !== null
+      ? selectedMember.days?.[selectedDateIndex]
+      : null;
   const updateMonthlyMeeting = (id: number, value: "P" | "E" | "A") => {
-    setHasChanges(true);
     setMembers((prev) =>
       prev.map((m) => (m.id === id ? { ...m, monthlyMeeting: value } : m)),
     );
   };
+  const serviceHistory =
+    selectedDayData?.services?.map((s) => ({
+      timeIn: new Date(s.timeIn),
+      timeOut: s.timeOut ? new Date(s.timeOut) : undefined,
+      order: s.serviceOrder,
+    })) ?? [];
+  const optimisticAddService = (
+    memberId: number,
+    dayIndex: number,
+    newService: any,
+  ) => {
+    setMembers((prev) =>
+      prev.map((m) => {
+        if (m.id !== memberId) return m;
 
-  /* =========================
-     Save Attendance
-  ========================= */
-  const handleSave = async () => {
-    try {
-      await saveAttendance(
-        members.map((m) => ({
-          volunteerId: m.id,
-          ministryId: m.ministryId,
-          days: m.days,
-          monthlyMeeting: m.monthlyMeeting,
-        })),
-      );
-      toast.success("Attendance saved!");
-      setHasChanges(false);
-    } catch {
-      toast.error("Save failed");
-    }
+        const days = [...m.days];
+        const day = days[dayIndex];
+
+        return {
+          ...m,
+          days: days.map((d, i) =>
+            i === dayIndex
+              ? {
+                  ...d,
+                  services: [...(d.services || []), newService],
+                }
+              : d,
+          ),
+        };
+      }),
+    );
   };
-
   if (isLoading) return <AttendanceSkeleton user={user} />;
 
   return (
@@ -206,31 +216,28 @@ export default function AttendanceSheet({ user }: any) {
             </NativeSelect>
 
             {/* Ministry */}
-            <NativeSelect
-              value={ministryId}
-              onChange={(e) => setMinistryId(e.target.value)}
-            >
-              <NativeSelectOption value="all">
-                All Ministries
-              </NativeSelectOption>
-              {ministries?.map((m: any) => (
-                <NativeSelectOption key={m.id} value={m.id.toString()}>
-                  {m.name}
+            {user.role === "ADMIN" && (
+              <NativeSelect
+                value={ministryId}
+                onChange={(e) => setMinistryId(e.target.value)}
+              >
+                <NativeSelectOption value="all">
+                  All Ministries
                 </NativeSelectOption>
-              ))}
-            </NativeSelect>
-
-            {/* Save */}
-            {hasChanges && (
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : "💾 Save"}
-              </Button>
+                {ministries?.map((m: any) => (
+                  <NativeSelectOption key={m.id} value={m.id.toString()}>
+                    {m.name}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
             )}
 
+            {/* Save */}
+
             {/* Print */}
-            <Button onClick={() => window.print()} variant="outline">
+            {/* <Button onClick={() => window.print()} variant="outline">
               🖨️ Print
-            </Button>
+            </Button> */}
 
             <Link href="/attendance/summary">
               <Button variant="outline">Summary of Attendance</Button>
@@ -250,75 +257,181 @@ export default function AttendanceSheet({ user }: any) {
         )}
 
         {/* Table */}
-        <div className="p-6 overflow-x-auto">
-          <table className="w-full table-auto border-collapse text-sm">
-            <thead>
-              <tr className="bg-neutral-800">
-                <th className="sticky left-0 bg-neutral-900 px-2">Member</th>
-                <th>Monthly</th>
-                {Array.from({ length: totalDays }).map((_, i) => (
-                  <th key={i}>{i + 1}</th>
+        <div className="p-6 space-y-4">
+          <div className="overflow-x-auto border border-neutral-700 rounded-lg">
+            <table className="w-full table-auto border-collapse text-sm">
+              <thead>
+                <tr className="bg-neutral-800 border-b border-neutral-700">
+                  <th className="sticky left-0 bg-neutral-800 px-4 py-3 text-left font-semibold">
+                    Member
+                  </th>
+                  <th className="px-4 py-3 text-center font-semibold min-w-[120px]">
+                    Monthly
+                  </th>
+                  {Array.from({ length: totalDays }).map((_, i) => (
+                    <th key={i} className="px-2 py-3 text-center font-semibold">
+                      {i + 1}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-center font-semibold min-w-[60px]">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {members.map((member) => (
+                  <AttendanceRow
+                    key={member.id}
+                    member={member}
+                    today={today}
+                    isCurrentMonth={isCurrentMonth}
+                    onOpenModal={handleOpenModal}
+                    updateMonthlyMeeting={updateMonthlyMeeting}
+                  />
                 ))}
-                <th>Total</th>
-              </tr>
-            </thead>
+              </tbody>
+            </table>
+          </div>
+          {selectedMember && selectedDateIndex !== null && (
+            <AttendanceModal
+              serviceHistory={serviceHistory}
+              isOpen={modalOpen}
+              onClose={() => setModalOpen(false)}
+              volunteerId={selectedMember.id}
+              volunteerName={`${selectedMember.firstName} ${selectedMember.lastName}`}
+              date={
+                new Date(selectedYear, selectedMonth, selectedDateIndex + 1)
+              }
+              initialTimeIn={serviceHistory.at(-1)?.timeIn ?? null}
+              initialTimeOut={serviceHistory.at(-1)?.timeOut ?? null}
+              onSave={async (timeIn, timeOut) => {
+                if (!selectedMember || selectedDateIndex === null) return;
 
-            <tbody>
-              {members.map((member) => (
-                <AttendanceRow
-                  key={member.id}
-                  member={member}
-                  today={today}
-                  isCurrentMonth={isCurrentMonth}
-                  incrementDay={incrementDay}
-                  resetDay={resetDay}
-                  updateMonthlyMeeting={updateMonthlyMeeting}
-                />
-              ))}
-            </tbody>
-          </table>
-
+                const tempService = {
+                  timeIn,
+                  timeOut,
+                  serviceOrder: Date.now(), // temp id
+                };
+                optimisticAddService(
+                  selectedMember.id,
+                  selectedDateIndex,
+                  tempService,
+                );
+                try {
+                  await addService({
+                    volunteerId: selectedMember.id,
+                    ministryId: selectedMember.ministryId ?? 0,
+                    day: selectedDateIndex + 1,
+                    month: selectedMonth + 1,
+                    year: selectedYear,
+                    timeIn,
+                    timeOut,
+                  });
+                  toast.success("Saved");
+                } catch (error) {
+                  toast.error("Failed to save attendance");
+                  // Optionally, you can implement a rollback of the optimistic update here
+                }
+                if (timeOut) setModalOpen(false);
+              }}
+            />
+          )}
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-4 flex-wrap">
-              <span className="text-sm text-gray-400">
-                Page {page} of {pagination.totalPages} ({selectedMonth + 1}/
-                {selectedYear})
-              </span>
-
-              <Button
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                disabled={page === 1}
-                variant="outline"
-                size="sm"
-              >
-                Prev
-              </Button>
-
-              <div className="flex gap-1">
-                {Array.from({ length: pagination.totalPages }).map((_, i) => (
-                  <Button
-                    key={i}
-                    onClick={() => setPage(i + 1)}
-                    variant={page === i + 1 ? "default" : "outline"}
-                    size="sm"
-                    className={page === i + 1 ? "min-w-10" : "w-10"}
-                  >
-                    {i + 1}
-                  </Button>
-                ))}
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-sm text-gray-400">
+                Total of {pagination?.total} members
               </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                      className={
+                        page === 1 ? "pointer-events-none opacity-50" : ""
+                      }
+                    />
+                  </PaginationItem>
 
-              <Button
-                onClick={() =>
-                  setPage((p) => Math.min(p + 1, pagination.totalPages))
-                }
-                disabled={page === pagination.totalPages}
-                variant="outline"
-                size="sm"
-              >
-                Next
-              </Button>
+                  {pagination.totalPages <= 7 ? (
+                    Array.from({ length: pagination.totalPages }).map(
+                      (_, i) => (
+                        <PaginationItem className="" key={i}>
+                          <PaginationLink
+                            onClick={() => setPage(i + 1)}
+                            isActive={page === i + 1}
+                            className="active:bg-stone-600"
+                          >
+                            {i + 1}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ),
+                    )
+                  ) : (
+                    <>
+                      {page > 2 && (
+                        <>
+                          <PaginationItem>
+                            <PaginationLink onClick={() => setPage(1)}>
+                              1
+                            </PaginationLink>
+                          </PaginationItem>
+                          {page > 3 && (
+                            <PaginationItem>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          )}
+                        </>
+                      )}
+
+                      {Array.from({ length: 3 })
+                        .map((_, i) => page - 1 + i)
+                        .filter((p) => p > 0 && p <= pagination.totalPages)
+                        .map((p) => (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              onClick={() => setPage(p)}
+                              isActive={page === p}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+
+                      {page < pagination.totalPages - 1 && (
+                        <>
+                          {page < pagination.totalPages - 2 && (
+                            <PaginationItem>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          )}
+                          <PaginationItem>
+                            <PaginationLink
+                              onClick={() => setPage(pagination.totalPages)}
+                            >
+                              {pagination.totalPages}
+                            </PaginationLink>
+                          </PaginationItem>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        setPage((p) => Math.min(p + 1, pagination.totalPages))
+                      }
+                      className={
+                        page === pagination.totalPages
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
         </div>

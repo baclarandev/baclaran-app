@@ -11,35 +11,62 @@ import {
    TYPES
 ========================================================= */
 
+export type MeetingStatus = "P" | "E" | "A";
+
 /**
  * Volunteer with attendance info used by UI table
  */
-export type MeetingStatus = "P" | "E" | "A";
-
-export interface VolunteerWithAttendance extends Omit<Volunteer, "ministryId"> {
-  ministryId: number;
-  days: number[];
+export interface VolunteerWithAttendance {
+  id: number;
+  firstName: string;
+  lastName: string;
+  ministryId: number | null;
+  days: {
+    day?: number;
+    services: {
+      serviceOrder: number;
+      timeIn: Date | string;
+      timeOut: Date | string | null;
+      presentCount: number;
+    }[];
+  }[];
   monthlyMeeting: MeetingStatus;
   remarks?: string;
 }
 
 /**
- * Payload sent to backend
+ * Payload sent to backend (SINGLE VOLUNTEER)
  */
-
-export type AttendancePayload = {
+export type AttendanceCellPayload = {
   volunteerId: number;
   ministryId: number;
-  days: number[];
-  monthlyMeeting: MeetingStatus;
-  remarks?: string;
+  day: number;
+  month: number;
+  year: number;
+  timeIn?: string;
+  timeOut?: string;
 };
 
 /**
- * API Response Shape (VERY IMPORTANT)
+ * Service Session (individual time in/out)
+ */
+// export interface AttendanceService {
+//   id: number;
+//   volunteerId: number;
+//   day: number;
+//   month: number;
+//   year: number;
+//   timeIn: Date | string;
+//   timeOut: Date | string;
+//   createdAt?: Date | string;
+// }
+
+/**
+ * API Response Shape
  */
 export interface AttendanceResponse {
   data: VolunteerWithAttendance[];
+  services?: any[];
   pagination: {
     page: number;
     limit: number;
@@ -52,6 +79,9 @@ export interface AttendanceResponse {
    API CALLS
 ========================================================= */
 
+/**
+ * FETCH ATTENDANCE (LIST)
+ */
 export const fetchAttendance = async (
   page: number,
   limit: number,
@@ -62,11 +92,12 @@ export const fetchAttendance = async (
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
-    month: String(month ?? ""),
-    year: String(year ?? ""),
   });
 
-  if (ministryId) {
+  if (month !== undefined) params.append("month", String(month));
+  if (year !== undefined) params.append("year", String(year));
+
+  if (ministryId !== undefined && ministryId !== null) {
     params.append("ministryId", String(ministryId));
   }
 
@@ -76,23 +107,20 @@ export const fetchAttendance = async (
     throw new Error("Failed to fetch attendance");
   }
 
-  return res.json();
+  const data: AttendanceResponse = await res.json();
+  return data;
 };
 
-export const saveAttendance = async (
-  volunteers: AttendancePayload[],
-  month?: number,
-  year?: number,
-) => {
-  const params = new URLSearchParams();
-
-  if (month) params.append("month", String(month));
-  if (year) params.append("year", String(year));
-
-  const res = await fetch(`/api/attendance/batch?${params}`, {
+/**
+ * SAVE SINGLE VOLUNTEER ATTENDANCE (LEGACY)
+ */
+export const saveAttendance = async (payload: AttendanceCellPayload) => {
+  const res = await fetch(`/api/attendance`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(volunteers),
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -104,8 +132,64 @@ export const saveAttendance = async (
   return res.json();
 };
 
+/**
+ * ADD SERVICE SESSION
+ */
+export const addService = async (payload: {
+  volunteerId: number;
+  ministryId: number;
+  day: number;
+  month: number;
+  year: number;
+  timeIn?: string;
+  timeOut?: string;
+}) => {
+  const res = await fetch(`/api/attendance`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(text);
+    throw new Error("Failed to save service");
+  }
+
+  return res.json();
+};
+
+/**
+ * DELETE SERVICE SESSION
+ */
+export const deleteService = async (payload: {
+  serviceId: number;
+  volunteerId: number;
+  day: number;
+  month: number;
+  year: number;
+}) => {
+  const res = await fetch(`/api/attendance/services`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(text);
+    throw new Error("Failed to delete service");
+  }
+
+  return res.json();
+};
+
 /* =========================================================
-   HOOK (🔥 OPTIMIZED)
+   HOOK
 ========================================================= */
 
 export function useAttendance(
@@ -126,42 +210,50 @@ export function useAttendance(
 
     queryFn: () => fetchAttendance(page, limit, ministryId, month, year),
 
-    /**
-     * ✅ React Query v5 replacement
-     * keeps old table while loading new page
-     */
     placeholderData: keepPreviousData,
 
-    /**
-     * 🔥 Senior optimization
-     * prevents refetch spam while typing/filtering
-     */
-    staleTime: 1000 * 60 * 3, // 3 mins
+    staleTime: 1000 * 60 * 3, // 3 min cache
 
-    /**
-     * 🔥 prevents UI flicker
-     */
     refetchOnWindowFocus: false,
   });
 
   /* -----------------------------
-     MUTATION
+     MUTATION (PER VOLUNTEER SAVE)
   ------------------------------ */
 
   const saveMutation = useMutation({
-    mutationFn: (data: AttendancePayload[]) =>
-      saveAttendance(data, month, year),
+    mutationFn: (payload: AttendanceCellPayload) => saveAttendance(payload),
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["attendance-volunteers"],
+        predicate: (query) => query.queryKey[0] === "attendance-volunteers",
       });
     },
   });
 
   /* -----------------------------
-     RETURN (Stable Shape)
+     RETURN
   ------------------------------ */
+
+  /* -------- Service Management -------- */
+
+  const addServiceMutation = useMutation({
+    mutationFn: (payload: any) => addService(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "attendance-volunteers",
+      });
+    },
+  });
+
+  const deleteServiceMutation = useMutation({
+    mutationFn: (payload: any) => deleteService(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "attendance-volunteers",
+      });
+    },
+  });
 
   return {
     volunteers: volunteersQuery.data?.data ?? [],
@@ -169,8 +261,12 @@ export function useAttendance(
 
     isLoading: volunteersQuery.isLoading,
     isFetching: volunteersQuery.isFetching,
-    isError: volunteersQuery.isError,
+    error: volunteersQuery.error,
+
     saveAttendance: saveMutation.mutateAsync,
-    saving: saveMutation.isPending,
+    isSaving: saveMutation.isPending,
+
+    addService: addServiceMutation.mutateAsync,
+    deleteService: deleteServiceMutation.mutateAsync,
   };
 }

@@ -52,6 +52,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { VolunteerWithBookings } from "@/app/types/volunteer";
 import { toast } from "sonner";
 import { th } from "date-fns/locale";
+import { ExistingVolunteerSelector } from "./existing-volunteer";
+import { AddPastoralAssignmentDialog } from "./add-pastoral";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 const cloudinaryOptimized = (url: string) => {
   if (!url) return url;
@@ -86,49 +89,82 @@ export default function Volunteer({ user }: any) {
 
   const [selectedVolunteer, setSelectedVolunteer] =
     useState<VolunteerWithBookings | null>(null);
+  const [dialogType, setDialogType] = useState<"LITURGICAL" | "PASTORAL">(
+    "LITURGICAL",
+  );
+  const [openPastoralDialog, setOpenPastoralDialog] = useState(false);
+  const [ministryTypeFilter, setMinistryTypeFilter] = useState<
+    "ALL" | "LITURGICAL" | "PASTORAL"
+  >("ALL");
+  const { data: ministries = [] } = useMinistries();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [openAddDialog, setOpenAddDialog] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<
-    "name-asc" | "name-desc" | "code-asc" | "code-desc"
+    | "name-asc"
+    | "name-desc"
+    | "lastname-asc"
+    | "lastname-desc"
+    | "code-asc"
+    | "code-desc"
   >("name-asc");
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (searchQuery !== debouncedSearch) {
+      setIsSearching(true);
+    } else {
+      setIsSearching(false);
+    }
+  }, [searchQuery, debouncedSearch]);
   const searchParams = useSearchParams();
   const router = useRouter();
   const allVolunteers = useMemo(() => {
     return volunteers.flatMap((ministry: any) => ministry.volunteers);
   }, [volunteers]);
+  const isInitialLoading = loadingVolunteers;
+  const isSearchLoading = isSearching;
   const filteredVolunteers = useMemo(() => {
     let result = allVolunteers.filter((v) => {
+      const fullName = `${v.firstName || ""} ${v.lastName || ""}`.toLowerCase();
+      const email = v.email?.toLowerCase() || "";
+      const query = debouncedSearch.toLowerCase();
+
       const matchesSearch =
-        searchQuery === "" ||
-        `${v.firstName} ${v.lastName}`
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        v.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        query === "" ||
+        fullName.includes(query) ||
+        email.includes(query) ||
         v.ministryHistories?.some((h: any) =>
-          h.ministry.name.toLowerCase().includes(searchQuery.toLowerCase()),
+          h?.ministry?.name?.toLowerCase()?.includes(query),
         );
 
       const matchesStatus = statusFilter === "all" || v.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      const matchesType =
+        ministryTypeFilter === "ALL" ||
+        v.ministryHistories?.some(
+          (h: any) => h?.ministry?.type === ministryTypeFilter,
+        );
+
+      return matchesSearch && matchesStatus && matchesType;
     });
 
     // ✅ SORTING
-    result = [...result].sort((a, b) => {
+    result.sort((a, b) => {
       switch (sortBy) {
         case "name-asc":
-          return `${a.firstName} ${a.lastName}`.localeCompare(
-            `${b.firstName} ${b.lastName}`,
-          );
+          return (a.firstName || "").localeCompare(b.firstName || "");
         case "name-desc":
-          return `${b.firstName} ${b.lastName}`.localeCompare(
-            `${a.firstName} ${a.lastName}`,
-          );
+          return (b.firstName || "").localeCompare(a.firstName || "");
+        case "lastname-asc":
+          return (a.lastName || "").localeCompare(b.lastName || "");
+        case "lastname-desc":
+          return (b.lastName || "").localeCompare(a.lastName || "");
         case "code-asc":
           return (a.volunteerCode || "").localeCompare(b.volunteerCode || "");
         case "code-desc":
@@ -139,10 +175,18 @@ export default function Volunteer({ user }: any) {
     });
 
     return result;
-  }, [allVolunteers, searchQuery, statusFilter, sortBy]);
+  }, [
+    allVolunteers,
+    debouncedSearch,
+    statusFilter,
+    sortBy,
+    ministryTypeFilter,
+  ]);
 
   const perPage = 12;
-
+  const pastoralMinistries = useMemo(() => {
+    return ministries.filter((m: any) => m.type === "PASTORAL");
+  }, [ministries]);
   const paginatedVolunteers = useMemo(() => {
     const start = (currentPage - 1) * perPage;
     return filteredVolunteers.slice(start, start + perPage);
@@ -203,7 +247,8 @@ export default function Volunteer({ user }: any) {
   };
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, sortBy]);
+  }, [debouncedSearch, statusFilter, sortBy]);
+
   return (
     <>
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
@@ -240,8 +285,24 @@ export default function Volunteer({ user }: any) {
                     setSelectedVolunteer(null);
                     refetch();
                   }}
+                  type={dialogType}
                   user={user}
                 />
+                <div className="flex gap-2 flex-shrink-0">
+                  {/* NEW Pastoral Button */}
+                  <Button
+                    onClick={() => setOpenPastoralDialog(true)}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    + Add Pastoral
+                  </Button>
+                  <AddPastoralAssignmentDialog
+                    open={openPastoralDialog}
+                    setOpen={setOpenPastoralDialog}
+                    volunteers={allVolunteers}
+                    onSuccess={refetch}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -269,7 +330,7 @@ export default function Volunteer({ user }: any) {
                 <div>
                   <p className="text-stone-400 text-sm mb-1">Active Members</p>
                   <p className="text-2xl font-bold text-white">
-                    {volunteers.filter((v) => v.status === "ACTIVE").length}
+                    {allVolunteers.filter((v) => v.status === "ACTIVE").length}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
@@ -285,7 +346,10 @@ export default function Volunteer({ user }: any) {
                     Inactive Members
                   </p>
                   <p className="text-2xl font-bold text-white">
-                    {volunteers.filter((v) => v.status === "INACTIVE").length}
+                    {
+                      allVolunteers.filter((v) => v.status === "INACTIVE")
+                        .length
+                    }
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
@@ -299,11 +363,11 @@ export default function Volunteer({ user }: any) {
                 <div>
                   <p className="text-stone-400 text-sm mb-1">Engagement Rate</p>
                   <p className="text-2xl font-bold text-white">
-                    {volunteers.length > 0
+                    {allVolunteers.length > 0
                       ? Math.round(
-                          (volunteers.filter((v) => v.status === "ACTIVE")
+                          (allVolunteers.filter((v) => v.status === "ACTIVE")
                             .length /
-                            volunteers.length) *
+                            allVolunteers.length) *
                             100,
                         )
                       : 0}
@@ -419,6 +483,18 @@ export default function Volunteer({ user }: any) {
                 >
                   Code (Descending)
                 </NativeSelectOption>
+                <NativeSelectOption
+                  value="lastname-asc"
+                  className="bg-blue-500/20 text-stone-950"
+                >
+                  Last Name (A → Z)
+                </NativeSelectOption>
+                <NativeSelectOption
+                  value="lastname-desc"
+                  className="bg-blue-500/20 text-stone-950"
+                >
+                  Last Name (Z → A)
+                </NativeSelectOption>
               </NativeSelect>
               <Button
                 variant="outline"
@@ -437,34 +513,102 @@ export default function Volunteer({ user }: any) {
             Showing {filteredVolunteers.length} volunteers
           </p>
           {/* Volunteer Cards / List */}
-          {loadingVolunteers ? (
-            <div className="grid mt-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {Array.from({ length: 8 }).map((_, idx) => (
-                <Card
-                  key={idx}
-                  className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md animate-pulse h-[320px]"
-                />
-              ))}
+          {isInitialLoading ? (
+            <div className="mt-4  gap-6">
+              <div className="mt-4 flex flex-row gap-6">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <Card
+                    key={idx}
+                    className="relative w-[500px]  overflow-hidden bg-gray-700 rounded animate-pulse h-[300px] flex flex-col items-center gap-3 justify-center"
+                  >
+                    {/* Avatar */}
+                    <div className="w-20 h-20 rounded-lg bg-gray-700" />
+
+                    {/* Name */}
+                    <div className="h-4 w-32 bg-gray-700 rounded" />
+
+                    {/* Nickname */}
+                    <div className="h-3 w-20 bg-gray-700 rounded" />
+
+                    {/* Badges */}
+                    <div className="flex gap-2">
+                      <div className="h-5 w-16 bg-gray-700 rounded" />
+                      <div className="h-5 w-16 bg-gray-700 rounded" />
+                    </div>
+
+                    {/* Ministry */}
+                    <div className="h-3 w-24 bg-gray-700 rounded" />
+
+                    {/* Code */}
+                    <div className="h-5 w-20 bg-gray-700 rounded" />
+                  </Card>
+                ))}
+              </div>
             </div>
           ) : filteredVolunteers.length > 0 ? (
             viewMode === "grid" ? (
               <div className="grid mt-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {paginatedVolunteers.map((v) => (
-                  <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors">
+                {paginatedVolunteers.map((v, idx) => (
+                  <Card
+                    key={idx}
+                    className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors"
+                  >
                     <div className="absolute top-2 right-2 flex gap-2">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        className="w-8 h-8 bg-red-600/10 border-red-500/30 hover:bg-red-600/20"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setSelectedVolunteer(v);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash className="w-4 h-4 text-red-400" />
-                      </Button>
+                      <div className="absolute top-2 right-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="w-8 h-8 hover:bg-white/10"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-40 bg-slate-700 border border-blue-500/30 rounded-lg shadow-lg"
+                          >
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/volunteers/${v.id}`);
+                              }}
+                              className="text-white"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // toggleDismissed(v.id);
+                              }}
+                              className="text-violet-400 bg-violet-500"
+                              disabled
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-2 " />
+                              Dismiss
+                              {/* {dismissedIds.includes(v.id)
+                                ? "Undismiss"
+                                : "Dismiss"} */}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedVolunteer(v);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                     <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-700 flex items-center justify-center">
                       {v.profilePicture || true ? (
@@ -532,7 +676,7 @@ export default function Volunteer({ user }: any) {
                 ))}
               </div>
             ) : (
-              <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md mt-4 overflow-x-auto">
+              <Card className="bg-blue-500/10 border-blue-500/30 border backdrop-blur-md mt-4">
                 <table className="w-full text-gray-100">
                   <thead>
                     <tr className="border-b border-gray-700">
@@ -540,73 +684,91 @@ export default function Volunteer({ user }: any) {
                       {isAdmin && (
                         <th className="py-3 px-4 text-left">Ministry</th>
                       )}
-                      {isStaff && (
-                        <th className="py-3 px-4 text-left">Volunteer Code</th>
-                      )}
-                      {/* <th className="py-3 px-4 text-left">Email</th> */}
+                      {isStaff && <th className="py-3 px-4 text-left">Code</th>}
                       <th className="py-3 px-4 text-left">Status</th>
-                      <th className="py-3 px-4 text-left">Actions</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {paginatedVolunteers.map((v) => (
-                      <tr
-                        key={v.id}
-                        className="border-b bg-blue-700/10 border-blue-500/30 border text-white-400 backdrop-blur-md hover:bg-blue-400/20 "
-                      >
-                        <td className="py-3 px-4 flex items-center gap-3">
-                          {/* <div className="relative w-10 h-10 rounded-full overflow-hidden bg-blue-500/10 backdrop-blur-md flex items-center justify-center">
-                            {v.profilePicture ? (
-                              <Image
-                                src={cloudinaryOptimized(v.profilePicture)}
-                                alt={`${v.firstName} ${v.lastName}`}
-                                fill
-                                sizes="40px"
-                                className="object-cover"
-                              />
-                            ) : (
-                              <span className="text-sm font-semibold text-gray-300">
-                                {v.firstName[0]}
-                                {v.lastName[0]}
-                              </span>
-                            )}
-                          </div> */}
-                          <span>
-                            {v.firstName} {v.lastName}
-                          </span>
-                        </td>
-                        {isAdmin && (
-                          <td>
-                            <p className="text-sm text-gray-400 italic">
-                              {getMinistryDisplay(v)}
-                            </p>
-                          </td>
-                        )}
-                        {isStaff && (
-                          <td className="py-3 px-4">
-                            <Badge className="bg-purple-900">
-                              {formatVolunteerCode(v?.volunteerCode as any)}
-                            </Badge>
-                          </td>
-                        )}
-                        {/* <td className="py-3 px-4">{v.email}</td> */}
-                        <td className="py-3 px-4">{v.status}</td>
-                        <td className="py-3 px-4 flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={deleteVolunteer.isPending}
-                            onClick={() => {
-                              setSelectedVolunteer(v);
-                              setDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash className="w-4 h-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                 <tbody>
+  {(isInitialLoading || isSearchLoading)
+    ? Array.from({ length: 6 }).map((_, idx) => (
+        <tr
+          key={idx}
+          className="border-b border-gray-700 animate-pulse"
+        >
+          <td className="py-3 px-4">
+            <div className="h-4 w-40 bg-gray-700 rounded" />
+          </td>
+
+          {isAdmin && (
+            <td className="py-3 px-4">
+              <div className="h-3 w-28 bg-gray-700 rounded" />
+            </td>
+          )}
+
+          {isStaff && (
+            <td className="py-3 px-4">
+              <div className="h-4 w-24 bg-gray-700 rounded" />
+            </td>
+          )}
+
+          <td className="py-3 px-4">
+            <div className="h-4 w-16 bg-gray-700 rounded" />
+          </td>
+
+          <td className="py-3 px-4 text-right">
+            <div className="h-6 w-6 bg-gray-700 rounded ml-auto" />
+          </td>
+        </tr>
+      ))
+    : paginatedVolunteers.map((v) => (
+        <tr
+          key={v.id}
+          className="border-b border-gray-700 hover:bg-gray-800"
+        >
+          <td className="py-3 px-4">
+            {v.firstName} {v.lastName}
+          </td>
+
+          {isAdmin && (
+            <td className="py-3 px-4">
+              {getMinistryDisplay(v)}
+            </td>
+          )}
+
+          {isStaff && (
+            <td className="py-3 px-4">
+              {formatVolunteerCode(v.volunteerCode)}
+            </td>
+          )}
+
+          <td className="py-3 px-4">
+            <Badge
+              variant="outline"
+              className={
+                v.status === "ACTIVE"
+                  ? "border-green-400 bg-green-800 text-green-400"
+                  : "border-red-400 bg-red-800 text-red-400"
+              }
+            >
+              {v.status}
+            </Badge>
+          </td>
+
+          <td className="py-3 px-4 text-right">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() =>
+                router.push(`/volunteers/${v.id}`)
+              }
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
+          </td>
+        </tr>
+      ))}
+</tbody>
                 </table>
               </Card>
             )

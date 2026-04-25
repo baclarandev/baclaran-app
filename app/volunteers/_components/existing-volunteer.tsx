@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -35,6 +35,9 @@ interface ExistingVolunteerSelectorProps {
 const getInitials = (firstName: string, lastName: string) =>
   `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
+const getVolunteerLabel = (v: Volunteer) =>
+  `${v.firstName} ${v.lastName} (${v.volunteerCode})`;
+
 export function ExistingVolunteerSelector({
   volunteers,
   isExistingVolunteer,
@@ -44,28 +47,29 @@ export function ExistingVolunteerSelector({
   onSelectVolunteer,
   onOpenComboboxChange,
 }: ExistingVolunteerSelectorProps) {
+  /**
+   * ✅ Filter ONLY pastoral ministries
+   * Adjust condition depending on your schema:
+   * e.g. v.ministryType === "PASTORAL"
+   */
+  const pastoralVolunteers = useMemo(() => {
+    return volunteers.filter((v) =>
+      v.ministryName?.toLowerCase().includes("pastoral"),
+    );
+  }, [volunteers]);
+
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
-      <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg border border-gray-600">
-        <Checkbox
-          id="existing-volunteer"
-          checked={isExistingVolunteer}
-          onCheckedChange={onModeToggle}
-        />
-        <Label htmlFor="existing-volunteer" className="cursor-pointer">
-          Add existing volunteer to a new ministry
-        </Label>
-      </div>
-
+      {/* Combobox */}
       {isExistingVolunteer && (
         <div className="space-y-2">
           <Label>Select Existing Volunteer</Label>
+
           <Popover open={openCombobox} onOpenChange={onOpenComboboxChange}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 role="combobox"
-                aria-expanded={openCombobox}
                 className="w-full justify-between bg-gray-700 border-gray-600 text-gray-100 hover:bg-gray-600"
               >
                 {selectedVolunteer ? (
@@ -81,71 +85,69 @@ export function ExistingVolunteerSelector({
                         )}
                       </AvatarFallback>
                     </Avatar>
-                    <span>
-                      {selectedVolunteer.firstName} {selectedVolunteer.lastName}{" "}
-                      ({selectedVolunteer.volunteerCode})
-                    </span>
+                    <span>{getVolunteerLabel(selectedVolunteer)}</span>
                   </div>
                 ) : (
                   "Search volunteers..."
                 )}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                <ChevronsUpDown className="ml-2 h-4 w-4 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700 max-h-[60vh] overflow-hidden">
+
+            <PopoverContent className="w-full p-0 bg-gray-800 border-gray-700">
               <Command className="bg-gray-800">
-                <CommandInput
-                  placeholder="Search volunteers..."
-                  className="text-gray-100"
-                />
-                <CommandList className="max-h-[50vh] overflow-y-auto overscroll-contain touch-pan-y">
-                  <CommandEmpty>No volunteer found.</CommandEmpty>
+                <CommandInput placeholder="Search volunteers..." />
+
+                <CommandList className="max-h-[50vh] overflow-y-auto">
+                  <CommandEmpty>No pastoral volunteer found.</CommandEmpty>
+
                   <CommandGroup>
-                    {volunteers.map((volunteer) => (
-                      <CommandItem
-                        key={volunteer.id}
-                        value={`${volunteer.firstName} ${volunteer.lastName} ${volunteer.volunteerCode}`}
-                        onSelect={() => onSelectVolunteer(volunteer)}
-                        className="text-gray-100 hover:bg-gray-700"
-                      >
-                        <div className="flex items-center gap-3 w-full">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage
-                              src={volunteer.profilePicture || undefined}
-                            />
-                            <AvatarFallback className="text-xs bg-gray-600">
-                              {getInitials(
-                                volunteer.firstName,
-                                volunteer.lastName,
+                    {pastoralVolunteers.map((v) => {
+                      const isSelected = selectedVolunteer?.id === v.id;
+
+                      return (
+                        <CommandItem
+                          key={v.id}
+                          value={`${v.firstName} ${v.lastName} ${v.volunteerCode}`}
+                          onSelect={() => onSelectVolunteer(v)}
+                          className="text-gray-100 hover:bg-gray-700"
+                        >
+                          <div className="flex items-center gap-3 w-full">
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage
+                                src={v.profilePicture || undefined}
+                              />
+                              <AvatarFallback className="text-xs bg-gray-600">
+                                {getInitials(v.firstName, v.lastName)}
+                              </AvatarFallback>
+                            </Avatar>
+
+                            <div className="flex-1">
+                              <p className="font-medium">
+                                {v.firstName} {v.lastName}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {v.volunteerCode} • {v.ministryName}
+                              </p>
+                            </div>
+
+                            <Check
+                              className={cn(
+                                "ml-auto h-4 w-4",
+                                isSelected ? "opacity-100" : "opacity-0",
                               )}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="font-medium">
-                              {volunteer.firstName} {volunteer.lastName}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {volunteer.volunteerCode} •{" "}
-                              {volunteer.ministryName}
-                            </p>
+                            />
                           </div>
-                          <Check
-                            className={cn(
-                              "ml-auto h-4 w-4",
-                              selectedVolunteer?.id === volunteer.id
-                                ? "opacity-100"
-                                : "opacity-0",
-                            )}
-                          />
-                        </div>
-                      </CommandItem>
-                    ))}
+                        </CommandItem>
+                      );
+                    })}
                   </CommandGroup>
                 </CommandList>
               </Command>
             </PopoverContent>
           </Popover>
 
+          {/* Selected Preview */}
           {selectedVolunteer && (
             <div className="p-4 bg-gray-700 rounded-lg border border-gray-600 space-y-2">
               <div className="flex items-center gap-3">
@@ -160,6 +162,7 @@ export function ExistingVolunteerSelector({
                     )}
                   </AvatarFallback>
                 </Avatar>
+
                 <div>
                   <h4 className="font-semibold">
                     {selectedVolunteer.firstName} {selectedVolunteer.lastName}
@@ -169,18 +172,15 @@ export function ExistingVolunteerSelector({
                   </p>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-2 text-sm pt-2 border-t border-gray-600">
                 <div>
                   <span className="text-gray-400">Code:</span>
-                  <p className="text-gray-100">
-                    {selectedVolunteer.volunteerCode}
-                  </p>
+                  <p>{selectedVolunteer.volunteerCode}</p>
                 </div>
                 <div>
-                  <span className="text-gray-400">Current Ministry:</span>
-                  <p className="text-gray-100">
-                    {selectedVolunteer.ministryName}
-                  </p>
+                  <span className="text-gray-400">Ministry:</span>
+                  <p>{selectedVolunteer.ministryName}</p>
                 </div>
               </div>
             </div>

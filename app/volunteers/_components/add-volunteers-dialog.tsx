@@ -67,6 +67,7 @@ interface AddVolunteerDialogProps {
   setOpen: (open: boolean) => void;
   user: Staff;
   onSuccess?: () => void;
+  type?: "LITURGICAL" | "PASTORAL";
 }
 
 export interface Staff {
@@ -144,6 +145,7 @@ export function AddVolunteerDialog({
   setOpen,
   user,
   onSuccess,
+  type = "LITURGICAL",
 }: AddVolunteerDialogProps) {
   const [defaultFormations, setDefaultFormations] =
     useState<Formation[]>(DEFAULT_FORMATIONS);

@@ -10,79 +10,101 @@ import {
 
 type Props = {
   member: VolunteerWithAttendance;
+
+  selectedMonth?: number;
+  selectedYear?: number;
+
   today: number;
   isCurrentMonth: boolean;
-  incrementDay: (id: number, index: number) => void;
-  resetDay: (id: number, index: number) => void;
+
   updateMonthlyMeeting: (id: number, value: "P" | "E" | "A") => void;
+  onOpenModal: (member: VolunteerWithAttendance, index: number) => void;
 };
 
-export const AttendanceRow = React.memo(
-  ({
+export const AttendanceRow = React.memo((props: Props) => {
+  const {
     member,
+
     today,
     isCurrentMonth,
-    incrementDay,
-    resetDay,
     updateMonthlyMeeting,
-  }: Props) => {
-    const monthlyValue =
-      member.monthlyMeeting === "P" || member.monthlyMeeting === "E" ? 1 : 0;
+    onOpenModal,
+  } = props;
 
-    const total = member.days.reduce((a, b) => a + b, 0) + monthlyValue;
+  const isMonthlyPresent = member.monthlyMeeting === "P";
 
-    return (
-      <tr className="border-b border-gray-700">
-        {/* Name */}
-        <td className="sticky left-0 bg-neutral-900 px-2 py-1 max-w-[180px]">
-          <div className="truncate font-medium">
-            {member.firstName} {member.lastName}
-          </div>
-        </td>
+  const handleMonthlyChange = (value: "P" | "E" | "A") => {
+    updateMonthlyMeeting(member.id, value);
+  };
 
-        {/* Monthly Meeting Dropdown */}
-        <td className="text-center">
-          <NativeSelect
-            value={member.monthlyMeeting}
-            onChange={(e) =>
-              updateMonthlyMeeting(member.id, e.target.value as "P" | "E" | "A")
-            }
-            className={`text-sm font-semibold
-              ${
-                member.monthlyMeeting === "P"
-                  ? "text-green-400"
-                  : member.monthlyMeeting === "E"
-                    ? "text-yellow-400"
-                    : "text-red-400"
-              }`}
-          >
-            <NativeSelectOption value="P">P</NativeSelectOption>
-            <NativeSelectOption value="E">E</NativeSelectOption>
-            <NativeSelectOption value="A">A</NativeSelectOption>
-          </NativeSelect>
-        </td>
+  // Total services for this volunteer (whole month)
+  const total = member.days.reduce(
+    (acc, d) => acc + (d.services?.length ?? 0),
+    0,
+  );
 
-        {/* Days */}
-        {member.days.map((day, index) => {
-          const isPast = isCurrentMonth && index + 1 < today;
-          const isToday = isCurrentMonth && index + 1 === today;
+  return (
+    <tr className="border-b border-neutral-700 hover:bg-neutral-800/50">
+      {/* NAME */}
+      <td className="sticky left-0 bg-neutral-900 px-4 py-3 max-w-[180px]">
+        <div className="truncate font-medium text-gray-100">
+          {member.firstName} {member.lastName}
+        </div>
+      </td>
 
-          return (
-            <td key={index} className="text-center p-1">
-              <AttendanceCell
-                value={day}
-                isPast={isPast}
-                isToday={isToday}
-                onIncrement={() => incrementDay(member.id, index)}
-                onReset={() => resetDay(member.id, index)}
-              />
-            </td>
-          );
-        })}
+      {/* MONTHLY */}
+      <td className="text-center px-4 py-3">
+        <NativeSelect
+          value={member.monthlyMeeting}
+          onChange={(e) =>
+            handleMonthlyChange(e.target.value as "P" | "E" | "A")
+          }
+          disabled={isMonthlyPresent}
+        >
+          <NativeSelectOption value="P">Present</NativeSelectOption>
+          <NativeSelectOption value="E">Excused</NativeSelectOption>
+          <NativeSelectOption value="A">Absent</NativeSelectOption>
+        </NativeSelect>
+      </td>
 
-        {/* Total */}
-        <td className="text-center font-semibold text-lg">{total}</td>
-      </tr>
-    );
-  },
-);
+      {/* DAYS */}
+      {member.days.map((_, index) => {
+        const dayNumber = index + 1;
+
+        const isPast = isCurrentMonth && dayNumber < today;
+        const isToday = isCurrentMonth && dayNumber === today;
+        const dayData = member.days[index];
+
+        const servicesForDay = dayData?.services ?? [];
+
+        const presentCount = servicesForDay.length;
+
+        const latestService =
+          servicesForDay.length > 0
+            ? servicesForDay[servicesForDay.length - 1]
+            : null;
+        return (
+          <td key={index} className="text-center p-2">
+            <AttendanceCell
+              isPast={isPast}
+              isToday={isToday}
+              timeIn={
+                latestService?.timeIn ? new Date(latestService.timeIn) : null
+              }
+              timeOut={
+                latestService?.timeOut ? new Date(latestService.timeOut) : null
+              }
+              presentCount={presentCount}
+              onOpenModal={() => onOpenModal(member, index)}
+            />
+          </td>
+        );
+      })}
+
+      {/* TOTAL */}
+      <td className="text-center font-semibold text-lg px-4 py-3">{total}</td>
+    </tr>
+  );
+});
+
+AttendanceRow.displayName = "AttendanceRow";

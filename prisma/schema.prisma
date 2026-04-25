@@ -110,10 +110,15 @@ model VolunteerAttendance {
   monthlyServed Int?           @default(0)
   totalServe    Int?           @default(0)
   presentCount  Int?           @default(0)
+  timeIn        DateTime?      @db.Timestamp(6)
+  timeOut       DateTime?      @db.Timestamp(6)
+  serviceOrder  Int?           @default(1)
   ministry      Ministry       @relation(fields: [ministryId], references: [id])
   volunteer     Volunteer      @relation(fields: [volunteerId], references: [id])
 
   @@unique([volunteerId, type, week, month, year, day], map: "VolunteerAttendance_volunteerId_type_week_month_year_key")
+  @@unique([volunteerId, type, month, year, day])
+  @@index([volunteerId, day, month, year, serviceOrder], map: "idx_attendance_day_order")
 }
 
 model VolunteerAttendanceSummary {
@@ -222,6 +227,19 @@ model VolunteerCodeSequence {
   lastValue Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
+}
+
+model VolunteerServiceSession {
+  id          Int       @id @default(autoincrement())
+  volunteerId Int
+  ministryId  Int
+  day         Int
+  month       Int
+  year        Int
+  timeIn      DateTime? @db.Timestamp(6)
+  timeOut     DateTime? @db.Timestamp(6)
+  createdAt   DateTime? @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime? @default(now()) @db.Timestamp(6)
 }
 
 enum Role {

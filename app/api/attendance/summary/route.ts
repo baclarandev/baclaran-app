@@ -3,78 +3,201 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  try {
-    const sessionUser = await getSession();
+  const sessionUser = await getSession();
 
-    if (!sessionUser)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const url = new URL(req.url);
+  const searchParams = req.nextUrl.searchParams;
 
-    const month = Number(url.searchParams.get("month"));
-    const year = Number(url.searchParams.get("year"));
-    const ministryIdParam = url.searchParams.get("ministryId");
+  const month = Number(searchParams.get("month"));
+  const year = Number(searchParams.get("year"));
+  const page = Number(searchParams.get("page")) || 1;
+  const limit = Number(searchParams.get("limit")) || 10;
 
-    // ✅ FIXED
-    let ministryFilter: number | null = null;
+  const skip = (page - 1) * limit;
 
-    if (sessionUser.role === "STAFF") {
-      // 🔒 force staff to their ministry
-      ministryFilter = sessionUser.ministryId ?? null;
-    } else if (sessionUser.role === "ADMIN" && ministryIdParam) {
-      ministryFilter = Number(ministryIdParam);
-    }
-
-    const volunteers = await prisma.volunteer.findMany({
-      where: ministryFilter
+  // =========================
+  // WHERE CLAUSE
+  // =========================
+  const whereClause =
+    sessionUser.role === "ADMIN"
+      ? {}
+      : sessionUser.ministryId
         ? {
             ministryHistories: {
               some: {
-                ministryId: ministryFilter,
+                ministryId: sessionUser.ministryId,
                 status: "ACTIVE",
               },
             },
           }
-        : {},
-      include: {
-        attendances: {
-          where: { month, year },
-        },
-        ministryHistories: {
-          where: { status: "ACTIVE" },
-          include: { ministry: true },
-          orderBy: { joinedAt: "desc" },
-        },
+        : { id: -1 };
+
+  // =========================
+  // TOTAL COUNT
+  // =========================
+  const total = await prisma.volunteer.count({
+    where: whereClause,
+  });
+
+  // =========================
+  // VOLUNTEERS
+  // =========================
+  const volunteers = await prisma.volunteer.findMany({
+    where: whereClause,
+    skip,
+    take: limit,
+    orderBy: { lastName: "asc" },
+  });
+
+  // =========================
+  // ATTENDANCE (MONTHLY)
+  // =========================
+  const attendances = await prisma.volunteerAttendance.findMany({
+    where: {
+      month,
+      year,
+      type: "DAILY",
+      volunteerId: {
+        in: volunteers.map((v) => v.id),
       },
-      orderBy: { lastName: "asc" },
-    });
+    },
+  });
 
-    const summary = volunteers.map((v) => {
-      const daily = v.attendances.filter((a) => a.type === "DAILY");
-      const meeting = v.attendances.find((a) => a.type === "MONTHLY_MEETING");
+  // =========================
+  // GROUP ATTENDANCE
+  // =========================
+  const attendanceMap = new Map<number, number>();
 
-      const currentMinistry = v.ministryHistories.find(
-        (m) => m.status === "ACTIVE",
-      )?.ministry;
+  for (const a of attendances) {
+    if (!a.timeIn) continue;
 
-      return {
-        volunteerId: v.id,
-        name: `${v.firstName} ${v.lastName}`,
-        ministry: currentMinistry?.name || "No Ministry",
-        yearStarted: v.joinedYearMinistry ?? v.joinedYearShrine ?? "N/A",
-        monthlyServed: daily.reduce((sum, d) => sum + (d.presentCount ?? 0), 0),
-        absences: daily.filter((d) => (d.presentCount ?? 0) === 0).length,
-        status: v.ministryHistories[0]?.status || "N/A",
-        meeting: meeting?.present ? "Present" : "Absent",
-      };
-    });
-
-    return NextResponse.json(summary);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json(
-      { error: "Failed to generate summary" },
-      { status: 500 },
+    // count each valid service row
+    attendanceMap.set(
+      a.volunteerId,
+      (attendanceMap.get(a.volunteerId) ?? 0) + 1,
     );
   }
+
+  // =========================
+  // BUILD RESPONSE
+  // =========================
+  const data = volunteers.map((v) => {
+    const attended = attendanceMap.get(v.id) ?? 0;
+
+    const commitment = 5;
+
+    const absences = Math.max(commitment - attended, 0);
+
+    return {
+      volunteerId: v.id,
+      name: `${v.firstName} ${v.lastName}`,
+
+      yearStarted: v.joinedYearMinistry ?? null,
+
+      // ✅ SUMMARY VALUES
+      commitment,
+      attended,
+      absences,
+
+      status: v.status,
+    };
+  });
+
+  // =========================
+  // RESPONSE
+  // =========================
+  return NextResponse.json({
+    data,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
+}
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+
+  const { volunteerId, ministryId, day, month, year, timeIn, timeOut } = body;
+
+  // 1. find active session (open)
+  const active = await prisma.volunteerAttendance.findFirst({
+    where: {
+      volunteerId,
+      day,
+      month,
+      year,
+      type: "DAILY",
+      timeOut: null,
+    },
+    orderBy: {
+      serviceOrder: "desc",
+    },
+  });
+
+  // =========================
+  // CLOSE ONLY
+  // =========================
+  if (timeOut && active) {
+    const updated = await prisma.volunteerAttendance.update({
+      where: { id: active.id },
+      data: {
+        timeOut: new Date(timeOut),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      action: "CLOSE",
+      attendance: updated,
+    });
+  }
+
+  // =========================
+  // AUTO CLOSE OLD SESSION (if exists)
+  // =========================
+  if (active && !active.timeOut) {
+    await prisma.volunteerAttendance.update({
+      where: { id: active.id },
+      data: {
+        timeOut: new Date(),
+      },
+    });
+  }
+
+  // =========================
+  // CREATE NEW SESSION
+  // =========================
+  const last = await prisma.volunteerAttendance.findFirst({
+    where: { volunteerId, day, month, year, type: "DAILY" },
+    orderBy: { serviceOrder: "desc" },
+  });
+
+  const nextOrder = (last?.serviceOrder ?? 0) + 1;
+
+  const created = await prisma.volunteerAttendance.create({
+    data: {
+      volunteerId,
+      ministryId,
+      type: "DAILY",
+      day,
+      month,
+      year,
+      present: true,
+      presentCount: 1,
+      serviceOrder: nextOrder,
+      timeIn: timeIn ? new Date(timeIn) : new Date(),
+      timeOut: null,
+    },
+  });
+
+  return NextResponse.json({
+    success: true,
+    action: "NEW_SERVICE",
+    attendance: created,
+  });
 }

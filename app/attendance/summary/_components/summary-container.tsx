@@ -52,12 +52,28 @@ export default function SummaryContainer({ user }: any) {
     selectedMinistry === "ALL"
       ? "All Ministries"
       : ministries.find((m) => String(m.id) === selectedMinistry)?.name || "";
-  // Fetch data whenever month or year changes
+  // Fetch data whenever month, year, or ministry changes
   useEffect(() => {
-    fetch(`/api/attendance/summary?month=${month}&year=${year}`)
+    const params = new URLSearchParams({
+      month: String(month),
+      year: String(year),
+    });
+
+    // Add ministryId if not "ALL" and is admin
+    if (isAdmin && selectedMinistry !== "ALL") {
+      params.append("ministryId", selectedMinistry);
+    }
+
+    fetch(`/api/attendance/summary?${params.toString()}`)
       .then((res) => res.json())
-      .then(setData);
-  }, [month, year]);
+      .then((response) => {
+        // Handle both array and object responses
+        const summaryData = Array.isArray(response)
+          ? response
+          : response.data || response.volunteers || [];
+        setData(summaryData);
+      });
+  }, [month, year, selectedMinistry, isAdmin]);
   console.log(userMinistry, "current ministry");
   // Pagination logic
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -102,7 +118,7 @@ export default function SummaryContainer({ user }: any) {
             <h3>for the month of</h3>
             <p>${nameMonth(month)} ${year}</p>
           </div>
-<p><strong>Ministry:</strong> ${userMinistry}</p> <p>Total Served:</p>
+<p><strong>Ministry:</strong> ${userMinistry}</p> <p><strong>Minimum Served per volunteer:</strong> _____</p>
 <p><strong>Total Volunteers:</strong> ${totalVolunteers}</p>
           <table>
             <thead>
@@ -268,8 +284,8 @@ export default function SummaryContainer({ user }: any) {
                   <td>{row.yearStarted}</td>
                   <td>{row.name}</td>
                   <td>Remarks here</td>
-                  <td>0</td>
-                  <td>0</td>
+                  <td>{row.commitment === 0 ? "None" : row.commitment}</td>
+                  <td>{row.attended}</td>
                   <td>{row.absences}</td>
                   <td>{row.meeting}</td>
                   <td>{row.status}</td>

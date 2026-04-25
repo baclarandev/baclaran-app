@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, Edit2 } from "lucide-react";
-
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useVolunteerById, useUpdateVolunteer } from "@/app/services/volunteer";
 
 import { Sidebar } from "@/components/layout/sidebar";
@@ -30,7 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function VolunteerProfile({ user }: { user: any }) {
   const router = useRouter();
   const params = useParams();
-
+  const [imageOpen, setImageOpen] = useState(false);
   const rawId = params.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
   const volunteerId = id && !isNaN(Number(id)) ? id : undefined;
@@ -159,14 +159,25 @@ export default function VolunteerProfile({ user }: { user: any }) {
 
           {/* Hero Section */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-            <Avatar className="h-20 w-20 sm:h-24 sm:w-24 ring-4 ring-blue-500/40 shadow-lg">
+            <Avatar
+              onClick={() => setImageOpen(true)}
+              className="h-20 w-20 sm:h-24 sm:w-24 ring-4 ring-blue-500/40 shadow-lg cursor-pointer hover:scale-105 transition"
+            >
               <AvatarImage src={getAvatarUrl(volunteer)} />
               <AvatarFallback className="bg-blue-600 text-white text-xl">
                 {volunteer.firstName?.[0]}
                 {volunteer.lastName?.[0]}
               </AvatarFallback>
             </Avatar>
-
+            <Dialog open={imageOpen} onOpenChange={setImageOpen}>
+              <DialogContent className="max-w-3xl bg-black/90 p-2  border-none shadow-none">
+                <img
+                  src={getAvatarUrl(volunteer)}
+                  alt="Profile"
+                  className="w-full h-auto rounded-lg"
+                />
+              </DialogContent>
+            </Dialog>
             <div className="space-y-1">
               <h1 className="text-2xl sm:text-4xl font-bold text-white">
                 {volunteer.firstName} {volunteer.lastName}
