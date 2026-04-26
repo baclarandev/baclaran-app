@@ -9,7 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 
 interface ServiceRecord {
   timeIn: Date;
@@ -53,6 +53,14 @@ export const AttendanceModal = React.memo(
     const isMaxReached = serviceCount >= maxServicesPerDay;
 
     const nextServiceNumber = serviceCount + 1;
+
+    // Auto-enable view mode for past dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selectedDate = new Date(date);
+    selectedDate.setHours(0, 0, 0, 0);
+    const isPastDate = selectedDate < today;
+    const effectiveReadOnly = readOnly || isPastDate;
 
     /* ========================
        ONLY INIT ON OPEN ONCE
@@ -122,14 +130,36 @@ export const AttendanceModal = React.memo(
     const hiddenCount = serviceHistory.length - visibleHistory.length;
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md bg-black text-white border-gray-600">
+        <DialogContent
+          className={`sm:max-w-md bg-black text-white border-gray-600 ${
+            effectiveReadOnly ? "opacity-95" : ""
+          }`}
+        >
+          {/* LOCK OVERLAY FOR PAST DATES */}
+          {isPastDate && (
+            <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center pointer-events-none">
+              <div className="flex flex-col items-center gap-2">
+                <Lock className="w-8 h-8 text-yellow-400" />
+                <p className="text-yellow-400 text-sm font-semibold">
+                  Past Day - View Only
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* HEADER */}
           <DialogHeader>
-            <DialogTitle>Record Attendance</DialogTitle>
+            <DialogTitle>
+              {effectiveReadOnly
+                ? "Attendance Record (View Only)"
+                : "Record Attendance"}
+            </DialogTitle>
           </DialogHeader>
-          {readOnly && (
+          {effectiveReadOnly && (
             <p className="text-yellow-400 text-sm">
-              Viewing previous record (read-only)
+              {isPastDate
+                ? "This date has passed. Viewing in read-only mode."
+                : "Viewing previous record (read-only)"}
             </p>
           )}
           {/* AUDIT HISTORY */}
@@ -142,13 +172,17 @@ export const AttendanceModal = React.memo(
             </div>
 
             {serviceHistory.length > 0 && (
-              <div className="bg-neutral-800 p-3 rounded space-y-2">
+              <div
+                className={`bg-neutral-800 p-3 rounded space-y-2 ${
+                  effectiveReadOnly ? "blur-sm opacity-80" : ""
+                }`}
+              >
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-gray-400 font-semibold">
                     Service History
                   </p>
 
-                  {serviceHistory.length > 3 && (
+                  {!effectiveReadOnly && serviceHistory.length > 3 && (
                     <button
                       onClick={() => setShowHistory(true)}
                       className="text-xs text-blue-400 hover:underline"
@@ -212,32 +246,30 @@ export const AttendanceModal = React.memo(
               <p className="text-sm text-gray-500">{date.toDateString()}</p>
             </div>
 
-            {/* Buttons */}
-            <div className="space-y-2">
-              {!readOnly && (
-                <div className="space-y-2">
-                  <Button
-                    onClick={handleTimeIn}
-                    disabled={isMaxReached}
-                    className={
-                      timeIn && !timeOut
-                        ? "bg-gray-500"
-                        : "bg-green-600 hover:bg-green-700"
-                    }
-                  >
-                    {timeIn && !timeOut ? "⏱ In Progress" : "Time In"}
-                  </Button>
+            {/* Buttons - Only show if not in view mode */}
+            {!effectiveReadOnly && (
+              <div className="space-y-2">
+                <Button
+                  onClick={handleTimeIn}
+                  disabled={isMaxReached}
+                  className={
+                    timeIn && !timeOut
+                      ? "bg-gray-500"
+                      : "bg-green-600 hover:bg-green-700"
+                  }
+                >
+                  {timeIn && !timeOut ? "⏱ In Progress" : "Time In"}
+                </Button>
 
-                  <Button
-                    onClick={handleTimeOut}
-                    disabled={!timeIn}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    Time Out
-                  </Button>
-                </div>
-              )}
-            </div>
+                <Button
+                  onClick={handleTimeOut}
+                  disabled={!timeIn}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Time Out
+                </Button>
+              </div>
+            )}
 
             {/* LIVE DISPLAY */}
             {timeIn && (
@@ -258,34 +290,49 @@ export const AttendanceModal = React.memo(
             )} */}
           </div>
 
-          {/* FOOTER */}
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={handleReset}>
-              Reset
-            </Button>
+          {/* FOOTER - Only show buttons if not in view mode */}
+          {!effectiveReadOnly && (
+            <DialogFooter className="flex gap-2">
+              <Button variant="outline" onClick={handleReset}>
+                Reset
+              </Button>
 
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={isSaving || !timeIn || readOnly}
-              className="relative overflow-hidden"
-            >
-              {isSaving && (
-                <span className="absolute inset-0 bg-white/10 animate-pulse" />
-              )}
+              <Button variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={isSaving || !timeIn}
+                className="relative overflow-hidden"
+              >
+                {isSaving && (
+                  <span className="absolute inset-0 bg-white/10 animate-pulse" />
+                )}
 
-              {isSaving ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </span>
-              ) : (
-                "Save"
-              )}
-            </Button>
-          </DialogFooter>
+                {isSaving ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </span>
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </DialogFooter>
+          )}
+
+          {/* CLOSE BUTTON FOR VIEW MODE */}
+          {effectiveReadOnly && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                className="text-gray-300 border-gray-600 hover:bg-gray-800"
+              >
+                Close
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     );
