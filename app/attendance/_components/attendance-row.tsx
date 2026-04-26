@@ -7,7 +7,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
-
+export type MeetingStatus = "PRESENT" | "EXCUSED" | "ABSENT";
 type Props = {
   member: VolunteerWithAttendance;
 
@@ -17,7 +17,7 @@ type Props = {
   today: number;
   isCurrentMonth: boolean;
 
-  updateMonthlyMeeting: (id: number, value: "P" | "E" | "A") => void;
+  updateMonthlyMeeting: (id: number, value: MeetingStatus) => void;
   onOpenModal: (member: VolunteerWithAttendance, index: number) => void;
 };
 
@@ -31,22 +31,26 @@ export const AttendanceRow = React.memo((props: Props) => {
     onOpenModal,
   } = props;
 
-  const isMonthlyPresent = member.monthlyMeeting === "P";
+  const isMonthlyPresent = member.monthlyMeeting === "PRESENT";
 
-  const handleMonthlyChange = (value: "P" | "E" | "A") => {
+  const handleMonthlyChange = (value: MeetingStatus) => {
     updateMonthlyMeeting(member.id, value);
   };
 
   // Total services for this volunteer (whole month)
-  const total = member.days.reduce(
-    (acc, d) => acc + (d.services?.length ?? 0),
-    0,
-  );
+  const monthlyMeetingCount =
+    member.monthlyMeeting === "PRESENT" || member.monthlyMeeting === "EXCUSED"
+      ? 1
+      : 0;
+
+  const total =
+    member.days.reduce((acc, d) => acc + (d.services?.length ?? 0), 0) +
+    monthlyMeetingCount;
 
   return (
     <tr className="border-b border-neutral-700 hover:bg-neutral-800/50">
       {/* NAME */}
-      <td className="sticky left-0 bg-neutral-900 px-4 py-3 max-w-[180px]">
+      <td className="sticky z-100 bg-blue-700 left-0  px-4 py-3 max-w-45">
         <div className="truncate font-medium text-gray-100">
           {member.firstName} {member.lastName}
         </div>
@@ -55,15 +59,30 @@ export const AttendanceRow = React.memo((props: Props) => {
       {/* MONTHLY */}
       <td className="text-center px-4 py-3">
         <NativeSelect
-          value={member.monthlyMeeting}
+          value={member.monthlyMeeting ?? "ABSENT"}
           onChange={(e) =>
-            handleMonthlyChange(e.target.value as "P" | "E" | "A")
+            handleMonthlyChange(
+              e.target.value as "PRESENT" | "EXCUSED" | "ABSENT",
+            )
           }
-          disabled={isMonthlyPresent}
+          disabled={false}
+          className="bg-blue-500/20"
         >
-          <NativeSelectOption value="P">Present</NativeSelectOption>
-          <NativeSelectOption value="E">Excused</NativeSelectOption>
-          <NativeSelectOption value="A">Absent</NativeSelectOption>
+          <NativeSelectOption
+            value="PRESENT"
+            className="bg-blue-500 text-white"
+          >
+            Present
+          </NativeSelectOption>
+          <NativeSelectOption
+            value="EXCUSED"
+            className="bg-green-500 text-white"
+          >
+            Excused
+          </NativeSelectOption>
+          <NativeSelectOption value="ABSENT" className="bg-red-500 text-white">
+            Absent
+          </NativeSelectOption>
         </NativeSelect>
       </td>
 

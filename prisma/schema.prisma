@@ -117,18 +117,20 @@ model VolunteerAttendance {
   volunteer     Volunteer      @relation(fields: [volunteerId], references: [id])
 
   @@unique([volunteerId, type, week, month, year, day], map: "VolunteerAttendance_volunteerId_type_week_month_year_key")
-  @@unique([volunteerId, type, month, year, day])
+  @@unique([volunteerId, type, month, year, day, serviceOrder], map: "VolunteerAttendance_unique_service")
   @@index([volunteerId, day, month, year, serviceOrder], map: "idx_attendance_day_order")
 }
 
 model VolunteerAttendanceSummary {
-  id            Int   @id @default(autoincrement())
-  volunteerId   Int
-  month         Int
-  year          Int
-  monthlyServed Int   @default(0)
-  totalServe    Int   @default(0)
-  served        Json?
+  id             Int                 @id @default(autoincrement())
+  volunteerId    Int
+  month          Int
+  year           Int
+  monthlyServed  Int                 @default(0)
+  totalServe     Int                 @default(0)
+  served         Json?
+  remarks        String?
+  monthlyMeeting meeting_attendance? @default(ABSENT)
 
   @@unique([volunteerId, month, year], name: "volunteer_summary_unique", map: "volunteer_summary_unique")
 }

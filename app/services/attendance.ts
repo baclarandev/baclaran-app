@@ -6,12 +6,12 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-
+import { meeting_attendance } from "@prisma/client";
 /* =========================================================
    TYPES
 ========================================================= */
 
-export type MeetingStatus = "P" | "E" | "A";
+export type MeetingStatus = meeting_attendance;
 
 /**
  * Volunteer with attendance info used by UI table

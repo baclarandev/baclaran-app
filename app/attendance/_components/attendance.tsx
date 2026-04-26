@@ -114,6 +114,10 @@ export default function AttendanceSheet({ user }: any) {
     setSelectedMember(member);
     setSelectedDateIndex(index);
     setModalOpen(true);
+
+    requestAnimationFrame(() => {
+      setModalOpen(true);
+    });
   };
 
   const selectedDay =
@@ -123,10 +127,30 @@ export default function AttendanceSheet({ user }: any) {
     selectedMember && selectedDateIndex !== null
       ? selectedMember.days?.[selectedDateIndex]
       : null;
-  const updateMonthlyMeeting = (id: number, value: "P" | "E" | "A") => {
+  const updateMonthlyMeeting = async (
+    id: number,
+    value: "PRESENT" | "EXCUSED" | "ABSENT",
+  ) => {
+    // optimistic UI
     setMembers((prev) =>
       prev.map((m) => (m.id === id ? { ...m, monthlyMeeting: value } : m)),
     );
+
+    try {
+      await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "MONTHLY",
+          volunteerId: id,
+          month: selectedMonth + 1,
+          year: selectedYear,
+          value,
+        }),
+      });
+    } catch (err) {
+      toast.error("Failed to save monthly meeting");
+    }
   };
   const serviceHistory =
     selectedDayData?.services?.map((s) => ({
@@ -160,6 +184,14 @@ export default function AttendanceSheet({ user }: any) {
       }),
     );
   };
+  const selectedDate =
+    selectedMember && selectedDateIndex !== null
+      ? new Date(selectedYear, selectedMonth, selectedDateIndex + 1)
+      : null;
+
+  const isReadOnly = selectedDate
+    ? selectedDate < new Date(new Date().setHours(0, 0, 0, 0))
+    : false;
   if (isLoading) return <AttendanceSkeleton user={user} />;
 
   return (
@@ -257,12 +289,12 @@ export default function AttendanceSheet({ user }: any) {
         )}
 
         {/* Table */}
-        <div className="p-6 space-y-4">
-          <div className="overflow-x-auto border border-neutral-700 rounded-lg">
-            <table className="w-full table-auto border-collapse text-sm">
+        <div className="p-6 space-y-4 ">
+          <div className="overflow-x-auto border border-neutral-700 rounded-lg ">
+            <table className="w-full table-auto  text-sm bg-blue-500/10 border-blue-500/30 border backdrop-blur-md">
               <thead>
-                <tr className="bg-neutral-800 border-b border-neutral-700">
-                  <th className="sticky left-0 bg-neutral-800 px-4 py-3 text-left font-semibold">
+                <tr className="bg-blue-500/20 border-b border-neutral-700">
+                  <th className="sticky left-0 bg-blue-600 z-100  px-4 py-3 text-left font-semibold">
                     Member
                   </th>
                   <th className="px-4 py-3 text-center font-semibold min-w-[120px]">
@@ -293,8 +325,9 @@ export default function AttendanceSheet({ user }: any) {
               </tbody>
             </table>
           </div>
-          {selectedMember && selectedDateIndex !== null && (
+          {modalOpen && selectedMember && selectedDateIndex !== null && (
             <AttendanceModal
+              readOnly={isReadOnly}
               serviceHistory={serviceHistory}
               isOpen={modalOpen}
               onClose={() => setModalOpen(false)}
@@ -349,7 +382,9 @@ export default function AttendanceSheet({ user }: any) {
                     <PaginationPrevious
                       onClick={() => setPage((p) => Math.max(p - 1, 1))}
                       className={
-                        page === 1 ? "pointer-events-none opacity-50" : ""
+                        page === 1
+                          ? "pointer-events-none cursor-pointer opacity-50"
+                          : "cursor-pointer"
                       }
                     />
                   </PaginationItem>
@@ -361,7 +396,7 @@ export default function AttendanceSheet({ user }: any) {
                           <PaginationLink
                             onClick={() => setPage(i + 1)}
                             isActive={page === i + 1}
-                            className="active:bg-stone-600"
+                            className="active:bg-stone-600 cursor-pointer"
                           >
                             {i + 1}
                           </PaginationLink>
@@ -425,8 +460,8 @@ export default function AttendanceSheet({ user }: any) {
                       }
                       className={
                         page === pagination.totalPages
-                          ? "pointer-events-none opacity-50"
-                          : ""
+                          ? "pointer-events-none opacity-50 cursor-pointer"
+                          : "cursor-pointer"
                       }
                     />
                   </PaginationItem>

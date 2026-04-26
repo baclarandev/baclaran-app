@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const month = Number(searchParams.get("month"));
   const year = Number(searchParams.get("year"));
   const page = Number(searchParams.get("page")) || 1;
-  const limit = Number(searchParams.get("limit")) || 10;
+  const limit = Number(searchParams.get("limit")) || 50;
 
   const skip = (page - 1) * limit;
 
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
   });
 
   // =========================
-  // VOLUNTEERS
+  // VOLUNTEERS (paginated)
   // =========================
   const volunteers = await prisma.volunteer.findMany({
     where: whereClause,
@@ -52,29 +52,41 @@ export async function GET(req: NextRequest) {
     orderBy: { lastName: "asc" },
   });
 
+  const volunteerIds = volunteers.map((v) => v.id);
+
   // =========================
-  // ATTENDANCE (MONTHLY)
+  // ATTENDANCE
   // =========================
   const attendances = await prisma.volunteerAttendance.findMany({
     where: {
       month,
       year,
       type: "DAILY",
-      volunteerId: {
-        in: volunteers.map((v) => v.id),
-      },
+      volunteerId: { in: volunteerIds },
     },
   });
 
   // =========================
-  // GROUP ATTENDANCE
+  // SUMMARY (remarks source)
+  // =========================
+  const summaries = await prisma.volunteerAttendanceSummary.findMany({
+    where: {
+      month,
+      year,
+      volunteerId: { in: volunteerIds },
+    },
+  });
+
+  const summaryMap = new Map(summaries.map((s) => [s.volunteerId, s]));
+
+  // =========================
+  // COUNT ATTENDANCE
   // =========================
   const attendanceMap = new Map<number, number>();
 
   for (const a of attendances) {
     if (!a.timeIn) continue;
 
-    // count each valid service row
     attendanceMap.set(
       a.volunteerId,
       (attendanceMap.get(a.volunteerId) ?? 0) + 1,
@@ -86,18 +98,18 @@ export async function GET(req: NextRequest) {
   // =========================
   const data = volunteers.map((v) => {
     const attended = attendanceMap.get(v.id) ?? 0;
-
     const commitment = 5;
-
     const absences = Math.max(commitment - attended, 0);
+
+    const summary = summaryMap.get(v.id);
 
     return {
       volunteerId: v.id,
       name: `${v.firstName} ${v.lastName}`,
-
       yearStarted: v.joinedYearMinistry ?? null,
+      monthlyMeeting: summary ? summary.monthlyMeeting : "ABSENT",
+      remarks: summary?.remarks ?? "", // ✅ FIXED
 
-      // ✅ SUMMARY VALUES
       commitment,
       attended,
       absences,
@@ -106,9 +118,6 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  // =========================
-  // RESPONSE
-  // =========================
   return NextResponse.json({
     data,
     pagination: {
@@ -200,4 +209,57 @@ export async function POST(req: NextRequest) {
     action: "NEW_SERVICE",
     attendance: created,
   });
+}
+export async function PUT(req: NextRequest) {
+  const sessionUser = await getSession();
+
+  if (!sessionUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  const { volunteerId, remarks, month, year } = body;
+
+  // =========================
+  // VALIDATION
+  // =========================
+  if (!volunteerId || !month || !year) {
+    return NextResponse.json(
+      { error: "volunteerId, month, and year are required" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const updated = await prisma.volunteerAttendanceSummary.upsert({
+      where: {
+        volunteer_summary_unique: {
+          volunteerId,
+          month,
+          year,
+        },
+      },
+      update: {
+        remarks,
+      },
+      create: {
+        volunteerId,
+        month,
+        year,
+        remarks,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: updated,
+    });
+  } catch (error) {
+    console.error("PUT ERROR:", error);
+
+    return NextResponse.json(
+      { error: "Failed to save remarks" },
+      { status: 500 },
+    );
+  }
 }

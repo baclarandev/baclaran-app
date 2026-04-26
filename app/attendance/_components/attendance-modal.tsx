@@ -25,6 +25,7 @@ interface AttendanceModalProps {
   volunteerId: number;
   volunteerName: string;
   date: Date;
+  readOnly?: boolean;
   initialTimeIn?: Date | null;
   initialTimeOut?: Date | null;
   serviceHistory?: ServiceRecord[];
@@ -41,6 +42,7 @@ export const AttendanceModal = React.memo(
     initialTimeIn,
     initialTimeOut,
     serviceHistory = [],
+    readOnly = false,
   }: AttendanceModalProps) => {
     const [timeIn, setTimeIn] = useState<Date | null>(null);
     const [timeOut, setTimeOut] = useState<Date | null>(null);
@@ -60,7 +62,7 @@ export const AttendanceModal = React.memo(
 
       setTimeIn(initialTimeIn ? new Date(initialTimeIn) : null);
       setTimeOut(initialTimeOut ? new Date(initialTimeOut) : null);
-    }, [isOpen]); // 🔥 IMPORTANT FIX (not re-triggering every prop change)
+    }, [isOpen, date]);
 
     /* ========================
        HOURS COMPUTE
@@ -86,21 +88,8 @@ export const AttendanceModal = React.memo(
     const handleTimeIn = () => {
       if (isMaxReached) return;
 
-      // If we already have a complete session (timeIn + timeOut), save it first
-      if (timeIn && timeOut) {
-        const dateStr = date.toISOString().split("T")[0];
-        const timeInISO = `${dateStr}T${timeIn.toTimeString().slice(0, 8)}`;
-        const timeOutISO = `${dateStr}T${timeOut.toTimeString().slice(0, 8)}`;
-        onSave(timeInISO, timeOutISO);
-
-        // Close modal to refresh serviceHistory from parent
-        setTimeout(() => {
-          onClose();
-        }, 300);
-      } else if (!timeIn) {
-        // First time clicking
-        setTimeIn(new Date());
-      }
+      setTimeIn(new Date());
+      setTimeOut(null);
     };
 
     const handleTimeOut = () => {
@@ -109,20 +98,19 @@ export const AttendanceModal = React.memo(
     };
 
     const handleSave = () => {
-      if (!timeIn) return;
+      if (!timeIn || !timeOut) return;
 
       const dateStr = date.toISOString().split("T")[0];
+
       const timeInISO = `${dateStr}T${timeIn.toTimeString().slice(0, 8)}`;
-      const timeOutISO = timeOut
-        ? `${dateStr}T${timeOut.toTimeString().slice(0, 8)}`
-        : undefined;
+      const timeOutISO = `${dateStr}T${timeOut.toTimeString().slice(0, 8)}`;
 
       onSave(timeInISO, timeOutISO);
 
-      // Reset form after saving
       setTimeIn(null);
       setTimeOut(null);
       setHoursWorked(0);
+      onClose();
     };
 
     const handleReset = () => {
@@ -139,7 +127,11 @@ export const AttendanceModal = React.memo(
           <DialogHeader>
             <DialogTitle>Record Attendance</DialogTitle>
           </DialogHeader>
-
+          {readOnly && (
+            <p className="text-yellow-400 text-sm">
+              Viewing previous record (read-only)
+            </p>
+          )}
           {/* AUDIT HISTORY */}
           <div className="border-b pb-4 space-y-3">
             <div>
@@ -222,25 +214,29 @@ export const AttendanceModal = React.memo(
 
             {/* Buttons */}
             <div className="space-y-2">
-              <Button
-                onClick={handleTimeIn}
-                disabled={isMaxReached}
-                className={
-                  timeIn && !timeOut
-                    ? "bg-gray-500"
-                    : "bg-green-600 hover:bg-green-700"
-                }
-              >
-                {timeIn && !timeOut ? "⏱ In Progress" : "Time In"}
-              </Button>
+              {!readOnly && (
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleTimeIn}
+                    disabled={isMaxReached}
+                    className={
+                      timeIn && !timeOut
+                        ? "bg-gray-500"
+                        : "bg-green-600 hover:bg-green-700"
+                    }
+                  >
+                    {timeIn && !timeOut ? "⏱ In Progress" : "Time In"}
+                  </Button>
 
-              <Button
-                onClick={handleTimeOut}
-                disabled={!timeIn || !!timeOut}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Time Out
-              </Button>
+                  <Button
+                    onClick={handleTimeOut}
+                    disabled={!timeIn}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Time Out
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* LIVE DISPLAY */}
@@ -252,14 +248,14 @@ export const AttendanceModal = React.memo(
               <p className="text-blue-400">Out: {formatTime(timeOut)}</p>
             )}
 
-            {hoursWorked > 0 && (
+            {/* {hoursWorked > 0 && (
               <div className="bg-neutral-800 p-3 rounded">
                 <p className="text-sm text-gray-400">Hours</p>
                 <p className="text-xl text-blue-400 font-bold">
-                  {hoursWorked} hrs
+                  {hoursWorked} hrs served
                 </p>
               </div>
-            )}
+            )} */}
           </div>
 
           {/* FOOTER */}
@@ -273,7 +269,7 @@ export const AttendanceModal = React.memo(
             </Button>
             <Button
               onClick={handleSave}
-              disabled={isSaving || !timeIn}
+              disabled={isSaving || !timeIn || readOnly}
               className="relative overflow-hidden"
             >
               {isSaving && (

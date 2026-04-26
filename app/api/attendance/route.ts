@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { meeting_attendance } from "@prisma/client";
 /* =========================================================
    GET ATTENDANCE (TABLE DATA)
 ========================================================= */
@@ -12,13 +13,18 @@ export async function GET(req: NextRequest) {
   }
 
   const searchParams = req.nextUrl.searchParams;
+
   const month = Number(searchParams.get("month"));
   const year = Number(searchParams.get("year"));
+
   const page = Number(searchParams.get("page")) || 1;
   const limit = Number(searchParams.get("limit")) || 10;
 
   const skip = (page - 1) * limit;
 
+  /* =========================================================
+     WHERE CLAUSE
+  ========================================================= */
   const whereClause =
     sessionUser.role === "ADMIN"
       ? {}
@@ -33,8 +39,16 @@ export async function GET(req: NextRequest) {
           }
         : { id: -1 };
 
-  const total = await prisma.volunteer.count({ where: whereClause });
+  /* =========================================================
+     TOTAL COUNT
+  ========================================================= */
+  const total = await prisma.volunteer.count({
+    where: whereClause,
+  });
 
+  /* =========================================================
+     FETCH VOLUNTEERS + DAILY ATTENDANCE
+  ========================================================= */
   const volunteers = await prisma.volunteer.findMany({
     where: whereClause,
     skip,
@@ -57,10 +71,29 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  /* =========================================================
+     FETCH MONTHLY SUMMARY (🔥 IMPORTANT FIX)
+  ========================================================= */
+  const summaries = await prisma.volunteerAttendanceSummary.findMany({
+    where: {
+      month,
+      year,
+    },
+  });
+
+  const summaryMap = new Map(
+    summaries.map((s) => [s.volunteerId, s.monthlyMeeting]),
+  );
+
+  /* =========================================================
+     DAYS IN MONTH
+  ========================================================= */
   const daysInMonth = new Date(year, month, 0).getDate();
 
+  /* =========================================================
+     FORMAT RESPONSE
+  ========================================================= */
   const data = volunteers.map((v) => {
-    // group by day
     const grouped = new Map<number, any[]>();
 
     v.attendances.forEach((a) => {
@@ -89,10 +122,15 @@ export async function GET(req: NextRequest) {
       id: v.id,
       firstName: v.firstName,
       lastName: v.lastName,
+
       ministryId:
         sessionUser.role === "ADMIN"
           ? (v.ministryHistories?.[0]?.ministryId ?? null)
           : sessionUser.ministryId,
+
+      /* 🔥 FIX: real monthlyMeeting from summary table */
+      monthlyMeeting: summaryMap.get(v.id) ?? "ABSENT",
+
       days,
     };
   });
@@ -110,11 +148,53 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const { volunteerId, ministryId, day, month, year, timeIn, timeOut } = body;
+  const {
+    type,
+    volunteerId,
+    ministryId,
+    day,
+    month,
+    year,
+    timeIn,
+    timeOut,
+    value, // monthlyMeeting value
+  } = body;
 
-  // =========================
-  // 1. FULL SESSION (BEST CASE)
-  // =========================
+  /* =========================================================
+     1. MONTHLY MEETING UPDATE
+  ========================================================= */
+  if (type === "MONTHLY") {
+    const updated = await prisma.volunteerAttendanceSummary.upsert({
+      where: {
+        volunteer_summary_unique: {
+          volunteerId,
+          month,
+          year,
+        },
+      },
+      update: {
+        monthlyMeeting: value as meeting_attendance, // PRESENT | ABSENT | EXCUSED
+      },
+      create: {
+        volunteerId,
+        month,
+        year,
+        monthlyMeeting: value as meeting_attendance,
+        monthlyServed: 0,
+        totalServe: 0,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      action: "MONTHLY_UPDATE",
+      data: updated,
+    });
+  }
+
+  /* =========================================================
+     2. FULL SESSION (TIME IN + TIME OUT)
+  ========================================================= */
   if (timeIn && timeOut) {
     const last = await prisma.volunteerAttendance.findFirst({
       where: { volunteerId, day, month, year, type: "DAILY" },
@@ -146,9 +226,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // =========================
-  // 2. FIND ACTIVE SESSION
-  // =========================
+  /* =========================================================
+     3. FIND ACTIVE SESSION
+  ========================================================= */
   const active = await prisma.volunteerAttendance.findFirst({
     where: {
       volunteerId,
@@ -158,14 +238,12 @@ export async function POST(req: NextRequest) {
       type: "DAILY",
       timeOut: null,
     },
-    orderBy: {
-      serviceOrder: "desc",
-    },
+    orderBy: { serviceOrder: "desc" },
   });
 
-  // =========================
-  // 3. CLOSE ONLY
-  // =========================
+  /* =========================================================
+     4. CLOSE ONLY
+  ========================================================= */
   if (timeOut && active) {
     const updated = await prisma.volunteerAttendance.update({
       where: { id: active.id },
@@ -181,9 +259,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // =========================
-  // 4. AUTO CLOSE OLD SESSION
-  // =========================
+  /* =========================================================
+     5. AUTO CLOSE OLD SESSION
+  ========================================================= */
   if (active) {
     await prisma.volunteerAttendance.update({
       where: { id: active.id },
@@ -193,9 +271,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // =========================
-  // 5. CREATE NEW SESSION (TIME IN ONLY)
-  // =========================
+  /* =========================================================
+     6. CREATE NEW SESSION
+  ========================================================= */
   const last = await prisma.volunteerAttendance.findFirst({
     where: { volunteerId, day, month, year, type: "DAILY" },
     orderBy: { serviceOrder: "desc" },
@@ -218,7 +296,9 @@ export async function POST(req: NextRequest) {
       timeOut: null,
     },
   });
-
+  if (!["PRESENT", "ABSENT", "EXCUSED"].includes(value)) {
+    return NextResponse.json({ error: "Invalid value" }, { status: 400 });
+  }
   return NextResponse.json({
     success: true,
     action: "NEW_SERVICE",
