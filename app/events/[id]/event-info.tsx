@@ -289,18 +289,17 @@ export default function EventInfo({
       if (am.length > 0) {
         content += `
      <div class="header">
-    <img src="${window.location.origin}/logo.svg" />
-            <div>
-              <strong>National Shrine of Our Mother of Perpetual Help</strong><br/>
-              Baclaran Church<br/>
-              Redemptorist rd, Parañaque City, Philippines
-            </div>
-    </div>
-
-    <h2>${event.title}</h2>
-    <h3>${ministry}</h3>
-    <h4>AM Session</h4>
+  <img src="${window.location.origin}/logo.svg" />
+  <div>
+    <strong>National Shrine of Our Mother of Perpetual Help</strong><br/>
+    Baclaran Church<br/>
+    Redemptorist rd, Parañaque City, Philippines
   </div>
+
+  <h2>${event.title}</h2>
+  <h3>${ministry}</h3>
+  <h4>AM Session</h4>
+</div>
 
       <table>
         <thead>
@@ -377,22 +376,21 @@ export default function EventInfo({
             border-collapse: collapse;
             margin-top: 10px;
           }
-
+td {
+  text-align: center;
+}
           th, td {
             border: 1px solid black;
             padding: 12px;
             font-size: 16px;
+              text-align: center;
           }
 
           th {
             background: #eee;
           }
 
-          td:nth-child(1) {
-            width: 60px;
-            text-align: center;
-          }
-
+        
           td:nth-child(3) {
             width: 300px;
           }
@@ -478,14 +476,14 @@ export default function EventInfo({
               <div className="text-sm text-blue-300 mt-1">{timeLeft}</div>
             </div>
 
-            {user.role === "ADMIN" && (
-              <Button
-                onClick={handlePrint}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <Printer size={16} /> Print
-              </Button>
-            )}
+            {/* {user.role === "ADMIN" && ( */}
+            <Button
+              onClick={handlePrint}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Printer size={16} /> Print
+            </Button>
+            {/* )} */}
           </CardHeader>
         </Card>
         <Card className="m-6 p-6 bg-blue-500/10 border flex-row border-blue-500/30 flex flex-wrap gap-4 items-center">

@@ -55,6 +55,15 @@ import { th } from "date-fns/locale";
 import { ExistingVolunteerSelector } from "./existing-volunteer";
 import { AddPastoralAssignmentDialog } from "./add-pastoral";
 import { useDebounce } from "@/app/hooks/useDebounce";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const cloudinaryOptimized = (url: string) => {
   if (!url) return url;
@@ -689,86 +698,86 @@ export default function Volunteer({ user }: any) {
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                 <tbody>
-  {(isInitialLoading || isSearchLoading)
-    ? Array.from({ length: 6 }).map((_, idx) => (
-        <tr
-          key={idx}
-          className="border-b border-gray-700 animate-pulse"
-        >
-          <td className="py-3 px-4">
-            <div className="h-4 w-40 bg-gray-700 rounded" />
-          </td>
+                  <tbody>
+                    {isInitialLoading || isSearchLoading
+                      ? Array.from({ length: 6 }).map((_, idx) => (
+                          <tr
+                            key={idx}
+                            className="border-b border-gray-700 animate-pulse"
+                          >
+                            <td className="py-3 px-4">
+                              <div className="h-4 w-40 bg-gray-700 rounded" />
+                            </td>
 
-          {isAdmin && (
-            <td className="py-3 px-4">
-              <div className="h-3 w-28 bg-gray-700 rounded" />
-            </td>
-          )}
+                            {isAdmin && (
+                              <td className="py-3 px-4">
+                                <div className="h-3 w-28 bg-gray-700 rounded" />
+                              </td>
+                            )}
 
-          {isStaff && (
-            <td className="py-3 px-4">
-              <div className="h-4 w-24 bg-gray-700 rounded" />
-            </td>
-          )}
+                            {isStaff && (
+                              <td className="py-3 px-4">
+                                <div className="h-4 w-24 bg-gray-700 rounded" />
+                              </td>
+                            )}
 
-          <td className="py-3 px-4">
-            <div className="h-4 w-16 bg-gray-700 rounded" />
-          </td>
+                            <td className="py-3 px-4">
+                              <div className="h-4 w-16 bg-gray-700 rounded" />
+                            </td>
 
-          <td className="py-3 px-4 text-right">
-            <div className="h-6 w-6 bg-gray-700 rounded ml-auto" />
-          </td>
-        </tr>
-      ))
-    : paginatedVolunteers.map((v) => (
-        <tr
-          key={v.id}
-          className="border-b border-gray-700 hover:bg-gray-800"
-        >
-          <td className="py-3 px-4">
-            {v.firstName} {v.lastName}
-          </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="h-6 w-6 bg-gray-700 rounded ml-auto" />
+                            </td>
+                          </tr>
+                        ))
+                      : paginatedVolunteers.map((v) => (
+                          <tr
+                            key={v.id}
+                            className="border-b border-gray-700 hover:bg-gray-800"
+                          >
+                            <td className="py-3 px-4">
+                              {v.firstName} {v.lastName}
+                            </td>
 
-          {isAdmin && (
-            <td className="py-3 px-4">
-              {getMinistryDisplay(v)}
-            </td>
-          )}
+                            {isAdmin && (
+                              <td className="py-3 px-4">
+                                {getMinistryDisplay(v)}
+                              </td>
+                            )}
 
-          {isStaff && (
-            <td className="py-3 px-4">
-              {formatVolunteerCode(v.volunteerCode)}
-            </td>
-          )}
+                            {isStaff && (
+                              <td className="py-3 px-4">
+                                {formatVolunteerCode(v.volunteerCode)}
+                              </td>
+                            )}
 
-          <td className="py-3 px-4">
-            <Badge
-              variant="outline"
-              className={
-                v.status === "ACTIVE"
-                  ? "border-green-400 bg-green-800 text-green-400"
-                  : "border-red-400 bg-red-800 text-red-400"
-              }
-            >
-              {v.status}
-            </Badge>
-          </td>
+                            <td className="py-3 px-4">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  v.status === "ACTIVE"
+                                    ? "border-green-400 bg-green-800 text-green-400"
+                                    : "border-red-400 bg-red-800 text-red-400"
+                                }
+                              >
+                                {v.status}
+                              </Badge>
+                            </td>
 
-          <td className="py-3 px-4 text-right">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() =>
-                router.push(`/volunteers/${v.id}`)
-              }
-            >
-              <Eye className="w-4 h-4" />
-            </Button>
-          </td>
-        </tr>
-      ))}
-</tbody>
+                            <td className="py-3 px-4 text-right">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() =>
+                                  router.push(`/volunteers/${v.id}`)
+                                }
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                  </tbody>
                 </table>
               </Card>
             )
@@ -800,56 +809,97 @@ export default function Volunteer({ user }: any) {
               </Button>
 
               {/* Page Numbers */}
-              <div className="flex items-center gap-2 mx-2">
-                {Array.from({ length: totalPages }).map((_, idx) => {
-                  const page = idx + 1;
+              <Pagination>
+                <PaginationContent>
+                  {/* Previous */}
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                      className={
+                        currentPage === 1
+                          ? "pointer-events-none opacity-50 cursor-pointer"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
 
-                  if (
-                    page === 1 ||
-                    page === totalPages ||
-                    (page >= currentPage - 1 && page <= currentPage + 1)
-                  ) {
-                    return (
-                      <Button
-                        key={page}
-                        size="sm"
-                        onClick={() => goToPage(page)}
-                        className={`w-10 h-10 rounded-lg transition-all border ${
-                          currentPage === page
-                            ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/20"
-                            : "bg-blue-500/5 border-blue-500/20 text-blue-300 hover:bg-blue-500/20 hover:border-blue-400"
-                        }`}
-                      >
-                        {page}
-                      </Button>
-                    );
-                  } else if (
-                    page === currentPage - 2 ||
-                    page === currentPage + 2
-                  ) {
-                    return (
-                      <span
-                        key={page}
-                        className="text-blue-500/50 px-1 font-bold"
-                      >
-                        ...
-                      </span>
-                    );
-                  }
-                  return null;
-                })}
-              </div>
+                  {/* Page Numbers */}
+                  {totalPages <= 7 ? (
+                    Array.from({ length: totalPages }).map((_, i) => (
+                      <PaginationItem key={i}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(i + 1)}
+                          isActive={currentPage === i + 1}
+                        >
+                          {i + 1}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))
+                  ) : (
+                    <>
+                      {currentPage > 2 && (
+                        <>
+                          <PaginationItem>
+                            <PaginationLink onClick={() => setCurrentPage(1)}>
+                              1
+                            </PaginationLink>
+                          </PaginationItem>
+                          {currentPage > 3 && (
+                            <PaginationItem>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          )}
+                        </>
+                      )}
 
-              {/* Next Button */}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={currentPage === totalPages}
-                onClick={() => goToPage(currentPage + 1)}
-                className="bg-blue-500/5 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 disabled:opacity-30 disabled:hover:bg-transparent transition-all rounded-lg px-4"
-              >
-                Next &raquo;
-              </Button>
+                      {Array.from({ length: 3 })
+                        .map((_, i) => currentPage - 1 + i)
+                        .filter((p) => p > 0 && p <= totalPages)
+                        .map((p) => (
+                          <PaginationItem key={p}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(p)}
+                              isActive={currentPage === p}
+                            >
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+
+                      {currentPage < totalPages - 1 && (
+                        <>
+                          {currentPage < totalPages - 2 && (
+                            <PaginationItem>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          )}
+                          <PaginationItem>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(totalPages)}
+                            >
+                              {totalPages}
+                            </PaginationLink>
+                          </PaginationItem>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {/* Next */}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(p + 1, totalPages))
+                      }
+                      className={
+                        currentPage === totalPages
+                          ? "pointer-events-none opacity-50 cursor-pointer"
+                          : "cursor-pointer"
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
           )}
 
