@@ -100,6 +100,7 @@ export default function SummaryContainer({ user }: any) {
         const summaryData = Array.isArray(result)
           ? result
           : result.data || result.volunteers || [];
+        console.log("SUMMARY ROW SAMPLE:", summaryData[0]);
         setData(summaryData);
         setCurrentPage(1); // Reset to first page on new data
       } catch (error) {
@@ -246,11 +247,11 @@ export default function SummaryContainer({ user }: any) {
                   <tr>
                     <td>${row.yearStarted}</td>
                     <td>${row.name}</td>
-                    <td></td>
-                    <td>0</td>
-                    <td>0</td>
+                    <td>${row.remarks}</td>
+                    <td>${row.commitment}</td>
+                    <td>${row.attended}</td>
                     <td>${row.absences}</td>
-                    <td>${row.meeting}</td>
+                    <td>${row.monthlyMeeting}</td>
                     <td>${row.status}</td>
                   </tr>
                 `,
@@ -640,7 +641,7 @@ export default function SummaryContainer({ user }: any) {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-foreground">
-                          {row.meeting}
+                          {row.monthlyMeeting}
                         </td>
                         <td className="px-6 py-4 text-sm">
                           <span
