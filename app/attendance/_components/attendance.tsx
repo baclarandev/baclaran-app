@@ -297,7 +297,7 @@ export default function AttendanceSheet({ user }: any) {
                   <th className="sticky left-0 bg-blue-600 z-100  px-4 py-3 text-left font-semibold">
                     Member
                   </th>
-                  <th className="px-4 py-3 text-center font-semibold min-w-[120px]">
+                  <th className="px-4 py-3 text-center font-semibold min-w-30">
                     Monthly
                   </th>
                   {Array.from({ length: totalDays }).map((_, i) => (
@@ -305,7 +305,7 @@ export default function AttendanceSheet({ user }: any) {
                       {i + 1}
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-center font-semibold min-w-[60px]">
+                  <th className="px-4 py-3 text-center font-semibold min-w-15">
                     Total
                   </th>
                 </tr>
