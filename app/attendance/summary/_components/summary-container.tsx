@@ -50,7 +50,7 @@ export default function SummaryContainer({ user }: any) {
   const [sortColumn, setSortColumn] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [isLoading, setIsLoading] = useState(false);
-  const userMinistry = user?.ministry.name;
+  const userMinistry = user?.ministry?.name || "—";
   const isAdmin = user?.role === "ADMIN";
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
