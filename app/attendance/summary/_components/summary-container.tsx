@@ -150,7 +150,7 @@ export default function SummaryContainer({ user }: any) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (row) =>
-          row.name?.toLowerCase().includes(query) ||
+          row?.name?.toLowerCase().includes(query) ||
           row.remarks?.toLowerCase().includes(query),
       );
     }
@@ -246,7 +246,7 @@ export default function SummaryContainer({ user }: any) {
                   (row) => `
                   <tr>
                     <td>${row.yearStarted}</td>
-                    <td>${row.name}</td>
+                    <td>${row?.name}</td>
                     <td>${row.remarks}</td>
                     <td>${row.commitment}</td>
                     <td>${row.attended}</td>

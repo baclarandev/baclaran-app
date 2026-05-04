@@ -13,8 +13,7 @@ export function useMinistries() {
     queryFn: async () => {
       const res = await fetch("/api/ministries");
       const json = await res.json();
-      console.log(res);
-      console.log(json);
+
       if (!res.ok) throw new Error(json.error || "Failed to fetch ministries");
       return json.data;
     },
