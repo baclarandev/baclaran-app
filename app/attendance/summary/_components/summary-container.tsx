@@ -100,7 +100,7 @@ export default function SummaryContainer({ user }: any) {
         const summaryData = Array.isArray(result)
           ? result
           : result.data || result.volunteers || [];
-        console.log("SUMMARY ROW SAMPLE:", summaryData[0]);
+
         setData(summaryData);
         setCurrentPage(1); // Reset to first page on new data
       } catch (error) {
@@ -291,7 +291,7 @@ export default function SummaryContainer({ user }: any) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-accent/5">
+    <div className="min-h-screen bg-linear-to-br from-background via-background to-accent/5">
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
       <div className="md:ml-64">
         <Header user={user} />
@@ -321,7 +321,7 @@ export default function SummaryContainer({ user }: any) {
           {/* Header Section */}
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                 <Users className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-3xl lg:text-4xl font-bold text-foreground">
@@ -509,7 +509,7 @@ export default function SummaryContainer({ user }: any) {
                 <Button
                   onClick={handlePrint}
                   disabled={isLoading}
-                  className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-6 py-2 font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
+                  className="w-full md:w-auto bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-6 py-2 font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
                 >
                   <Printer className="w-5 h-5" />
                   Print Report

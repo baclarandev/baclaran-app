@@ -9,7 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Lock } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface ServiceRecord {
   timeIn: Date;
@@ -48,33 +48,28 @@ export const AttendanceModal = React.memo(
     const [timeOut, setTimeOut] = useState<Date | null>(null);
     const [hoursWorked, setHoursWorked] = useState<number>(0);
     const [showHistory, setShowHistory] = useState(false);
+
     const maxServicesPerDay = 12;
     const serviceCount = serviceHistory.length;
     const isMaxReached = serviceCount >= maxServicesPerDay;
-
     const nextServiceNumber = serviceCount + 1;
 
-    // Auto-enable view mode for past dates
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const selectedDate = new Date(date);
     selectedDate.setHours(0, 0, 0, 0);
+
     const isPastDate = selectedDate < today;
     const effectiveReadOnly = readOnly || isPastDate;
 
-    /* ========================
-       ONLY INIT ON OPEN ONCE
-    ========================= */
     useEffect(() => {
       if (!isOpen) return;
 
       setTimeIn(initialTimeIn ? new Date(initialTimeIn) : null);
       setTimeOut(initialTimeOut ? new Date(initialTimeOut) : null);
-    }, [isOpen, date]);
+    }, [isOpen, date, initialTimeIn, initialTimeOut]);
 
-    /* ========================
-       HOURS COMPUTE
-    ========================= */
     useEffect(() => {
       if (timeIn && timeOut) {
         let diff = (timeOut.getTime() - timeIn.getTime()) / (1000 * 60 * 60);
@@ -95,7 +90,6 @@ export const AttendanceModal = React.memo(
 
     const handleTimeIn = () => {
       if (isMaxReached) return;
-
       setTimeIn(new Date());
       setTimeOut(null);
     };
@@ -126,215 +120,175 @@ export const AttendanceModal = React.memo(
       setTimeOut(null);
       setHoursWorked(0);
     };
+
     const visibleHistory = serviceHistory.slice(-3);
-    const hiddenCount = serviceHistory.length - visibleHistory.length;
+
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent
-          className={`sm:max-w-md bg-black text-white border-gray-600 ${
-            effectiveReadOnly ? "opacity-95" : ""
-          }`}
-        >
-          {/* LOCK OVERLAY FOR PAST DATES */}
-          {isPastDate && (
-            <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center pointer-events-none">
-              <div className="flex flex-col items-center gap-2">
-                <Lock className="w-8 h-8 text-yellow-400" />
-                <p className="text-yellow-400 text-sm font-semibold">
-                  Past Day - View Only
+      <>
+        {/* MAIN MODAL */}
+        <Dialog open={isOpen} onOpenChange={onClose}>
+          <DialogContent className="sm:max-w-md bg-black text-white border-gray-600">
+            <DialogHeader>
+              <DialogTitle>
+                {effectiveReadOnly
+                  ? "Attendance Record (View Only)"
+                  : "Record Attendance"}
+              </DialogTitle>
+            </DialogHeader>
+
+            {effectiveReadOnly && (
+              <p className="text-yellow-400 text-sm">
+                {isPastDate
+                  ? "This date has passed. Viewing in read-only mode."
+                  : "Viewing previous record (read-only)"}
+              </p>
+            )}
+
+            {/* SERVICE STATUS */}
+            <div className="border-b pb-4 space-y-3">
+              <div>
+                <p className="text-sm text-gray-400">Today's Service Status</p>
+                <p className="text-lg font-semibold">
+                  Service {nextServiceNumber} / {maxServicesPerDay}
                 </p>
               </div>
-            </div>
-          )}
 
-          {/* HEADER */}
-          <DialogHeader>
-            <DialogTitle>
-              {effectiveReadOnly
-                ? "Attendance Record (View Only)"
-                : "Record Attendance"}
-            </DialogTitle>
-          </DialogHeader>
-          {effectiveReadOnly && (
-            <p className="text-yellow-400 text-sm">
-              {isPastDate
-                ? "This date has passed. Viewing in read-only mode."
-                : "Viewing previous record (read-only)"}
-            </p>
-          )}
-          {/* AUDIT HISTORY */}
-          <div className="border-b pb-4 space-y-3">
-            <div>
-              <p className="text-sm text-gray-400">Today's Service Status</p>
-              <p className="text-lg font-semibold">
-                Service {nextServiceNumber} / {maxServicesPerDay}
-              </p>
-            </div>
+              {/* HISTORY PREVIEW */}
+              {serviceHistory.length > 0 && (
+                <div className="bg-neutral-800 p-3 rounded space-y-2">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-400 font-semibold">
+                      Service History
+                    </p>
 
-            {serviceHistory.length > 0 && (
-              <div
-                className={`bg-neutral-800 p-3 rounded space-y-2 ${
-                  effectiveReadOnly ? "blur-sm opacity-80" : ""
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-400 font-semibold">
-                    Service History
-                  </p>
-
-                  {!effectiveReadOnly && serviceHistory.length > 3 && (
+                    {/* {!effectiveReadOnly && serviceHistory.length > 3 && ( */}
                     <button
                       onClick={() => setShowHistory(true)}
                       className="text-xs text-blue-400 hover:underline"
                     >
-                      View all ({serviceHistory.length})
+                      See more ({serviceHistory.length})
                     </button>
-                  )}
-                </div>
-
-                {visibleHistory.map((service, idx) => (
-                  <div
-                    key={idx}
-                    className="text-sm border-l-2 border-blue-500 pl-2"
-                  >
-                    <p className="text-blue-400 font-semibold">
-                      Service #{service.order}
-                    </p>
-
-                    <p className="text-gray-400">
-                      In: {new Date(service.timeIn).toLocaleTimeString()}
-                    </p>
-
-                    {service.timeOut && (
-                      <p className="text-gray-400">
-                        Out: {new Date(service.timeOut).toLocaleTimeString()}
-                      </p>
-                    )}
+                    {/* )} */}
                   </div>
-                ))}
-              </div>
-            )}
-            <Dialog open={showHistory} onOpenChange={setShowHistory}>
-              <DialogContent className="max-w-lg bg-black text-white">
-                <DialogHeader>
-                  <DialogTitle>Full Attendance History</DialogTitle>
-                </DialogHeader>
 
-                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                  {serviceHistory.map((s, i) => (
-                    <div key={i} className="border-b border-gray-700 pb-2">
-                      <p>Service #{s.order}</p>
-                      <p>In: {new Date(s.timeIn).toLocaleTimeString()}</p>
-                      {s.timeOut && (
-                        <p>Out: {new Date(s.timeOut).toLocaleTimeString()}</p>
+                  {visibleHistory.map((service, idx) => (
+                    <div
+                      key={idx}
+                      className="text-sm border-l-2 border-blue-500 pl-2"
+                    >
+                      <p className="text-blue-400 font-semibold">
+                        Service #{service.order}
+                      </p>
+                      <p className="text-gray-400">
+                        In: {new Date(service.timeIn).toLocaleTimeString()}
+                      </p>
+                      {service.timeOut && (
+                        <p className="text-gray-400">
+                          Out: {new Date(service.timeOut).toLocaleTimeString()}
+                        </p>
                       )}
                     </div>
                   ))}
                 </div>
-              </DialogContent>
-            </Dialog>
-            {isMaxReached && (
-              <p className="text-red-400 text-sm">Maximum services reached</p>
-            )}
-          </div>
+              )}
 
-          {/* BODY */}
-          <div className="space-y-4 py-4">
-            <div className="border-b pb-3">
-              <p className="text-sm text-gray-400">Volunteer</p>
-              <p className="text-lg font-semibold">{volunteerName}</p>
-              <p className="text-sm text-gray-500">{date.toDateString()}</p>
+              {isMaxReached && (
+                <p className="text-red-400 text-sm">Maximum services reached</p>
+              )}
             </div>
 
-            {/* Buttons - Only show if not in view mode */}
+            {/* BODY */}
+            <div className="space-y-4 py-4">
+              <div className="border-b pb-3">
+                <p className="text-sm text-gray-400">Volunteer</p>
+                <p className="text-lg font-semibold">{volunteerName}</p>
+                <p className="text-sm text-gray-500">{date.toDateString()}</p>
+              </div>
+
+              {!effectiveReadOnly && (
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleTimeIn}
+                    disabled={isMaxReached}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Time In
+                  </Button>
+
+                  <Button
+                    onClick={handleTimeOut}
+                    disabled={!timeIn}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    Time Out
+                  </Button>
+                </div>
+              )}
+
+              {timeIn && (
+                <p className="text-green-400">In: {formatTime(timeIn)}</p>
+              )}
+
+              {timeOut && (
+                <p className="text-blue-400">Out: {formatTime(timeOut)}</p>
+              )}
+            </div>
+
+            {/* FOOTER */}
             {!effectiveReadOnly && (
-              <div className="space-y-2">
-                <Button
-                  onClick={handleTimeIn}
-                  disabled={isMaxReached}
-                  className={
-                    timeIn && !timeOut
-                      ? "bg-gray-500"
-                      : "bg-green-600 hover:bg-green-700"
-                  }
-                >
-                  {timeIn && !timeOut ? "⏱ In Progress" : "Time In"}
+              <DialogFooter className="flex gap-2">
+                <Button variant="outline" onClick={handleReset}>
+                  Reset
                 </Button>
 
-                <Button
-                  onClick={handleTimeOut}
-                  disabled={!timeIn}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  Time Out
+                <Button variant="outline" onClick={onClose}>
+                  Cancel
+                </Button>
+
+                <Button onClick={handleSave} disabled={isSaving || !timeIn}>
+                  {isSaving ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </span>
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </DialogFooter>
+            )}
+
+            {effectiveReadOnly && (
+              <div className="flex justify-center pt-2">
+                <Button variant="outline" onClick={onClose}>
+                  Close
                 </Button>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
 
-            {/* LIVE DISPLAY */}
-            {timeIn && (
-              <p className="text-green-400">In: {formatTime(timeIn)}</p>
-            )}
+        {/* HISTORY MODAL (OUTSIDE MAIN DIALOG — IMPORTANT FIX) */}
+        <Dialog open={showHistory} onOpenChange={setShowHistory}>
+          <DialogContent className="max-w-lg bg-black text-white">
+            <DialogHeader>
+              <DialogTitle>Full Attendance History</DialogTitle>
+            </DialogHeader>
 
-            {timeOut && (
-              <p className="text-blue-400">Out: {formatTime(timeOut)}</p>
-            )}
-
-            {/* {hoursWorked > 0 && (
-              <div className="bg-neutral-800 p-3 rounded">
-                <p className="text-sm text-gray-400">Hours</p>
-                <p className="text-xl text-blue-400 font-bold">
-                  {hoursWorked} hrs served
-                </p>
-              </div>
-            )} */}
-          </div>
-
-          {/* FOOTER - Only show buttons if not in view mode */}
-          {!effectiveReadOnly && (
-            <DialogFooter className="flex gap-2">
-              <Button variant="outline" onClick={handleReset}>
-                Reset
-              </Button>
-
-              <Button variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={isSaving || !timeIn}
-                className="relative overflow-hidden"
-              >
-                {isSaving && (
-                  <span className="absolute inset-0 bg-white/10 animate-pulse" />
-                )}
-
-                {isSaving ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </span>
-                ) : (
-                  "Save"
-                )}
-              </Button>
-            </DialogFooter>
-          )}
-
-          {/* CLOSE BUTTON FOR VIEW MODE */}
-          {effectiveReadOnly && (
-            <div className="flex justify-center pt-2">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                className="text-gray-300 border-gray-600 hover:bg-gray-800"
-              >
-                Close
-              </Button>
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+              {serviceHistory.map((s, i) => (
+                <div key={i} className="border-b border-gray-700 pb-2">
+                  <p>Service #{s.order}</p>
+                  <p>In: {new Date(s.timeIn).toLocaleTimeString()}</p>
+                  {s.timeOut && (
+                    <p>Out: {new Date(s.timeOut).toLocaleTimeString()}</p>
+                  )}
+                </div>
+              ))}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   },
 );
