@@ -109,7 +109,6 @@ export function useEventById(id: number) {
         throw new Error(data?.error || "Failed to fetch event");
       }
 
-      console.log("Fetched event data:", data); // <-- now this will show actual data
       return data;
     },
     enabled: !!id,

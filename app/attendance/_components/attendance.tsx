@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
@@ -30,13 +30,14 @@ import {
 } from "@/components/ui/pagination";
 import { AttendanceRow } from "./attendance-row";
 import { AttendanceModal } from "./attendance-modal";
+import { Input } from "@/components/ui/input";
 
 export default function AttendanceSheet({ user }: any) {
   const [page, setPage] = useState(1);
   const [members, setMembers] = useState<VolunteerWithAttendance[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [ministryId, setMinistryId] = useState<string>("all");
-
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [hasChanges, setHasChanges] = useState(false);
@@ -46,6 +47,50 @@ export default function AttendanceSheet({ user }: any) {
   const [selectedDateIndex, setSelectedDateIndex] = useState<number | null>(
     null,
   );
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [attendanceFilter, setAttendanceFilter] = useState("all");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300); // 300ms is sweet spot
+
+    return () => clearTimeout(timer);
+  }, [search]);
+  const filteredMembers = useMemo(() => {
+    return (
+      members
+        // 🔍 SEARCH
+        .filter((m) => {
+          const fullName = `${m.firstName} ${m.lastName}`.toLowerCase();
+          return fullName.includes(debouncedSearch.toLowerCase());
+        })
+
+        // 🎯 ATTENDANCE FILTER
+        .filter((m) => {
+          if (attendanceFilter === "all") return true;
+
+          const total =
+            m.days.reduce((acc, d) => acc + (d.services?.length ?? 0), 0) +
+            (m.monthlyMeeting === "PRESENT" ? 1 : 0);
+
+          if (attendanceFilter === "Active") return total > 0;
+          if (attendanceFilter === "Inactive") return total === 0;
+
+          return true;
+        })
+
+        // 🔤 SORT (LAST NAME FIRST)
+        .sort((a, b) => {
+          const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
+          const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
+
+          return sortOrder === "asc"
+            ? nameA.localeCompare(nameB)
+            : nameB.localeCompare(nameA);
+        })
+    );
+  }, [members, debouncedSearch, attendanceFilter, sortOrder]);
   const limit = 10;
 
   const { data: ministries } = useMinistries();
@@ -218,6 +263,35 @@ export default function AttendanceSheet({ user }: any) {
         <div className="p-6 space-y-4 print-hidden">
           <h1 className="text-xl font-semibold text-white">Attendance Sheet</h1>
           <div className="flex gap-3 flex-wrap">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Search by name..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 pr-4 py-2 rounded bg-neutral-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <p className="text-sm text-gray-400">Filter:</p>
+              <NativeSelect
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+              >
+                <NativeSelectOption
+                  value="asc"
+                  className="bg-blue-950 text-white"
+                >
+                  Name (A–Z)
+                </NativeSelectOption>
+                <NativeSelectOption
+                  value="desc"
+                  className="bg-blue-950 text-white"
+                >
+                  Name (Z–A)
+                </NativeSelectOption>
+              </NativeSelect>
+            </div>
             {/* Month */}
             <NativeSelect
               value={selectedMonth.toString()}
@@ -320,7 +394,7 @@ export default function AttendanceSheet({ user }: any) {
               </thead>
 
               <tbody>
-                {members.map((member) => (
+                {filteredMembers.map((member) => (
                   <AttendanceRow
                     key={member.id}
                     member={member}

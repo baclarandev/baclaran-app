@@ -85,9 +85,11 @@ model Ministry {
   type          MinistryType?
   parentId      Int?
   ministryCode  String?                    @unique @db.VarChar(5)
+  Criteria      Criteria[]
   Event         Event[]
   parent        Ministry?                  @relation("MinistryHierarchy", fields: [parentId], references: [id], onUpdate: NoAction, map: "ministry_parent_fk")
   subMinistries Ministry[]                 @relation("MinistryHierarchy")
+  ServicePillar ServicePillar[]
   users         User[]
   Volunteer     Volunteer[]
   attendance    VolunteerAttendance[]
@@ -242,6 +244,35 @@ model VolunteerServiceSession {
   timeOut     DateTime? @db.Timestamp(6)
   createdAt   DateTime? @default(now()) @db.Timestamp(6)
   updatedAt   DateTime? @default(now()) @db.Timestamp(6)
+  role        String?
+}
+
+model Criteria {
+  id         Int          @id @default(autoincrement())
+  pillarId   Int
+  ministryId Int?
+  title      String
+  type       CriteriaType
+  weight     Decimal      @db.Decimal
+  Ministry   Ministry?    @relation(fields: [ministryId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  Pillar     Pillar       @relation(fields: [pillarId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Pillar {
+  id        Int        @id @default(autoincrement())
+  title     String
+  createdAt DateTime?  @default(now()) @db.Timestamp(6)
+  Criteria  Criteria[]
+}
+
+model ServicePillar {
+  id         Int       @id @default(autoincrement())
+  ministryId Int
+  title      String
+  points     Int?      @default(1)
+  createdAt  DateTime? @default(now()) @db.Timestamp(6)
+  updatedAt  DateTime? @default(now()) @db.Timestamp(6)
+  Ministry   Ministry  @relation(fields: [ministryId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ministry")
 }
 
 enum Role {
@@ -328,4 +359,9 @@ enum service_remarks {
   REGULAR
   SEASONAL
   ON_LEAVE
+}
+
+enum CriteriaType {
+  MEETING
+  SERVICE
 }

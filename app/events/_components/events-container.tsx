@@ -236,18 +236,16 @@ export default function Events({ user }: any) {
                           className="border-t border-white/10 hover:bg-gray-600 cursor-pointer"
                         >
                           <td className="py-4 px-6">
-                            <p
-                              className="font-medium"
-                              onClick={() => router.push(`/events/${event.id}`)}
-                            >
-                              {event.title}
-                            </p>
-                            <p
-                              className="text-sm text-gray-400 line-clamp-1"
-                              onClick={() => router.push(`/events/${event.id}`)}
-                            >
-                              {event.description}
-                            </p>
+                            <Link href={`/events/${event.id}`}>
+                              <p className="font-medium hover:underline cursor-pointer">
+                                {event.title}
+                              </p>
+                            </Link>
+                            <Link href={`/events/${event.id}`}>
+                              <p className="text-sm text-gray-400 line-clamp-1 hover:underline">
+                                {event.description}
+                              </p>
+                            </Link>
                           </td>
 
                           <td className="py-4 px-6 text-sm">
@@ -377,7 +375,11 @@ export default function Events({ user }: any) {
                       onClick={() => router.push(`/events/${event.id}`)}
                     >
                       <div className="flex justify-between items-start">
-                        <h3 className="font-semibold">{event.title}</h3>
+                        <Link href={`/events/${event.id}`}>
+                          <p className="font-medium hover:underline cursor-pointer">
+                            {event.title}
+                          </p>
+                        </Link>
 
                         <Badge className={status.className}>
                           {status.label}
