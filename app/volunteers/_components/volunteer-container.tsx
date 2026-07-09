@@ -278,7 +278,7 @@ export default function Volunteer({ user }: any) {
                   contributions.
                 </p>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+              <div className="flex gap-2 flex-col md:flex-row flex-shrink-0">
                 <Button
                   variant="outline"
                   disabled
@@ -301,7 +301,8 @@ export default function Volunteer({ user }: any) {
                   {/* NEW Pastoral Button */}
                   <Button
                     onClick={() => setOpenPastoralDialog(true)}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    disabled
+                    className="bg-green-600 hover:bg-green-700 w-full text-white"
                   >
                     + Add Pastoral
                   </Button>
@@ -409,7 +410,7 @@ export default function Volunteer({ user }: any) {
                   placeholder="Search volunteers by name, email, or ministry..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-gray-800 border-blue-500/30 border text-white-400 backdrop-blur-md"
+                  className="pl-10 w-full bg-gray-800 border-blue-500/30 border text-white-400 backdrop-blur-md"
                 />
               </div>
 
@@ -440,7 +441,7 @@ export default function Volunteer({ user }: any) {
               </div>
 
               <NativeSelect
-                className="w-37.5 bg-blue-500/30 backdrop-blur-md text-white"
+                className="md:w-full w-37.5 bg-blue-500/30 backdrop-blur-md text-white"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -464,7 +465,7 @@ export default function Volunteer({ user }: any) {
                 </NativeSelectOption>
               </NativeSelect>
               <NativeSelect
-                className="w-44 bg-blue-500/30 backdrop-blur-md text-white"
+                className="md:w-full w-full bg-blue-500/30 backdrop-blur-md text-white"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
               >
