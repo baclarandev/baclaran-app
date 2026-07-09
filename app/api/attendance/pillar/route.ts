@@ -22,24 +22,27 @@ export async function POST(req: Request) {
     if (!title || !points) {
       return NextResponse.json(
         { error: "Title and points are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const created = await prisma.servicePillar.create({
-      data: {
-        title,
-        points: Number(points),
-      },
-    });
+    // const created = await prisma.servicePillar.create({
+    //   // data: {
+    //   //   title,
+    //   //   points: Number(points),
+    //   // },
+    // });
 
-    return NextResponse.json(created, { status: 201 });
+    return NextResponse.json(
+      { error: "Feature not implemented" },
+      { status: 501 },
+    );
   } catch (error: any) {
     console.error("[CREATE_PILLAR_ERROR]", error);
 
     return NextResponse.json(
       { error: error.message || "Failed to create pillar" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
