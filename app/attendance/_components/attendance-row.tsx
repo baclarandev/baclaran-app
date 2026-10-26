@@ -50,8 +50,8 @@ export const AttendanceRow = React.memo((props: Props) => {
   return (
     <tr className="border-b border-neutral-700 hover:bg-neutral-800/50">
       {/* NAME */}
-      <td className="sticky z-100 bg-blue-700 left-0  px-4 py-3 max-w-45">
-        <div className="truncate font-medium text-gray-100">
+      <td className="sticky z-100 bg-transparent left-0  px-4 py-3 max-w-45">
+        <div className="truncate font-medium text-white">
           {member.firstName} {member.lastName}
         </div>
       </td>
@@ -66,21 +66,24 @@ export const AttendanceRow = React.memo((props: Props) => {
             )
           }
           disabled={false}
-          className="bg-blue-500/20"
+          className="bg-transparent text-white w-24"
         >
           <NativeSelectOption
             value="PRESENT"
-            className="bg-blue-500 text-white"
+            className="bg-transparent text-black"
           >
             Present
           </NativeSelectOption>
           <NativeSelectOption
             value="EXCUSED"
-            className="bg-green-500 text-white"
+            className="bg-transparent text-black"
           >
             Excused
           </NativeSelectOption>
-          <NativeSelectOption value="ABSENT" className="bg-red-500 text-white">
+          <NativeSelectOption
+            value="ABSENT"
+            className="bg-transparent text-black"
+          >
             Absent
           </NativeSelectOption>
         </NativeSelect>
@@ -103,7 +106,7 @@ export const AttendanceRow = React.memo((props: Props) => {
             ? servicesForDay[servicesForDay.length - 1]
             : null;
         return (
-          <td key={index} className="text-center p-2">
+          <td key={index} className="text-center text-white p-2">
             <AttendanceCell
               isPast={isPast}
               isToday={isToday}
@@ -121,7 +124,9 @@ export const AttendanceRow = React.memo((props: Props) => {
       })}
 
       {/* TOTAL */}
-      <td className="text-center font-semibold text-lg px-4 py-3">{total}</td>
+      <td className="sticky right-0 z-20 min-w-[80px] border-l border-neutral-700 bg-neutral-900 px-4 py-3 text-center font-semibold text-white">
+        {total}
+      </td>
     </tr>
   );
 });

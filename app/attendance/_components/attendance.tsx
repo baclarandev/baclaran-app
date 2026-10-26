@@ -31,6 +31,8 @@ import {
 import { AttendanceRow } from "./attendance-row";
 import { AttendanceModal } from "./attendance-modal";
 import { Input } from "@/components/ui/input";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { setMonth } from "date-fns";
 
 export default function AttendanceSheet({ user }: any) {
   const [page, setPage] = useState(1);
@@ -92,7 +94,7 @@ export default function AttendanceSheet({ user }: any) {
     );
   }, [members, debouncedSearch, attendanceFilter, sortOrder]);
   const limit = 10;
-
+  const [month, setMonth] = useState("March 2025");
   const { data: ministries } = useMinistries();
 
   const userMinistry = user?.ministry;
@@ -250,7 +252,7 @@ export default function AttendanceSheet({ user }: any) {
         />
       </div>
 
-      <div className="flex flex-col md:ml-64">
+      <div className="flex min-w-0 w-full flex-col md:ml-64 md:w-[calc(100%-16rem)]">
         {/* Header */}
         <div className="print-hidden">
           <Header
@@ -371,41 +373,89 @@ export default function AttendanceSheet({ user }: any) {
         )}
 
         {/* Table */}
-        <div className="p-6 space-y-4 ">
-          <div className="overflow-x-auto border border-neutral-700 rounded-lg ">
-            <table className="w-full table-auto  text-sm bg-blue-500/10 border-blue-500/30 border backdrop-blur-md">
-              <thead>
-                <tr className="bg-blue-500/20 border-b border-neutral-700">
-                  <th className="sticky left-0 bg-blue-600 z-100  px-4 py-3 text-left font-semibold">
-                    Member
-                  </th>
-                  <th className="px-4 py-3 text-center font-semibold min-w-30">
-                    Monthly
-                  </th>
-                  {Array.from({ length: totalDays }).map((_, i) => (
-                    <th key={i} className="px-2 py-3 text-center font-semibold">
-                      {i + 1}
+        <div className="mt-8 w-full min-w-0 max-w-full px-4 pb-6">
+          <div className="w-full min-w-0 overflow-hidden rounded-xl border border-neutral-700 bg-neutral-900 shadow-sm">
+            <div className="border-b border-neutral-700 p-5">
+              <h2 className="font-semibold text-white">Monthly attendance</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                Click any day to view or update a service record.
+              </p>
+            </div>
+            <th>
+              {" "}
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                <div className="flex items-center gap-4 text-xs text-slate-500">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded bg-emerald-400" />{" "}
+                    Present
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded bg-indigo-200 ring-2 ring-indigo-50" />{" "}
+                    Today
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded bg-slate-100" /> No
+                    record
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setMonth("February 2025")}
+                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                  >
+                    <ChevronLeft size={17} />
+                  </button>
+                  <button
+                    onClick={() => setMonth("April 2025")}
+                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                  >
+                    <ChevronRight size={17} />
+                  </button>
+                </div>
+              </div>
+            </th>
+            {/* Scrollable Attendance Table */}
+            <div className="w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto overscroll-x-contain max-h-[70vh]">
+              <table className="w-max min-w-full table-auto border-collapse text-sm">
+                <thead>
+                  <tr className="bg-blue-500/20 border-b border-neutral-700">
+                    <th className="sticky left-0 top-0 z-30 bg-neutral-900 px-4 py-3 text-left font-semibold text-white min-w-[180px]">
+                      Member
                     </th>
-                  ))}
-                  <th className="px-4 py-3 text-center font-semibold min-w-15">
-                    Total
-                  </th>
-                </tr>
-              </thead>
 
-              <tbody>
-                {filteredMembers.map((member) => (
-                  <AttendanceRow
-                    key={member.id}
-                    member={member}
-                    today={today}
-                    isCurrentMonth={isCurrentMonth}
-                    onOpenModal={handleOpenModal}
-                    updateMonthlyMeeting={updateMonthlyMeeting}
-                  />
-                ))}
-              </tbody>
-            </table>
+                    <th className="sticky top-0 z-20 bg-neutral-800 px-4 py-3 text-center font-semibold text-white min-w-[100px]">
+                      Monthly
+                    </th>
+
+                    {Array.from({ length: totalDays }).map((_, i) => (
+                      <th
+                        key={i}
+                        className="sticky top-0 z-10 bg-neutral-800 px-3 py-3 text-center font-semibold text-white min-w-[48px]"
+                      >
+                        {i + 1}
+                      </th>
+                    ))}
+
+                    <th className="sticky top-0 z-20 bg-neutral-800 px-4 py-3 text-center font-semibold text-white min-w-[80px]">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredMembers.map((member) => (
+                    <AttendanceRow
+                      key={member.id}
+                      member={member}
+                      today={today}
+                      isCurrentMonth={isCurrentMonth}
+                      onOpenModal={handleOpenModal}
+                      updateMonthlyMeeting={updateMonthlyMeeting}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
           {modalOpen && selectedMember && selectedDateIndex !== null && (
             <AttendanceModal

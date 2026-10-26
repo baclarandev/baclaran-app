@@ -1,150 +1,215 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { meeting_attendance } from "@prisma/client";
+import { meeting_attendance, Prisma } from "@prisma/client";
 /* =========================================================
    GET ATTENDANCE (TABLE DATA)
 ========================================================= */
+
+/* =========================================================
+   GET ATTENDANCE (TABLE DATA)
+   Supports parent ministry + direct sub-ministries
+========================================================= */
 export async function GET(req: NextRequest) {
-  const sessionUser = await getSession();
+  try {
+    const sessionUser = await getSession();
 
-  if (!sessionUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const searchParams = req.nextUrl.searchParams;
+    const searchParams = req.nextUrl.searchParams;
 
-  const month = Number(searchParams.get("month"));
-  const year = Number(searchParams.get("year"));
+    const month = Number(searchParams.get("month"));
+    const year = Number(searchParams.get("year"));
 
-  const page = Number(searchParams.get("page")) || 1;
-  const limit = Number(searchParams.get("limit")) || 10;
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
 
-  const skip = (page - 1) * limit;
+    const limit = Math.min(
+      100,
+      Math.max(1, Number(searchParams.get("limit")) || 10),
+    );
 
-  /* =========================================================
-     WHERE CLAUSE
-  ========================================================= */
-  const whereClause =
-    sessionUser.role === "ADMIN"
-      ? {}
-      : sessionUser.ministryId
-        ? {
-            ministryHistories: {
-              some: {
-                ministryId: sessionUser.ministryId,
-                status: "ACTIVE",
-              },
-            },
-          }
-        : { id: -1 };
+    if (
+      !Number.isInteger(month) ||
+      month < 1 ||
+      month > 12 ||
+      !Number.isInteger(year) ||
+      year < 1900
+    ) {
+      return NextResponse.json(
+        { error: "Invalid month or year" },
+        { status: 400 },
+      );
+    }
 
-  /* =========================================================
-     TOTAL COUNT
-  ========================================================= */
-  const total = await prisma.volunteer.count({
-    where: whereClause,
-  });
+    const skip = (page - 1) * limit;
 
-  /* =========================================================
-     FETCH VOLUNTEERS + DAILY ATTENDANCE
-  ========================================================= */
-  const volunteers = await prisma.volunteer.findMany({
-    where: whereClause,
-    skip,
-    take: limit,
-    orderBy: { lastName: "asc" },
-    include: {
-      attendances: {
+    // ─── MINISTRY FILTER ─────────────────────
+    let whereClause: Prisma.VolunteerWhereInput;
+
+    if (sessionUser.role === "ADMIN") {
+      whereClause = {};
+    } else if (sessionUser.ministryId) {
+      // Include the staff member's ministry and its children.
+      const childMinistries = await prisma.ministry.findMany({
         where: {
-          month,
-          year,
-          type: "DAILY",
+          parentId: sessionUser.ministryId,
         },
-        orderBy: {
-          serviceOrder: "asc",
+        select: {
+          id: true,
         },
-      },
-      ministryHistories: {
-        where: { status: "ACTIVE" },
-      },
-    },
-  });
+      });
 
-  /* =========================================================
-     FETCH MONTHLY SUMMARY (🔥 IMPORTANT FIX)
-  ========================================================= */
-  const summaries = await prisma.volunteerAttendanceSummary.findMany({
-    where: {
-      month,
-      year,
-    },
-  });
+      const allowedMinistryIds = [
+        sessionUser.ministryId,
+        ...childMinistries.map((ministry) => ministry.id),
+      ];
 
-  const summaryMap = new Map(
-    summaries.map((s) => [s.volunteerId, s.monthlyMeeting]),
-  );
+      whereClause = {
+        ministryHistories: {
+          some: {
+            ministryId: {
+              in: allowedMinistryIds,
+            },
+            status: "ACTIVE",
+          },
+        },
+      };
+    } else {
+      // No assigned ministry: return no volunteers.
+      whereClause = {
+        id: -1,
+      };
+    }
 
-  /* =========================================================
-     DAYS IN MONTH
-  ========================================================= */
-  const daysInMonth = new Date(year, month, 0).getDate();
-
-  /* =========================================================
-     FORMAT RESPONSE
-  ========================================================= */
-  const data = volunteers.map((v) => {
-    const grouped = new Map<number, any[]>();
-
-    v.attendances.forEach((a) => {
-      const day = a.day!;
-      if (!grouped.has(day)) grouped.set(day, []);
-      grouped.get(day)!.push(a);
+    console.log("[ATTENDANCE]", {
+      role: sessionUser.role,
+      ministryId: sessionUser.ministryId,
+      page,
+      limit,
     });
 
-    const days = Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1;
+    // ─── TOTAL COUNT ─────────────────────────
+    const total = await prisma.volunteer.count({
+      where: whereClause,
+    });
 
-      const services = grouped.get(day) ?? [];
+    // ─── VOLUNTEERS + DAILY ATTENDANCE ───────
+    const volunteers = await prisma.volunteer.findMany({
+      where: whereClause,
+      skip,
+      take: limit,
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      include: {
+        attendances: {
+          where: {
+            month,
+            year,
+            type: "DAILY",
+          },
+          orderBy: {
+            serviceOrder: "asc",
+          },
+        },
+        ministryHistories: {
+          where: {
+            status: "ACTIVE",
+          },
+          select: {
+            ministryId: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    // ─── MONTHLY MEETING SUMMARIES ───────────
+    const summaries = await prisma.volunteerAttendanceSummary.findMany({
+      where: {
+        month,
+        year,
+        volunteerId: {
+          in: volunteers.map((volunteer) => volunteer.id),
+        },
+      },
+      select: {
+        volunteerId: true,
+        monthlyMeeting: true,
+      },
+    });
+
+    const summaryMap = new Map(
+      summaries.map((summary) => [summary.volunteerId, summary.monthlyMeeting]),
+    );
+
+    // ─── DAYS IN SELECTED MONTH ──────────────
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    // ─── FORMAT RESPONSE ────────────────────
+    const data = volunteers.map((volunteer) => {
+      const grouped = new Map<number, typeof volunteer.attendances>();
+
+      for (const attendance of volunteer.attendances) {
+        if (attendance.day == null) continue;
+
+        const existing = grouped.get(attendance.day) ?? [];
+        existing.push(attendance);
+        grouped.set(attendance.day, existing);
+      }
+
+      const days = Array.from({ length: daysInMonth }, (_, index) => {
+        const day = index + 1;
+        const services = grouped.get(day) ?? [];
+
+        return {
+          day,
+          services: services.map((service) => ({
+            serviceOrder: service.serviceOrder ?? 1,
+            timeIn: service.timeIn,
+            timeOut: service.timeOut,
+            presentCount: service.presentCount ?? 0,
+          })),
+        };
+      });
 
       return {
-        day,
-        services: services.map((s) => ({
-          serviceOrder: s.serviceOrder ?? 1,
-          timeIn: s.timeIn,
-          timeOut: s.timeOut,
-          presentCount: s.presentCount ?? 0,
-        })),
+        id: volunteer.id,
+        firstName: volunteer.firstName,
+        lastName: volunteer.lastName,
+
+        // For staff, use their assigned parent ministry ID.
+        // For admins, use the volunteer's active ministry.
+        ministryId:
+          sessionUser.role === "ADMIN"
+            ? (volunteer.ministryHistories[0]?.ministryId ?? null)
+            : sessionUser.ministryId,
+
+        monthlyMeeting: summaryMap.get(volunteer.id) ?? "ABSENT",
+
+        days,
       };
     });
 
-    return {
-      id: v.id,
-      firstName: v.firstName,
-      lastName: v.lastName,
+    return NextResponse.json({
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("[GET_ATTENDANCE_ERROR]", error);
 
-      ministryId:
-        sessionUser.role === "ADMIN"
-          ? (v.ministryHistories?.[0]?.ministryId ?? null)
-          : sessionUser.ministryId,
-
-      /* 🔥 FIX: real monthlyMeeting from summary table */
-      monthlyMeeting: summaryMap.get(v.id) ?? "ABSENT",
-
-      days,
-    };
-  });
-
-  return NextResponse.json({
-    data,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  });
+    return NextResponse.json(
+      { error: "Failed to fetch attendance" },
+      { status: 500 },
+    );
+  }
 }
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
@@ -296,9 +361,11 @@ export async function POST(req: NextRequest) {
       timeOut: null,
     },
   });
+
   if (!["PRESENT", "ABSENT", "EXCUSED"].includes(value)) {
     return NextResponse.json({ error: "Invalid value" }, { status: 400 });
   }
+
   return NextResponse.json({
     success: true,
     action: "NEW_SERVICE",

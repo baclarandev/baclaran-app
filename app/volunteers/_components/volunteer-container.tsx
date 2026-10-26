@@ -1,5 +1,5 @@
 "use client";
-
+import * as XLSX from "xlsx";
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -223,7 +223,38 @@ export default function Volunteer({ user }: any) {
       console.error(err);
     }
   };
+  const exportVolunteersToExcel = () => {
+    const data = allVolunteers.map((v: any) => ({
+      "Volunteer Code": v.volunteerCode || "",
+      "First Name": v.firstName || "",
+      "Last Name": v.lastName || "",
+      Nickname: v.nickname || "",
+      Email: v.email || "",
+      Status: v.status || "",
+      Classification: v.classification || "",
+      Ministry: getMinistryDisplay(v),
+    }));
 
+    const worksheet = XLSX.utils.json_to_sheet(data);
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Volunteers");
+
+    // Auto-size columns
+    const columnWidths = Object.keys(data[0] || {}).map((key) => ({
+      wch:
+        Math.max(
+          key.length,
+          ...data.map(
+            (row) => String(row[key as keyof typeof row] || "").length,
+          ),
+        ) + 2,
+    }));
+
+    worksheet["!cols"] = columnWidths;
+
+    XLSX.writeFile(workbook, "volunteers.xlsx");
+  };
   const confirmDelete = () => {
     if (selectedVolunteer) {
       deleteVolunteer.mutate(selectedVolunteer.id, {
@@ -285,6 +316,13 @@ export default function Volunteer({ user }: any) {
                   className="gap-2 border-gray-700 cursor-not-allowed disabled bg-blue-600 text-gray-100 hover:bg-neutral-700"
                 >
                   <List className="w-4 h-4" /> Archived
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={exportVolunteersToExcel}
+                  className="gap-2 border-green-500/30 text-green-300 hover:bg-green-500/20"
+                >
+                  Export Excel
                 </Button>
                 <AddVolunteerDialog
                   open={openAddDialog}
