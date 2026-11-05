@@ -10,6 +10,7 @@ import {
   Plus,
   CalendarDays,
   Users,
+  Trash2,
 } from "lucide-react";
 import {
   useAttendance,
@@ -111,7 +112,10 @@ export default function Attendance({ user }: any) {
   const [saving, setSaving] = useState<number | null>(null);
 
   const limit = 10;
-
+  const [clearDialog, setClearDialog] = useState<{
+    member: AttendanceMember;
+    serviceIndex: number;
+  } | null>(null);
   // ─────────────────────────────────────────
   // DATA
   // ─────────────────────────────────────────
@@ -227,21 +231,24 @@ export default function Attendance({ user }: any) {
   const saveDailyService = async (
     member: AttendanceMember,
     serviceIndex: number,
-    field: "timeIn" | "timeOut",
+    field: "timeIn" | "timeOut" | "clear",
     createNew = false,
   ) => {
     const memberId = member.id;
     const services = getDayServices(member);
     const currentService = services[serviceIndex];
 
+    // Validate time out
     if (field === "timeOut" && !currentService?.timeIn) {
       toast.error("Record time in first.");
       return;
     }
 
-    const clearing = !createNew && Boolean(currentService?.[field]);
-
-    const now = new Date().toISOString();
+    // Prevent duplicate time out
+    if (field === "timeOut" && currentService?.timeOut) {
+      toast.error("Time out has already been recorded.");
+      return;
+    }
 
     const ministry = member.ministryId ?? user.ministryId;
 
@@ -249,6 +256,8 @@ export default function Attendance({ user }: any) {
       toast.error("Unable to determine the member's ministry.");
       return;
     }
+
+    const now = new Date().toISOString();
 
     setSaving(memberId);
 
@@ -265,12 +274,12 @@ export default function Attendance({ user }: any) {
           month: selectedDate.getMonth() + 1,
           year: selectedDate.getFullYear(),
 
-          timeIn: field === "timeIn" && !clearing ? now : null,
+          timeIn: field === "timeIn" ? now : null,
+          timeOut: field === "timeOut" ? now : null,
 
-          timeOut: field === "timeOut" && !clearing ? now : null,
-
-          clearTimeIn: field === "timeIn" && clearing,
-          clearTimeOut: field === "timeOut" && clearing,
+          // Clear the entire session in one request.
+          clearTimeIn: field === "clear",
+          clearTimeOut: field === "clear",
         }),
       });
 
@@ -291,11 +300,13 @@ export default function Attendance({ user }: any) {
 
               let updatedServices = [...day.services];
 
-              // Clearing time in removes the active session.
-              if (field === "timeIn" && clearing) {
-                updatedServices = updatedServices.filter(
-                  (service) => service.id !== currentService.id,
-                );
+              if (field === "clear") {
+                // Remove the complete session.
+                if (currentService) {
+                  updatedServices = updatedServices.filter(
+                    (service) => service.id !== currentService.id,
+                  );
+                }
               } else if (result.attendance) {
                 const savedService = result.attendance as AttendanceService;
 
@@ -322,8 +333,8 @@ export default function Attendance({ user }: any) {
       );
 
       toast.success(
-        clearing
-          ? `${field === "timeIn" ? "Time in" : "Time out"} cleared.`
+        field === "clear"
+          ? "Session cleared successfully."
           : createNew
             ? "New session recorded."
             : field === "timeIn"
@@ -332,6 +343,7 @@ export default function Attendance({ user }: any) {
       );
     } catch (error) {
       console.error("Attendance error:", error);
+
       toast.error(
         error instanceof Error ? error.message : "Failed to save attendance.",
       );
@@ -845,50 +857,83 @@ export default function Attendance({ user }: any) {
                           </td>
 
                           {/* SERVICES */}
+                          {/* SERVICES */}
 
                           <td className="px-5 py-5">
                             <div className="min-w-[440px] space-y-3">
                               {services.map((service, index) => (
                                 <div
-                                  key={index}
+                                  key={service.id}
                                   className="flex flex-wrap items-center gap-2"
                                 >
                                   <span className="w-20 text-xs font-medium text-slate-500">
                                     Session {index + 1}
                                   </span>
 
+                                  {/* TIME IN */}
                                   <span className="w-20 text-xs text-slate-300">
                                     {formatAttendanceTime(service.timeIn)}
                                   </span>
 
-                                  <button
-                                    disabled={isSaving}
-                                    onClick={() =>
-                                      saveDailyService(member, index, "timeIn")
-                                    }
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-300 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    <LogIn className="h-3.5 w-3.5" />
-                                    {service.timeIn ? "Clear" : "Time in"}
-                                  </button>
+                                  {!service.timeIn && (
+                                    <button
+                                      disabled={isSaving}
+                                      onClick={() =>
+                                        saveDailyService(
+                                          member,
+                                          index,
+                                          "timeIn",
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-300 transition hover:bg-blue-500/20 disabled:opacity-50"
+                                    >
+                                      <LogIn className="h-3.5 w-3.5" />
+                                      Time in
+                                    </button>
+                                  )}
 
+                                  {/* TIME OUT */}
                                   <span className="w-20 text-xs text-slate-300">
                                     {formatAttendanceTime(service.timeOut)}
                                   </span>
 
-                                  <button
-                                    disabled={isSaving || !service.timeIn}
-                                    onClick={() =>
-                                      saveDailyService(member, index, "timeOut")
-                                    }
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-                                  >
-                                    <LogOut className="h-3.5 w-3.5" />
-                                    {service.timeOut ? "Clear" : "Time out"}
-                                  </button>
+                                  {service.timeIn && !service.timeOut && (
+                                    <button
+                                      disabled={isSaving}
+                                      onClick={() =>
+                                        saveDailyService(
+                                          member,
+                                          index,
+                                          "timeOut",
+                                        )
+                                      }
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
+                                    >
+                                      <LogOut className="h-3.5 w-3.5" />
+                                      Time out
+                                    </button>
+                                  )}
+
+                                  {/* ONE CLEAR BUTTON */}
+                                  {(service.timeIn || service.timeOut) && (
+                                    <button
+                                      disabled={isSaving}
+                                      onClick={() =>
+                                        setClearDialog({
+                                          member,
+                                          serviceIndex: index,
+                                        })
+                                      }
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                      Clear
+                                    </button>
+                                  )}
                                 </div>
                               ))}
 
+                              {/* ADD ANOTHER SESSION */}
                               <button
                                 disabled={isSaving}
                                 onClick={() =>
@@ -1054,6 +1099,70 @@ export default function Attendance({ user }: any) {
           </section>
         )}
       </div>
+      {/* CLEAR SESSION CONFIRMATION DIALOG */}
+
+      {clearDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#17191f] p-6 shadow-2xl">
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10">
+                <Trash2 className="h-6 w-6 text-rose-400" />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-white">
+                  Clear attendance session?
+                </h2>
+
+                <p className="text-xs text-slate-400">
+                  Confirm before proceeding.
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+              <p className="text-sm font-medium text-white">
+                {getMemberName(clearDialog.member)}
+              </p>
+
+              <p className="mt-1 text-xs text-slate-400">
+                {formatDate(selectedDate)} · Session{" "}
+                {clearDialog.serviceIndex + 1}
+              </p>
+
+              <p className="mt-3 text-xs leading-relaxed text-slate-400">
+                This will permanently clear both the Time In and Time Out
+                records for this session. Other sessions will remain unchanged.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                disabled={saving !== null}
+                onClick={() => setClearDialog(null)}
+                className="rounded-lg border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                disabled={saving !== null}
+                onClick={async () => {
+                  const { member, serviceIndex } = clearDialog;
+
+                  await saveDailyService(member, serviceIndex, "clear");
+
+                  setClearDialog(null);
+                }}
+                className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Yes, clear session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
