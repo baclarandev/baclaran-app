@@ -50,7 +50,7 @@ export const AttendanceRow = React.memo((props: Props) => {
   return (
     <tr className="border-b border-neutral-700 hover:bg-neutral-800/50">
       {/* NAME */}
-      <td className="sticky z-100 bg-transparent left-0  px-4 py-3 max-w-45">
+      <td className=" z-100 bg-transparent left-0  px-4 py-3 max-w-45">
         <div className="truncate font-medium text-white">
           {member.firstName} {member.lastName}
         </div>

@@ -1,148 +1,207 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useState } from "react";
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
-
-import { useMinistries } from "@/app/services/ministries";
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  LogIn,
+  LogOut,
+  Plus,
+  CalendarDays,
+  Users,
+} from "lucide-react";
 import {
   useAttendance,
   VolunteerWithAttendance,
 } from "@/app/services/attendance";
-
-import { toast } from "sonner";
-import { AttendanceSkeleton } from "./attendance-skeleton";
-
-import Link from "next/link";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { AttendanceRow } from "./attendance-row";
-import { AttendanceModal } from "./attendance-modal";
-import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { setMonth } from "date-fns";
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { useMinistries } from "@/app/services/ministries";
+import { toast } from "sonner";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Header } from "@/components/layout/header";
 
-export default function AttendanceSheet({ user }: any) {
-  const [page, setPage] = useState(1);
-  const [members, setMembers] = useState<VolunteerWithAttendance[]>([]);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [ministryId, setMinistryId] = useState<string>("all");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [hasChanges, setHasChanges] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedMember, setSelectedMember] =
-    useState<VolunteerWithAttendance | null>(null);
-  const [selectedDateIndex, setSelectedDateIndex] = useState<number | null>(
-    null,
+type MeetingStatus = "PRESENT" | "EXCUSED" | "ABSENT";
+
+type AttendanceService = Omit<
+  VolunteerWithAttendance["days"][number]["services"][number],
+  "timeIn"
+> & {
+  id: number;
+  timeIn: Date | string | null;
+  timeOut: Date | string | null;
+};
+
+type AttendanceMember = Omit<VolunteerWithAttendance, "days"> & {
+  days: {
+    day: number;
+    services: AttendanceService[];
+  }[];
+};
+
+function formatAttendanceTime(value: Date | string | null | undefined) {
+  if (!value) return "—";
+
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatMonth(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function formatTime(date: Date) {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getMemberName(member: AttendanceMember) {
+  return (
+    `${member.firstName ?? ""} ${member.lastName ?? ""}`.trim() ||
+    "Unnamed member"
   );
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [attendanceFilter, setAttendanceFilter] = useState("all");
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300); // 300ms is sweet spot
+}
 
-    return () => clearTimeout(timer);
-  }, [search]);
-  const filteredMembers = useMemo(() => {
-    return (
-      members
-        // 🔍 SEARCH
-        .filter((m) => {
-          const fullName = `${m.firstName} ${m.lastName}`.toLowerCase();
-          return fullName.includes(debouncedSearch.toLowerCase());
-        })
+export default function Attendance({ user }: any) {
+  // ─────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────
 
-        // 🎯 ATTENDANCE FILTER
-        .filter((m) => {
-          if (attendanceFilter === "all") return true;
+  const today = new Date();
 
-          const total =
-            m.days.reduce((acc, d) => acc + (d.services?.length ?? 0), 0) +
-            (m.monthlyMeeting === "PRESENT" ? 1 : 0);
+  const [page, setPage] = useState(1);
 
-          if (attendanceFilter === "Active") return total > 0;
-          if (attendanceFilter === "Inactive") return total === 0;
+  const [selectedDate, setSelectedDate] = useState(
+    new Date(today.getFullYear(), today.getMonth(), today.getDate()),
+  );
 
-          return true;
-        })
+  const [month, setMonth] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1),
+  );
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [members, setMembers] = useState<AttendanceMember[]>([]);
 
-        // 🔤 SORT (LAST NAME FIRST)
-        .sort((a, b) => {
-          const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
-          const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
+  const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily");
 
-          return sortOrder === "asc"
-            ? nameA.localeCompare(nameB)
-            : nameB.localeCompare(nameA);
-        })
-    );
-  }, [members, debouncedSearch, attendanceFilter, sortOrder]);
+  const [ministryId, setMinistryId] = useState("all");
+
+  const [saving, setSaving] = useState<number | null>(null);
+
   const limit = 10;
-  const [month, setMonth] = useState("March 2025");
+
+  // ─────────────────────────────────────────
+  // DATA
+  // ─────────────────────────────────────────
+
   const { data: ministries } = useMinistries();
 
-  const userMinistry = user?.ministry;
+  const { volunteers, isLoading, addService, isFetching, pagination } =
+    useAttendance(
+      page,
+      limit,
+      ministryId === "all" ? undefined : Number(ministryId),
+      month.getMonth() + 1,
+      month.getFullYear(),
+    );
 
-  const totalDays = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-  const today = new Date().getDate();
-  const isCurrentMonth =
-    selectedMonth === new Date().getMonth() &&
-    selectedYear === new Date().getFullYear();
+  const totalDays = new Date(
+    month.getFullYear(),
+    month.getMonth() + 1,
+    0,
+  ).getDate();
 
-  const {
-    volunteers,
-    isLoading,
-    saveAttendance,
-    addService,
-    // deleteService,
-    // isSaving,
-    // isDeletingService,
-    pagination,
-  } = useAttendance(
-    page,
-    limit,
-    ministryId === "all" ? undefined : Number(ministryId),
-    selectedMonth + 1,
-    selectedYear,
-  );
+  // ─────────────────────────────────────────
+  // CALENDAR
+  // ─────────────────────────────────────────
+
+  const calendarDays = useMemo(() => {
+    const firstDay = new Date(
+      month.getFullYear(),
+      month.getMonth(),
+      1,
+    ).getDay();
+
+    return [
+      ...Array(firstDay).fill(null),
+      ...Array.from({ length: totalDays }, (_, index) => index + 1),
+    ];
+  }, [month, totalDays]);
+
+  const isSelected = (day: number) =>
+    selectedDate.getDate() === day &&
+    selectedDate.getMonth() === month.getMonth() &&
+    selectedDate.getFullYear() === month.getFullYear();
+
+  const changeMonth = (direction: number) => {
+    const nextMonth = new Date(
+      month.getFullYear(),
+      month.getMonth() + direction,
+      1,
+    );
+
+    setMonth(nextMonth);
+    setSelectedDate(nextMonth);
+    setPage(1);
+  };
+
+  const selectDate = (day: number) => {
+    setSelectedDate(new Date(month.getFullYear(), month.getMonth(), day));
+  };
+
+  // ─────────────────────────────────────────
+  // NORMALIZE API DATA
+  // ─────────────────────────────────────────
 
   useEffect(() => {
-    if (!volunteers) return;
+    if (!volunteers) {
+      setMembers([]);
+      return;
+    }
 
-    const normalized = volunteers.map((m: any) => {
-      // Ensure days array has all month days
+    const normalized = volunteers.map((member: any) => {
       const dayMap = new Map<number, any>();
 
-      if (Array.isArray(m.days)) {
-        m.days.forEach((dayObj: any) => {
-          dayMap.set(dayObj.day, dayObj);
+      if (Array.isArray(member.days)) {
+        member.days.forEach((day: any) => {
+          dayMap.set(day.day, day);
         });
       }
 
-      // Fill in missing days
-      const days = Array.from({ length: totalDays }, (_, i) => {
-        const dayNum = i + 1;
-        return dayMap.get(dayNum) || { day: dayNum, services: [] };
+      const days = Array.from({ length: totalDays }, (_, index) => {
+        const dayNumber = index + 1;
+        const existingDay = dayMap.get(dayNumber);
+
+        return {
+          day: dayNumber,
+          services: existingDay?.services ?? [],
+        };
       });
 
       return {
-        ...m,
+        ...member,
         days,
       };
     });
@@ -150,459 +209,851 @@ export default function AttendanceSheet({ user }: any) {
     setMembers(normalized);
   }, [volunteers, totalDays]);
 
-  /* =========================
-     Reset page on filters
-  ========================= */
-  useEffect(() => {
-    setPage(1);
-  }, [selectedMonth, selectedYear, ministryId]);
+  // ─────────────────────────────────────────
+  // SELECTED DAY SERVICES
+  // ─────────────────────────────────────────
 
-  const handleOpenModal = (member: VolunteerWithAttendance, index: number) => {
-    setSelectedMember(member);
-    setSelectedDateIndex(index);
-    setModalOpen(true);
-
-    requestAnimationFrame(() => {
-      setModalOpen(true);
-    });
+  const getDayServices = (member: AttendanceMember) => {
+    return (
+      member.days?.find((day) => day.day === selectedDate.getDate())
+        ?.services ?? []
+    );
   };
 
-  const selectedDay =
-    selectedMember && selectedDateIndex !== null ? selectedDateIndex + 1 : null;
+  // ─────────────────────────────────────────
+  // SAVE DAILY ATTENDANCE
+  // ─────────────────────────────────────────
 
-  const selectedDayData =
-    selectedMember && selectedDateIndex !== null
-      ? selectedMember.days?.[selectedDateIndex]
-      : null;
-  const updateMonthlyMeeting = async (
-    id: number,
-    value: "PRESENT" | "EXCUSED" | "ABSENT",
+  const saveDailyService = async (
+    member: AttendanceMember,
+    serviceIndex: number,
+    field: "timeIn" | "timeOut",
+    createNew = false,
   ) => {
-    // optimistic UI
-    setMembers((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, monthlyMeeting: value } : m)),
+    const memberId = member.id;
+    const services = getDayServices(member);
+    const currentService = services[serviceIndex];
+
+    if (field === "timeOut" && !currentService?.timeIn) {
+      toast.error("Record time in first.");
+      return;
+    }
+
+    const clearing = !createNew && Boolean(currentService?.[field]);
+
+    const now = new Date().toISOString();
+
+    const ministry = member.ministryId ?? user.ministryId;
+
+    if (!ministry) {
+      toast.error("Unable to determine the member's ministry.");
+      return;
+    }
+
+    setSaving(memberId);
+
+    try {
+      const response = await fetch("/api/attendance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          volunteerId: memberId,
+          ministryId: ministry,
+          day: selectedDate.getDate(),
+          month: selectedDate.getMonth() + 1,
+          year: selectedDate.getFullYear(),
+
+          timeIn: field === "timeIn" && !clearing ? now : null,
+
+          timeOut: field === "timeOut" && !clearing ? now : null,
+
+          clearTimeIn: field === "timeIn" && clearing,
+          clearTimeOut: field === "timeOut" && clearing,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to save attendance.");
+      }
+
+      setMembers((previous) =>
+        previous.map((item) => {
+          if (item.id !== memberId) return item;
+
+          return {
+            ...item,
+            days: item.days.map((day) => {
+              if (day.day !== selectedDate.getDate()) return day;
+
+              let updatedServices = [...day.services];
+
+              // Clearing time in removes the active session.
+              if (field === "timeIn" && clearing) {
+                updatedServices = updatedServices.filter(
+                  (service) => service.id !== currentService.id,
+                );
+              } else if (result.attendance) {
+                const savedService = result.attendance as AttendanceService;
+
+                const existingIndex = updatedServices.findIndex(
+                  (service) => service.id === savedService.id,
+                );
+
+                if (existingIndex >= 0) {
+                  updatedServices[existingIndex] = savedService;
+                } else {
+                  updatedServices.push(savedService);
+                }
+              }
+
+              return {
+                ...day,
+                services: updatedServices.sort(
+                  (a, b) => a.serviceOrder - b.serviceOrder,
+                ),
+              };
+            }),
+          };
+        }),
+      );
+
+      toast.success(
+        clearing
+          ? `${field === "timeIn" ? "Time in" : "Time out"} cleared.`
+          : createNew
+            ? "New session recorded."
+            : field === "timeIn"
+              ? "Time in recorded."
+              : "Time out recorded.",
+      );
+    } catch (error) {
+      console.error("Attendance error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save attendance.",
+      );
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  // ─────────────────────────────────────────
+  // MONTHLY MEETING
+  // ─────────────────────────────────────────
+
+  const updateMonthlyMeeting = async (
+    memberId: number,
+    value: MeetingStatus,
+  ) => {
+    const member = members.find((item) => item.id === memberId);
+
+    if (!member) return;
+
+    const previousValue = member.monthlyMeeting;
+
+    // Optimistic update
+    setMembers((previous) =>
+      previous.map((item) =>
+        item.id === memberId ? { ...item, monthlyMeeting: value } : item,
+      ),
     );
 
     try {
-      await fetch("/api/attendance", {
+      const response = await fetch("/api/attendance", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           type: "MONTHLY",
-          volunteerId: id,
-          month: selectedMonth + 1,
-          year: selectedYear,
+          volunteerId: memberId,
+          month: month.getMonth() + 1,
+          year: month.getFullYear(),
           value,
         }),
       });
-    } catch (err) {
-      toast.error("Failed to save monthly meeting");
+
+      if (!response.ok) {
+        throw new Error("Failed to save monthly attendance.");
+      }
+
+      toast.success("Monthly attendance updated.");
+    } catch (error) {
+      console.error(error);
+
+      // Roll back to previous value
+      setMembers((previous) =>
+        previous.map((item) =>
+          item.id === memberId
+            ? { ...item, monthlyMeeting: previousValue }
+            : item,
+        ),
+      );
+
+      toast.error("Failed to save monthly attendance.");
     }
   };
-  const serviceHistory =
-    selectedDayData?.services?.map((s) => ({
-      timeIn: new Date(s.timeIn),
-      timeOut: s.timeOut ? new Date(s.timeOut) : undefined,
-      order: s.serviceOrder,
-    })) ?? [];
-  const optimisticAddService = (
-    memberId: number,
-    dayIndex: number,
-    newService: any,
-  ) => {
-    setMembers((prev) =>
-      prev.map((m) => {
-        if (m.id !== memberId) return m;
 
-        const days = [...m.days];
-        const day = days[dayIndex];
+  // ─────────────────────────────────────────
+  // STATISTICS
+  // ─────────────────────────────────────────
 
-        return {
-          ...m,
-          days: days.map((d, i) =>
-            i === dayIndex
-              ? {
-                  ...d,
-                  services: [...(d.services || []), newService],
-                }
-              : d,
-          ),
-        };
-      }),
-    );
-  };
-  const selectedDate =
-    selectedMember && selectedDateIndex !== null
-      ? new Date(selectedYear, selectedMonth, selectedDateIndex + 1)
-      : null;
+  const recordedMembers = members.filter((member) =>
+    getDayServices(member).some((service) => service.timeIn),
+  ).length;
 
-  const isReadOnly = selectedDate
-    ? selectedDate < new Date(new Date().setHours(0, 0, 0, 0))
-    : false;
-  if (isLoading) return <AttendanceSkeleton user={user} />;
+  const totalSessions = members.reduce(
+    (total, member) => total + getDayServices(member).length,
+    0,
+  );
+
+  // ─────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-gray-200">
-      {/* Sidebar */}
-      <div className="print-hidden">
-        <Sidebar
-          user={user}
-          isOpen={sidebarOpen}
-          onOpenChange={setSidebarOpen}
-        />
-      </div>
+    <main className="min-h-screen  bg-[#101216]  text-slate-100 ">
+      <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
+      <div className="flex-1 flex flex-col md:ml-64">
+        <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <div className="flex flex-wrap items-center justify-between gap-4 md:mx-4 md:m-6 ">
+          <div>
+            <p className="mb-2 text-sm font-medium text-blue-400">
+              Attendance Management
+            </p>
 
-      <div className="flex min-w-0 w-full flex-col md:ml-64 md:w-[calc(100%-16rem)]">
-        {/* Header */}
-        <div className="print-hidden">
-          <Header
-            user={user}
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          />
-        </div>
+            <h1 className="text-3xl font-semibold tracking-tight text-white">
+              Attendance
+            </h1>
 
-        {/* Filters */}
-        <div className="p-6 space-y-4 print-hidden">
-          <h1 className="text-xl font-semibold text-white">Attendance Sheet</h1>
-          <div className="flex gap-3 flex-wrap">
-            <div className="relative">
-              <Input
-                type="text"
-                placeholder="Search by name..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 rounded bg-neutral-800 text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <p className="text-sm text-gray-400">Filter:</p>
-              <NativeSelect
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-              >
-                <NativeSelectOption
-                  value="asc"
-                  className="bg-blue-950 text-white"
-                >
-                  Name (A–Z)
-                </NativeSelectOption>
-                <NativeSelectOption
-                  value="desc"
-                  className="bg-blue-950 text-white"
-                >
-                  Name (Z–A)
-                </NativeSelectOption>
-              </NativeSelect>
-            </div>
-            {/* Month */}
-            <NativeSelect
-              value={selectedMonth.toString()}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            >
-              {Array.from({ length: 12 }).map((_, i) => (
-                <NativeSelectOption
-                  className="bg-blue-950 text-white"
-                  key={i}
-                  value={i.toString()}
-                >
-                  {new Date(2000, i).toLocaleString("default", {
-                    month: "long",
-                  })}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+            <p className="mt-2 text-sm text-slate-400">
+              Manage daily attendance and monthly meeting records.
+            </p>
+          </div>
 
-            {/* Year */}
-            <NativeSelect
-              value={selectedYear.toString()}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-            >
-              {Array.from({ length: 5 }).map((_, i) => {
-                const year = new Date().getFullYear() - 2 + i;
-                return (
-                  <NativeSelectOption
-                    className="bg-blue-950 text-white"
-                    key={year}
-                    value={year.toString()}
-                  >
-                    {year}
-                  </NativeSelectOption>
-                );
-              })}
-            </NativeSelect>
-
-            {/* Ministry */}
-            {user.role === "ADMIN" && (
+          {user.role === "ADMIN" && (
+            <div className="w-full sm:w-56">
               <NativeSelect
                 value={ministryId}
-                onChange={(e) => setMinistryId(e.target.value)}
+                onChange={(e) => {
+                  setMinistryId(e.target.value);
+                  setPage(1);
+                }}
+                className="bg-transparent text-white w-full"
               >
-                <NativeSelectOption value="all">
+                <NativeSelectOption value="all" className="bg-black text-white">
                   All Ministries
                 </NativeSelectOption>
-                {ministries?.map((m: any) => (
-                  <NativeSelectOption key={m.id} value={m.id.toString()}>
-                    {m.name}
+
+                {ministries?.map((ministry: any) => (
+                  <NativeSelectOption
+                    key={ministry.id}
+                    value={String(ministry.id)}
+                    className="bg-black text-white"
+                  >
+                    {ministry.name}
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
-            )}
+            </div>
+          )}
+        </div>
 
-            {/* Save */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mx-4">
+          <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-[#17191f] px-3 py-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isLoading ? "animate-pulse bg-amber-400" : "bg-emerald-400"
+              }`}
+            />
 
-            {/* Print */}
-            {/* <Button onClick={() => window.print()} variant="outline">
-              🖨️ Print
-            </Button> */}
+            <span className="text-xs text-slate-400">
+              {isLoading ? "Loading attendance..." : "Attendance connected"}
+            </span>
+          </div>
 
-            <Link href="/attendance/summary">
-              <Button variant="outline">Summary of Attendance</Button>
-            </Link>
+          <div className="flex rounded-lg border border-slate-700 bg-slate-900 p-1">
+            <button
+              onClick={() => setViewMode("daily")}
+              className={`rounded-md px-4 py-2 text-xs font-medium transition ${
+                viewMode === "daily"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Daily view
+            </button>
+
+            <button
+              onClick={() => setViewMode("monthly")}
+              className={`rounded-md px-4 py-2 text-xs font-medium transition ${
+                viewMode === "monthly"
+                  ? "bg-blue-600 text-white"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              Monthly view
+            </button>
           </div>
         </div>
 
-        {/* Print Header */}
-        {user.role === "STAFF" && ministryId !== "all" && (
-          <div className="hidden print:block text-center text-lg font-semibold mb-2">
-            {userMinistry} Attendance -{" "}
-            {new Date(selectedYear, selectedMonth).toLocaleString("default", {
-              month: "long",
-              year: "numeric",
-            })}
-          </div>
-        )}
+        {/* STATISTICS */}
 
-        {/* Table */}
-        <div className="mt-8 w-full min-w-0 max-w-full px-4 pb-6">
-          <div className="w-full min-w-0 overflow-hidden rounded-xl border border-neutral-700 bg-neutral-900 shadow-sm">
-            <div className="border-b border-neutral-700 p-5">
-              <h2 className="font-semibold text-white">Monthly attendance</h2>
-              <p className="mt-1 text-xs text-slate-400">
-                Click any day to view or update a service record.
-              </p>
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 mx-4 pt-2">
+          <div className="rounded-xl border border-slate-800 bg-[#17191f] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs text-slate-400">Total volunteers</span>
+              <Users className="h-4 w-4 text-blue-400" />
             </div>
-            <th>
-              {" "}
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-                <div className="flex items-center gap-4 text-xs text-slate-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded bg-emerald-400" />{" "}
-                    Present
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded bg-indigo-200 ring-2 ring-indigo-50" />{" "}
-                    Today
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded bg-slate-100" /> No
-                    record
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setMonth("February 2025")}
-                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                  >
-                    <ChevronLeft size={17} />
-                  </button>
-                  <button
-                    onClick={() => setMonth("April 2025")}
-                    className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                  >
-                    <ChevronRight size={17} />
-                  </button>
-                </div>
+
+            <p className="text-2xl font-semibold text-white">
+              {pagination?.total ?? 0} Volunteers
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-[#17191f] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs text-slate-400">
+                Volunteers recorded
+              </span>
+              <LogIn className="h-4 w-4 text-emerald-400" />
+            </div>
+
+            <p className="text-2xl font-semibold text-white">
+              {recordedMembers}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-[#17191f] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs text-slate-400">Total sessions</span>
+              <Clock3 className="h-4 w-4 text-violet-400" />
+            </div>
+
+            <p className="text-2xl font-semibold text-white">{totalSessions}</p>
+          </div>
+        </div>
+
+        {/* MONTHLY VIEW */}
+
+        {viewMode === "monthly" ? (
+          <section className="overflow-hidden rounded-xl border border-slate-800 bg-[#17191f] mx-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 px-5 py-4">
+              <div>
+                <h2 className="font-semibold text-white">Monthly attendance</h2>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  Select a date to view its attendance records.
+                </p>
               </div>
-            </th>
-            {/* Scrollable Attendance Table */}
-            <div className="w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto overscroll-x-contain max-h-[70vh]">
-              <table className="w-max min-w-full table-auto border-collapse text-sm">
-                <thead>
-                  <tr className="bg-blue-500/20 border-b border-neutral-700">
-                    <th className="sticky left-0 top-0 z-30 bg-neutral-900 px-4 py-3 text-left font-semibold text-white min-w-[180px]">
+
+              <div className="flex items-center gap-3">
+                <button
+                  aria-label="Previous month"
+                  onClick={() => changeMonth(-1)}
+                  className="rounded-lg border border-slate-700 p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                <span className="min-w-32 text-center text-sm font-medium text-white">
+                  {formatMonth(month)}
+                </span>
+
+                <button
+                  aria-label="Next month"
+                  onClick={() => changeMonth(1)}
+                  className="rounded-lg border border-slate-700 p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1100px] text-left text-sm">
+                <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="sticky left-0 z-10 bg-slate-900 px-5 py-4">
                       Member
                     </th>
 
-                    <th className="sticky top-0 z-20 bg-neutral-800 px-4 py-3 text-center font-semibold text-white min-w-[100px]">
-                      Monthly
-                    </th>
+                    <th className="px-4 py-4">Monthly meeting</th>
 
-                    {Array.from({ length: totalDays }).map((_, i) => (
-                      <th
-                        key={i}
-                        className="sticky top-0 z-10 bg-neutral-800 px-3 py-3 text-center font-semibold text-white min-w-[48px]"
-                      >
-                        {i + 1}
+                    {calendarDays.map((day, index) => (
+                      <th key={index} className="px-2 py-4 text-center">
+                        {day ?? ""}
                       </th>
                     ))}
-
-                    <th className="sticky top-0 z-20 bg-neutral-800 px-4 py-3 text-center font-semibold text-white min-w-[80px]">
-                      Total
-                    </th>
                   </tr>
                 </thead>
 
-                <tbody>
-                  {filteredMembers.map((member) => (
-                    <AttendanceRow
-                      key={member.id}
-                      member={member}
-                      today={today}
-                      isCurrentMonth={isCurrentMonth}
-                      onOpenModal={handleOpenModal}
-                      updateMonthlyMeeting={updateMonthlyMeeting}
-                    />
+                <tbody className="divide-y divide-slate-800">
+                  {members.map((member) => (
+                    <tr key={member.id} className="hover:bg-slate-900/40">
+                      <td className="sticky left-0 z-10 bg-[#17191f] px-5 py-4 font-medium text-white">
+                        {getMemberName(member)}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-md px-2.5 py-1.5 text-xs font-medium ${
+                            member.monthlyMeeting === "PRESENT"
+                              ? "bg-emerald-500/10 text-emerald-400"
+                              : member.monthlyMeeting === "EXCUSED"
+                                ? "bg-amber-500/10 text-amber-400"
+                                : member.monthlyMeeting === "ABSENT"
+                                  ? "bg-rose-500/10 text-rose-400"
+                                  : "bg-slate-800 text-slate-500"
+                          }`}
+                        >
+                          {member.monthlyMeeting ?? "Not recorded"}
+                        </span>
+                      </td>
+
+                      {calendarDays.map((day, index) => {
+                        if (!day) {
+                          return <td key={index} />;
+                        }
+
+                        const services =
+                          member.days.find((item) => item.day === day)
+                            ?.services ?? [];
+                        const totalServe = member.days.reduce(
+                          (total, day) =>
+                            total +
+                            day.services.filter(
+                              (service) => service.timeIn !== null,
+                            ).length,
+                          0,
+                        );
+                        const hasAttendance = services.some(
+                          (service) => service.timeIn,
+                        );
+
+                        return (
+                          <td key={index} className="px-1 py-3 text-center">
+                            <button
+                              onClick={() => {
+                                selectDate(day);
+                                setViewMode("daily");
+                              }}
+                              className={`mx-auto flex h-8 min-w-8 items-center justify-center rounded-full px-1 text-xs font-medium transition ${
+                                isSelected(day)
+                                  ? "bg-blue-600 text-white"
+                                  : hasAttendance
+                                    ? "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
+                                    : "text-slate-600 hover:bg-slate-800 hover:text-white"
+                              }`}
+                            >
+                              {hasAttendance ? services.length : "·"}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
                   ))}
+
+                  {!members.length && !isLoading && (
+                    <tr>
+                      <td
+                        colSpan={calendarDays.length + 2}
+                        className="px-5 py-12 text-center text-sm text-slate-500"
+                      >
+                        No attendance records found.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-          </div>
-          {modalOpen && selectedMember && selectedDateIndex !== null && (
-            <AttendanceModal
-              readOnly={isReadOnly}
-              serviceHistory={serviceHistory}
-              isOpen={modalOpen}
-              onClose={() => setModalOpen(false)}
-              volunteerId={selectedMember.id}
-              volunteerName={`${selectedMember.firstName} ${selectedMember.lastName}`}
-              date={
-                new Date(selectedYear, selectedMonth, selectedDateIndex + 1)
-              }
-              initialTimeIn={serviceHistory.at(-1)?.timeIn ?? null}
-              initialTimeOut={serviceHistory.at(-1)?.timeOut ?? null}
-              onSave={async (timeIn, timeOut) => {
-                if (!selectedMember || selectedDateIndex === null) return;
 
-                const tempService = {
-                  timeIn,
-                  timeOut,
-                  serviceOrder: Date.now(), // temp id
-                };
-                optimisticAddService(
-                  selectedMember.id,
-                  selectedDateIndex,
-                  tempService,
-                );
-                try {
-                  await addService({
-                    volunteerId: selectedMember.id,
-                    ministryId: selectedMember.ministryId ?? 0,
-                    day: selectedDateIndex + 1,
-                    month: selectedMonth + 1,
-                    year: selectedYear,
-                    timeIn,
-                    timeOut,
-                  });
-                  toast.success("Saved");
-                } catch (error) {
-                  toast.error("Failed to save attendance");
-                  // Optionally, you can implement a rollback of the optimistic update here
-                }
-                if (timeOut) setModalOpen(false);
-              }}
-            />
-          )}
-          {/* Pagination */}
-          {pagination && pagination.totalPages > 1 && (
-            <div className="flex flex-col items-center gap-4">
-              <div className="text-sm text-gray-400">
-                Total of {pagination?.total} members
-              </div>
-              <Pagination>
-                <PaginationContent>
-                  <PaginationItem>
-                    <PaginationPrevious
-                      onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                      className={
-                        page === 1
-                          ? "pointer-events-none cursor-pointer opacity-50"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
+            <div className="flex flex-wrap gap-4 border-t border-slate-800 px-5 py-4">
+              <span className="flex items-center gap-2 text-xs text-slate-400">
+                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                Recorded
+              </span>
 
-                  {pagination.totalPages <= 7 ? (
-                    Array.from({ length: pagination.totalPages }).map(
-                      (_, i) => (
-                        <PaginationItem className="" key={i}>
-                          <PaginationLink
-                            onClick={() => setPage(i + 1)}
-                            isActive={page === i + 1}
-                            className="active:bg-stone-600 cursor-pointer"
-                          >
-                            {i + 1}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ),
-                    )
-                  ) : (
-                    <>
-                      {page > 2 && (
-                        <>
-                          <PaginationItem>
-                            <PaginationLink onClick={() => setPage(1)}>
-                              1
-                            </PaginationLink>
-                          </PaginationItem>
-                          {page > 3 && (
-                            <PaginationItem>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          )}
-                        </>
-                      )}
-
-                      {Array.from({ length: 3 })
-                        .map((_, i) => page - 1 + i)
-                        .filter((p) => p > 0 && p <= pagination.totalPages)
-                        .map((p) => (
-                          <PaginationItem key={p}>
-                            <PaginationLink
-                              onClick={() => setPage(p)}
-                              isActive={page === p}
-                            >
-                              {p}
-                            </PaginationLink>
-                          </PaginationItem>
-                        ))}
-
-                      {page < pagination.totalPages - 1 && (
-                        <>
-                          {page < pagination.totalPages - 2 && (
-                            <PaginationItem>
-                              <PaginationEllipsis />
-                            </PaginationItem>
-                          )}
-                          <PaginationItem>
-                            <PaginationLink
-                              onClick={() => setPage(pagination.totalPages)}
-                            >
-                              {pagination.totalPages}
-                            </PaginationLink>
-                          </PaginationItem>
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  <PaginationItem>
-                    <PaginationNext
-                      onClick={() =>
-                        setPage((p) => Math.min(p + 1, pagination.totalPages))
-                      }
-                      className={
-                        page === pagination.totalPages
-                          ? "pointer-events-none opacity-50 cursor-pointer"
-                          : "cursor-pointer"
-                      }
-                    />
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+              <span className="flex items-center gap-2 text-xs text-slate-400">
+                <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                Selected date
+              </span>
             </div>
-          )}
-        </div>
+          </section>
+        ) : (
+          /* DAILY VIEW */
+
+          <section className="grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)] mx-4">
+            {/* CALENDAR */}
+
+            <aside className="h-fit rounded-xl border border-slate-800 bg-[#17191f] p-4">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="font-semibold text-white">
+                  {formatMonth(month)}
+                </h2>
+
+                <div className="flex gap-1">
+                  <button
+                    aria-label="Previous month"
+                    onClick={() => changeMonth(-1)}
+                    className="rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  <button
+                    aria-label="Next month"
+                    onClick={() => changeMonth(1)}
+                    className="rounded-md p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-2 grid grid-cols-7 text-center text-[11px] font-medium uppercase text-slate-500">
+                {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+                  <span key={index} className="py-2">
+                    {day}
+                  </span>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {calendarDays.map((day, index) => {
+                  if (!day) {
+                    return <span key={index} />;
+                  }
+
+                  const hasAttendance = members.some((member) =>
+                    (
+                      member.days.find((item) => item.day === day)?.services ??
+                      []
+                    ).some((service) => service.timeIn),
+                  );
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => selectDate(day)}
+                      className={`relative aspect-square rounded-lg text-sm transition ${
+                        isSelected(day)
+                          ? "bg-blue-600 font-semibold text-white"
+                          : "text-slate-300 hover:bg-slate-800"
+                      }`}
+                    >
+                      {day}
+
+                      {hasAttendance && (
+                        <span
+                          className={`absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full ${
+                            isSelected(day) ? "bg-white" : "bg-emerald-400"
+                          }`}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 border-t border-slate-800 pt-4">
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  Attendance recorded
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  Selected date
+                </div>
+              </div>
+            </aside>
+
+            {/* DAILY RECORDS */}
+
+            <section className="min-w-0 overflow-hidden rounded-xl border border-slate-800 bg-[#17191f]">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 px-5 py-5">
+                <div>
+                  <p className="mb-1 text-xs font-medium text-blue-400">
+                    DAILY ATTENDANCE
+                  </p>
+
+                  <h2 className="text-lg font-semibold text-white">
+                    {formatDate(selectedDate)}
+                  </h2>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    {recordedMembers} of {members.length} members recorded
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300">
+                  <CalendarDays className="mr-2 inline h-4 w-4 text-blue-400" />
+                  {formatMonth(selectedDate)}
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[850px] text-left text-sm">
+                  <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-5 py-4">Volunteer</th>
+                      <th className="px-5 py-4">Service / session times</th>
+                      <th className="px-5 py-4">Monthly meeting</th>
+                      <th className="px-5 py-4 text-right">Status</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-800">
+                    {members.map((member) => {
+                      const services = getDayServices(member);
+                      const totalServe = member.days.reduce(
+                        (total, day) =>
+                          total +
+                          day.services.filter(
+                            (service) => service.timeIn !== null,
+                          ).length,
+                        0,
+                      );
+                      const hasAttendance = services.some(
+                        (service) => service.timeIn,
+                      );
+
+                      const isSaving = saving === member.id;
+
+                      return (
+                        <tr
+                          key={member.id}
+                          className="align-top transition hover:bg-slate-900/40"
+                        >
+                          {/* MEMBER */}
+
+                          <td className="px-5 py-5">
+                            <p className="font-medium text-white">
+                              {getMemberName(member)}
+                            </p>
+
+                            <p className="mt-1 text-xs text-slate-400">
+                              Total Serve:{" "}
+                              <span className="font-semibold text-blue-400">
+                                {totalServe}
+                              </span>
+                            </p>
+                          </td>
+
+                          {/* SERVICES */}
+
+                          <td className="px-5 py-5">
+                            <div className="min-w-[440px] space-y-3">
+                              {services.map((service, index) => (
+                                <div
+                                  key={index}
+                                  className="flex flex-wrap items-center gap-2"
+                                >
+                                  <span className="w-20 text-xs font-medium text-slate-500">
+                                    Session {index + 1}
+                                  </span>
+
+                                  <span className="w-20 text-xs text-slate-300">
+                                    {formatAttendanceTime(service.timeIn)}
+                                  </span>
+
+                                  <button
+                                    disabled={isSaving}
+                                    onClick={() =>
+                                      saveDailyService(member, index, "timeIn")
+                                    }
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-300 transition hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    <LogIn className="h-3.5 w-3.5" />
+                                    {service.timeIn ? "Clear" : "Time in"}
+                                  </button>
+
+                                  <span className="w-20 text-xs text-slate-300">
+                                    {formatAttendanceTime(service.timeOut)}
+                                  </span>
+
+                                  <button
+                                    disabled={isSaving || !service.timeIn}
+                                    onClick={() =>
+                                      saveDailyService(member, index, "timeOut")
+                                    }
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                  >
+                                    <LogOut className="h-3.5 w-3.5" />
+                                    {service.timeOut ? "Clear" : "Time out"}
+                                  </button>
+                                </div>
+                              ))}
+
+                              <button
+                                disabled={isSaving}
+                                onClick={() =>
+                                  saveDailyService(
+                                    member,
+                                    services.length,
+                                    "timeIn",
+                                    true,
+                                  )
+                                }
+                                className="inline-flex items-center gap-1.5 rounded-md py-1 text-xs font-medium text-slate-500 transition hover:text-blue-300 disabled:opacity-50"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add another session
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* MONTHLY MEETING */}
+
+                          <td className="px-5 py-5">
+                            <NativeSelect
+                              value={member.monthlyMeeting ?? ""}
+                              onChange={(e) =>
+                                updateMonthlyMeeting(
+                                  member.id,
+                                  e.target.value as MeetingStatus,
+                                )
+                              }
+                            >
+                              <NativeSelectOption
+                                value=""
+                                className="bg-black text-white"
+                              >
+                                Not recorded
+                              </NativeSelectOption>
+
+                              <NativeSelectOption
+                                value="PRESENT"
+                                className="bg-black text-white"
+                              >
+                                Present
+                              </NativeSelectOption>
+
+                              <NativeSelectOption
+                                value="EXCUSED"
+                                className="bg-black text-white"
+                              >
+                                Excused
+                              </NativeSelectOption>
+
+                              <NativeSelectOption
+                                value="ABSENT"
+                                className="bg-black text-white"
+                              >
+                                Absent
+                              </NativeSelectOption>
+                            </NativeSelect>
+                          </td>
+
+                          {/* STATUS */}
+
+                          <td className="px-5 py-5 text-right">
+                            {hasAttendance ? (
+                              <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400">
+                                Present
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-500">
+                                No record
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+
+                    {!members.length && !isLoading && (
+                      <tr>
+                        <td colSpan={4} className="px-5 py-16 text-center">
+                          <Users className="mx-auto mb-3 h-8 w-8 text-slate-600" />
+
+                          <p className="text-sm font-medium text-slate-300">
+                            No members found
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            There are no attendance records for this ministry.
+                          </p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {/* PAGINATION */}
+
+              <div className="mt-5 flex flex-col gap-4 rounded-xl border border-slate-800 bg-[#17191f] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium text-white">
+                    Showing {pagination?.total ? (page - 1) * limit + 1 : 0}
+                    {" – "}
+                    {Math.min(page * limit, pagination?.total ?? 0)}
+                    {" of "}
+                    {pagination?.total ?? 0} members
+                  </p>
+
+                  <p className="mt-1 text-xs text-slate-500">
+                    Page {pagination?.page ?? page} of{" "}
+                    {pagination?.totalPages ?? 1}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page === 1 || isFetching}
+                    className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    First
+                  </button>
+
+                  <button
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={page === 1 || isFetching}
+                    className="flex items-center gap-1 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </button>
+
+                  <span className="rounded-lg bg-blue-600/10 px-4 py-2 text-xs font-semibold text-blue-400">
+                    {page}
+                  </span>
+
+                  <button
+                    onClick={() =>
+                      setPage((prev) =>
+                        Math.min(pagination?.totalPages ?? 1, prev + 1),
+                      )
+                    }
+                    disabled={
+                      page >= (pagination?.totalPages ?? 1) || isFetching
+                    }
+                    className="flex items-center gap-1 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+
+                  <button
+                    onClick={() => setPage(pagination?.totalPages ?? 1)}
+                    disabled={
+                      page >= (pagination?.totalPages ?? 1) || isFetching
+                    }
+                    className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    Last
+                  </button>
+                </div>
+              </div>
+            </section>
+          </section>
+        )}
       </div>
-    </div>
+    </main>
   );
 }
