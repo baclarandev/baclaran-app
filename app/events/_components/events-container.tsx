@@ -145,7 +145,7 @@ export default function Events({ user }: any) {
         <Header user={user} onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
         {/* Event Controls */}
-        <Card className="mx-4 mt-6 md:m-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
+        <Card className="mx-4 mt-6 md:m-6 border border-slate-800 bg-[#17191f] text-white backdrop-blur-md">
           <CardContent className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <p className="text-gray-400">
@@ -200,7 +200,7 @@ export default function Events({ user }: any) {
         </Card>
 
         {/* Event Table */}
-        <Card className="mx-4 mt-6 md:m-6 bg-blue-500/10 border border-blue-500/30 text-white backdrop-blur-md">
+        <Card className="mx-4 mt-6 md:m-6 border border-slate-800 bg-[#17191f] text-white backdrop-blur-md">
           <CardHeader>
             <CardTitle>Recent Events</CardTitle>
           </CardHeader>

@@ -248,7 +248,7 @@ export default function Ministries({ user }: any) {
   if (isLoading) return <MinistriesSkeleton user={user} />;
 
   return (
-    <div className="flex min-h-screen bg-neutral-900 text-gray-100">
+    <div className="flex min-h-screen bg-[#17191f] border-slate-800 text-gray-100">
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
 
       <div className="flex-1 flex flex-col md:ml-64">
@@ -267,7 +267,7 @@ export default function Ministries({ user }: any) {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex bg-blue-500/10 border border-blue-500/20 backdrop-blur-md rounded-xl p-1">
+              <div className="hidden md:flex bg-[#17191f] border-slate-800 border backdrop-blur-md rounded-xl p-1">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -289,7 +289,7 @@ export default function Ministries({ user }: any) {
               {canManage && (
                 <Button
                   onClick={() => setOpenCreate(true)}
-                  className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 rounded-xl px-6"
+                  className="bg-white text-black shadow-lg rounded-xl px-6"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Ministry
@@ -311,13 +311,13 @@ export default function Ministries({ user }: any) {
 
           {/* CONTENT AREA */}
           {view === "table" ? (
-            <div className="hidden md:block overflow-hidden rounded-2xl border border-blue-500/20 bg-blue-500/5 backdrop-blur-md">
+            <div className="hidden md:block overflow-hidden rounded-2xl border border-slate-800 bg-[#17191f] backdrop-blur-md">
               <table className="w-full text-left border-collapse">
-                <thead className="bg-blue-500/10 text-blue-300 uppercase text-xs font-bold tracking-widest">
+                <thead className="bg-[#17191f] text-blue-300 uppercase text-xs font-bold tracking-widest">
                   <tr>
                     <th className="px-6 py-4">Ministry</th>
                     <th className="px-6 py-4">Type</th>
-                    <th className="px-6 py-4">Staff Count</th>
+                    <th className="px-6 py-4">Volunteer Count</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -325,7 +325,7 @@ export default function Ministries({ user }: any) {
                   {filtered.map((m: any) => (
                     <tr
                       key={m.id}
-                      className="hover:bg-blue-500/10 transition-colors group"
+                      className="hover:bg-[#17191f]/10 transition-colors group"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
@@ -400,13 +400,12 @@ export default function Ministries({ user }: any) {
                 return (
                   <Card
                     key={ministry.id}
-                    className="relative bg-blue-500/5 border-blue-500/20 backdrop-blur-md hover:border-blue-400/50 transition-all group overflow-hidden flex flex-col"
+                    className="relative bg-[#17191f] border-slate-800 border transition-all group overflow-hidden flex flex-col"
                   >
-                    <div className="absolute left-0 top-0 h-full w-1 bg-blue-500 group-hover:w-1.5 transition-all" />
                     <CardHeader>
                       <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-blue-500/10 rounded-xl group-hover:bg-blue-500/20 transition-colors">
-                          <IconComp className="w-8 h-8 text-blue-400" />
+                          <IconComp className="w-8 h-8 text-white" />
                         </div>
 
                         <Link href={`/ministries/${ministry.id}`}>

@@ -20,7 +20,6 @@ export async function GET(req: NextRequest) {
 
     const month = Number(searchParams.get("month"));
     const year = Number(searchParams.get("year"));
-
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
 
     const limit = Math.min(
@@ -43,13 +42,41 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    // ─── MINISTRY FILTER ─────────────────────
+    // =========================================
+    // MINISTRY FILTER
+    // =========================================
 
     let whereClause: Prisma.VolunteerWhereInput;
 
     if (sessionUser.role === "ADMIN") {
-      whereClause = {};
-    } else if (sessionUser.ministryId) {
+      // ADMIN can see everything or filter by a selected ministry.
+      const selectedMinistry = searchParams.get("ministryId");
+
+      if (selectedMinistry && selectedMinistry !== "all") {
+        const selectedMinistryId = Number(selectedMinistry);
+
+        if (!Number.isInteger(selectedMinistryId) || selectedMinistryId <= 0) {
+          return NextResponse.json(
+            { error: "Invalid ministry ID" },
+            { status: 400 },
+          );
+        }
+
+        whereClause = {
+          ministryHistories: {
+            some: {
+              ministryId: selectedMinistryId,
+              status: "ACTIVE",
+            },
+          },
+        };
+      } else {
+        whereClause = {};
+      }
+    } else if (sessionUser.role === "STAFF" && sessionUser.ministryId) {
+      // STAFF can only access their assigned ministry
+      // and its direct child ministries.
+
       const childMinistries = await prisma.ministry.findMany({
         where: {
           parentId: sessionUser.ministryId,
@@ -75,18 +102,23 @@ export async function GET(req: NextRequest) {
         },
       };
     } else {
+      // No access to volunteer records.
       whereClause = {
         id: -1,
       };
     }
 
-    // ─── TOTAL COUNT ─────────────────────────
+    // =========================================
+    // TOTAL COUNT
+    // =========================================
 
     const total = await prisma.volunteer.count({
       where: whereClause,
     });
 
-    // ─── VOLUNTEERS + DAILY ATTENDANCE ───────
+    // =========================================
+    // VOLUNTEERS + DAILY ATTENDANCE
+    // =========================================
 
     const volunteers = await prisma.volunteer.findMany({
       where: whereClause,
@@ -116,7 +148,9 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // ─── MONTHLY MEETING SUMMARIES ───────────
+    // =========================================
+    // MONTHLY MEETING SUMMARIES
+    // =========================================
 
     const summaries = await prisma.volunteerAttendanceSummary.findMany({
       where: {
@@ -136,11 +170,15 @@ export async function GET(req: NextRequest) {
       summaries.map((summary) => [summary.volunteerId, summary.monthlyMeeting]),
     );
 
-    // ─── DAYS IN SELECTED MONTH ──────────────
+    // =========================================
+    // DAYS IN SELECTED MONTH
+    // =========================================
 
     const daysInMonth = new Date(year, month, 0).getDate();
 
-    // ─── FORMAT RESPONSE ─────────────────────
+    // =========================================
+    // FORMAT RESPONSE
+    // =========================================
 
     const data = volunteers.map((volunteer) => {
       const grouped = new Map<number, typeof volunteer.attendances>();
@@ -165,7 +203,6 @@ export async function GET(req: NextRequest) {
             id: service.id,
             serviceOrder: service.serviceOrder ?? 1,
             timeIn: service.timeIn,
-            timeOut: service.timeOut,
             presentCount: service.presentCount ?? 0,
           })),
         };
@@ -176,12 +213,8 @@ export async function GET(req: NextRequest) {
         firstName: volunteer.firstName,
         lastName: volunteer.lastName,
 
-        // Admin: active ministry of the volunteer.
-        // Staff: assigned parent ministry.
-        ministryId:
-          sessionUser.role === "ADMIN"
-            ? (volunteer.ministryHistories[0]?.ministryId ?? null)
-            : sessionUser.ministryId,
+        // Use the volunteer's actual active ministry.
+        ministryId: volunteer.ministryHistories[0]?.ministryId ?? null,
 
         monthlyMeeting: summaryMap.get(volunteer.id) ?? "ABSENT",
 

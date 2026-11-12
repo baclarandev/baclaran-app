@@ -95,7 +95,7 @@ export default function Volunteer({ user }: any) {
   const isStaff = user?.role === "STAFF";
   const isAdmin = user?.role === "ADMIN";
   const deleteVolunteer = useDeleteVolunteer();
-
+  const [ministryFilter, setMinistryFilter] = useState<string>("all");
   const [selectedVolunteer, setSelectedVolunteer] =
     useState<VolunteerWithBookings | null>(null);
   const [dialogType, setDialogType] = useState<"LITURGICAL" | "PASTORAL">(
@@ -144,6 +144,7 @@ export default function Volunteer({ user }: any) {
       const email = v.email?.toLowerCase() || "";
       const query = debouncedSearch.toLowerCase();
 
+      // Search filter
       const matchesSearch =
         query === "" ||
         fullName.includes(query) ||
@@ -152,32 +153,47 @@ export default function Volunteer({ user }: any) {
           h?.ministry?.name?.toLowerCase()?.includes(query),
         );
 
+      // Status filter
       const matchesStatus = statusFilter === "all" || v.status === statusFilter;
 
+      // Ministry type filter
       const matchesType =
         ministryTypeFilter === "ALL" ||
         v.ministryHistories?.some(
           (h: any) => h?.ministry?.type === ministryTypeFilter,
         );
 
-      return matchesSearch && matchesStatus && matchesType;
+      // Specific ministry filter
+      const matchesMinistry =
+        ministryFilter === "all" ||
+        v.ministryHistories?.some(
+          (h: any) => h?.ministry?.id?.toString() === ministryFilter,
+        );
+
+      return matchesSearch && matchesStatus && matchesType && matchesMinistry;
     });
 
-    // ✅ SORTING
+    // Sorting
     result.sort((a, b) => {
       switch (sortBy) {
         case "name-asc":
           return (a.firstName || "").localeCompare(b.firstName || "");
+
         case "name-desc":
           return (b.firstName || "").localeCompare(a.firstName || "");
+
         case "lastname-asc":
           return (a.lastName || "").localeCompare(b.lastName || "");
+
         case "lastname-desc":
           return (b.lastName || "").localeCompare(a.lastName || "");
+
         case "code-asc":
           return (a.volunteerCode || "").localeCompare(b.volunteerCode || "");
+
         case "code-desc":
           return (b.volunteerCode || "").localeCompare(a.volunteerCode || "");
+
         default:
           return 0;
       }
@@ -190,6 +206,7 @@ export default function Volunteer({ user }: any) {
     statusFilter,
     sortBy,
     ministryTypeFilter,
+    ministryFilter,
   ]);
 
   const perPage = 12;
@@ -297,7 +314,7 @@ export default function Volunteer({ user }: any) {
 
         <div className="bg-neutral-900 text-gray-100 p-4 space-y-6">
           {/* Welcome Banner */}
-          <div className="bg-gradient-to-r from-blue-500/20 to-blue-600/10 border border-blue-500/30 backdrop-blur-md rounded-lg p-6">
+          <div className="border border-slate-800 bg-[#17191f] backdrop-blur-md rounded-lg p-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold text-white mb-2">
@@ -357,7 +374,7 @@ export default function Volunteer({ user }: any) {
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-blue-500/10 border-blue-500/30 border backdrop-blur-md">
+            <Card className="bg-[#17191f] border-slate-800 border backdrop-blur-md">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-stone-400 text-sm mb-1">
@@ -373,7 +390,7 @@ export default function Volunteer({ user }: any) {
               </CardContent>
             </Card>
 
-            <Card className="bg-green-500/10 border-green-500/30 border backdrop-blur-md">
+            <Card className="border border-slate-800 bg-[#17191f] border backdrop-blur-md">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-stone-400 text-sm mb-1">Active Members</p>
@@ -381,13 +398,13 @@ export default function Volunteer({ user }: any) {
                     {allVolunteers.filter((v) => v.status === "ACTIVE").length}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg border border-slate-800 bg-[#17191f] flex items-center justify-center">
                   <CheckCircle2 className="w-6 h-6 text-green-300" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-amber-500/10 border-amber-500/30 border backdrop-blur-md">
+            <Card className="border border-slate-800 bg-[#17191f]  backdrop-blur-md">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-stone-400 text-sm mb-1">
@@ -400,13 +417,13 @@ export default function Volunteer({ user }: any) {
                     }
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-lg border border-slate-800 bg-[#17191f] flex items-center justify-center">
                   <Clock className="w-6 h-6 text-amber-300" />
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-purple-500/10 border-purple-500/30 border backdrop-blur-md">
+            <Card className="border border-slate-800 bg-[#17191f]  backdrop-blur-md">
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
                   <p className="text-stone-400 text-sm mb-1">Engagement Rate</p>
@@ -430,7 +447,7 @@ export default function Volunteer({ user }: any) {
           </div>
 
           {/* Quick Tips */}
-          <div className="bg-gradient-to-r from-indigo-500/10 to-cyan-500/10 border border-indigo-500/20 backdrop-blur-md rounded-lg p-4">
+          <div className="border border-slate-800 bg-[#17191f] backdrop-blur-md rounded-lg p-4">
             <p className="text-sm text-stone-300">
               <span className="font-semibold text-indigo-300">Pro tip:</span>{" "}
               Use the search bar to find volunteers by name, email, or ministry.
@@ -440,7 +457,7 @@ export default function Volunteer({ user }: any) {
           </div>
 
           {/* Filters */}
-          <Card className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md">
+          <Card className="border border-slate-800 bg-[#17191f] backdrop-blur-md">
             <CardContent className="p-4 flex flex-col lg:flex-row gap-4 items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -479,79 +496,105 @@ export default function Volunteer({ user }: any) {
               </div>
 
               <NativeSelect
-                className="md:w-full w-37.5 bg-blue-500/30 backdrop-blur-md text-white"
+                className="md:w-full w-37.5 bg-[#17191f] text-white border border-slate-800"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
                 <NativeSelectOption
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                   value="all"
                 >
                   All Status
                 </NativeSelectOption>
                 <NativeSelectOption
                   value="ACTIVE"
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                 >
                   Active
                 </NativeSelectOption>
                 <NativeSelectOption
                   value="INACTIVE"
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                 >
                   Inactive
                 </NativeSelectOption>
               </NativeSelect>
               <NativeSelect
-                className="md:w-full w-full bg-blue-500/30 backdrop-blur-md text-white"
+                className="md:w-full w-full bg-[#17191f] text-white border border-slate-800"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
               >
                 <NativeSelectOption
                   value="name-asc"
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                 >
                   Name (A → Z)
                 </NativeSelectOption>
                 <NativeSelectOption
                   value="name-desc"
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                 >
                   Name (Z → A)
                 </NativeSelectOption>
                 <NativeSelectOption
                   value="code-asc"
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                 >
                   Code (Ascending)
                 </NativeSelectOption>
                 <NativeSelectOption
                   value="code-desc"
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                 >
                   Code (Descending)
                 </NativeSelectOption>
                 <NativeSelectOption
                   value="lastname-asc"
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                 >
                   Last Name (A → Z)
                 </NativeSelectOption>
                 <NativeSelectOption
                   value="lastname-desc"
-                  className="bg-blue-500/20 text-stone-950"
+                  className="bg-[#17191f] text-white"
                 >
                   Last Name (Z → A)
                 </NativeSelectOption>
               </NativeSelect>
+              {isAdmin && (
+                <NativeSelect
+                  className="md:w-full w-full  backdrop-blur-md bg-[#17191f] text-white border border-slate-800"
+                  value={ministryFilter}
+                  onChange={(e) => setMinistryFilter(e.target.value)}
+                >
+                  <NativeSelectOption
+                    value="all"
+                    className="bg-[#17191f] text-white"
+                  >
+                    All Ministries
+                  </NativeSelectOption>
+
+                  {ministries.map((ministry: any) => (
+                    <NativeSelectOption
+                      key={ministry.id}
+                      value={ministry.id.toString()}
+                      className="bg-[#17191f] text-white"
+                    >
+                      {ministry.name}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              )}
               <Button
                 variant="outline"
                 onClick={() => {
                   setSearchQuery("");
                   setStatusFilter("all");
                   setSortBy("name-asc");
+                  setMinistryFilter("all");
+                  setMinistryTypeFilter("ALL");
                 }}
-                className="border-blue-500/30 text-blue-300 hover:bg-blue-500/20"
+                className="bg-[#17191f] text-white border border-slate-800"
               >
                 Reset
               </Button>
@@ -567,7 +610,7 @@ export default function Volunteer({ user }: any) {
                 {Array.from({ length: 4 }).map((_, idx) => (
                   <Card
                     key={idx}
-                    className="relative w-[500px]  overflow-hidden bg-gray-700 rounded animate-pulse h-[300px] flex flex-col items-center gap-3 justify-center"
+                    className="relative w-[500px]  overflow-hidden bg-[#17191f] rounded animate-pulse h-[300px] flex flex-col items-center gap-3 justify-center"
                   >
                     {/* Avatar */}
                     <div className="w-20 h-20 rounded-lg bg-gray-700" />
@@ -599,7 +642,7 @@ export default function Volunteer({ user }: any) {
                 {paginatedVolunteers.map((v, idx) => (
                   <Card
                     key={idx}
-                    className="bg-blue-500/10 border-blue-500/30 border text-white-400 backdrop-blur-md p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors"
+                    className="bg-[#17191f] border-slate-800 border text-white-400 backdrop-blur-md p-4 h-[300px] flex flex-col items-center gap-3 justify-center hover:bg-gray-700 transition-colors"
                   >
                     <div className="absolute top-2 right-2 flex gap-2">
                       <div className="absolute top-2 right-2">
@@ -617,7 +660,7 @@ export default function Volunteer({ user }: any) {
 
                           <DropdownMenuContent
                             align="end"
-                            className="w-40 bg-slate-700 border border-blue-500/30 rounded-lg shadow-lg"
+                            className="w-40 bg-[#17191f] border border-slate-800 rounded-lg shadow-lg"
                           >
                             <DropdownMenuItem
                               onClick={(e) => {

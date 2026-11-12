@@ -34,7 +34,6 @@ export interface Timeline {
   type: string; // "SHRINE" | "OUTSIDE"
 }
 
-
 export interface VolunteerWithBookings extends Volunteer {
   bookings: MassBooking[];
 }

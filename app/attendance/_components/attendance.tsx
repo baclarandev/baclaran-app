@@ -29,11 +29,10 @@ type MeetingStatus = "PRESENT" | "EXCUSED" | "ABSENT";
 
 type AttendanceService = Omit<
   VolunteerWithAttendance["days"][number]["services"][number],
-  "timeIn"
+  "timeIn" | "timeOut"
 > & {
   id: number;
   timeIn: Date | string | null;
-  timeOut: Date | string | null;
 };
 
 type AttendanceMember = Omit<VolunteerWithAttendance, "days"> & {
@@ -114,6 +113,7 @@ export default function Attendance({ user }: any) {
   const limit = 10;
   const [clearDialog, setClearDialog] = useState<{
     member: AttendanceMember;
+    serviceId: number;
     serviceIndex: number;
   } | null>(null);
   // ─────────────────────────────────────────
@@ -228,28 +228,7 @@ export default function Attendance({ user }: any) {
   // SAVE DAILY ATTENDANCE
   // ─────────────────────────────────────────
 
-  const saveDailyService = async (
-    member: AttendanceMember,
-    serviceIndex: number,
-    field: "timeIn" | "timeOut" | "clear",
-    createNew = false,
-  ) => {
-    const memberId = member.id;
-    const services = getDayServices(member);
-    const currentService = services[serviceIndex];
-
-    // Validate time out
-    if (field === "timeOut" && !currentService?.timeIn) {
-      toast.error("Record time in first.");
-      return;
-    }
-
-    // Prevent duplicate time out
-    if (field === "timeOut" && currentService?.timeOut) {
-      toast.error("Time out has already been recorded.");
-      return;
-    }
-
+  const saveDailyService = async (member: AttendanceMember) => {
     const ministry = member.ministryId ?? user.ministryId;
 
     if (!ministry) {
@@ -257,9 +236,7 @@ export default function Attendance({ user }: any) {
       return;
     }
 
-    const now = new Date().toISOString();
-
-    setSaving(memberId);
+    setSaving(member.id);
 
     try {
       const response = await fetch("/api/attendance", {
@@ -268,62 +245,39 @@ export default function Attendance({ user }: any) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          volunteerId: memberId,
+          volunteerId: member.id,
           ministryId: ministry,
           day: selectedDate.getDate(),
           month: selectedDate.getMonth() + 1,
           year: selectedDate.getFullYear(),
-
-          timeIn: field === "timeIn" ? now : null,
-          timeOut: field === "timeOut" ? now : null,
-
-          // Clear the entire session in one request.
-          clearTimeIn: field === "clear",
-          clearTimeOut: field === "clear",
+          timeIn: new Date().toISOString(),
         }),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to save attendance.");
+        throw new Error(result.error || "Failed to record attendance.");
       }
+
+      if (!result.attendance) {
+        throw new Error("Attendance record was not returned.");
+      }
+
+      const savedService = result.attendance as AttendanceService;
 
       setMembers((previous) =>
         previous.map((item) => {
-          if (item.id !== memberId) return item;
+          if (item.id !== member.id) return item;
 
           return {
             ...item,
             days: item.days.map((day) => {
               if (day.day !== selectedDate.getDate()) return day;
 
-              let updatedServices = [...day.services];
-
-              if (field === "clear") {
-                // Remove the complete session.
-                if (currentService) {
-                  updatedServices = updatedServices.filter(
-                    (service) => service.id !== currentService.id,
-                  );
-                }
-              } else if (result.attendance) {
-                const savedService = result.attendance as AttendanceService;
-
-                const existingIndex = updatedServices.findIndex(
-                  (service) => service.id === savedService.id,
-                );
-
-                if (existingIndex >= 0) {
-                  updatedServices[existingIndex] = savedService;
-                } else {
-                  updatedServices.push(savedService);
-                }
-              }
-
               return {
                 ...day,
-                services: updatedServices.sort(
+                services: [...day.services, savedService].sort(
                   (a, b) => a.serviceOrder - b.serviceOrder,
                 ),
               };
@@ -332,20 +286,12 @@ export default function Attendance({ user }: any) {
         }),
       );
 
-      toast.success(
-        field === "clear"
-          ? "Session cleared successfully."
-          : createNew
-            ? "New session recorded."
-            : field === "timeIn"
-              ? "Time in recorded."
-              : "Time out recorded.",
-      );
+      toast.success("Attendance recorded successfully.");
     } catch (error) {
       console.error("Attendance error:", error);
 
       toast.error(
-        error instanceof Error ? error.message : "Failed to save attendance.",
+        error instanceof Error ? error.message : "Failed to record attendance.",
       );
     } finally {
       setSaving(null);
@@ -425,7 +371,69 @@ export default function Attendance({ user }: any) {
   // ─────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────
+  const deleteAttendanceSession = async (
+    member: AttendanceMember,
+    serviceId: number,
+  ) => {
+    setSaving(member.id);
 
+    try {
+      const response = await fetch("/api/attendance", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: serviceId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete attendance.");
+      }
+
+      setMembers((previous) =>
+        previous.map((item) => {
+          if (item.id !== member.id) return item;
+
+          return {
+            ...item,
+            days: item.days.map((day) => {
+              if (day.day !== selectedDate.getDate()) return day;
+
+              const remainingServices = day.services
+                .filter((service) => service.id !== serviceId)
+                .sort((a, b) => a.serviceOrder - b.serviceOrder)
+                .map((service, index) => ({
+                  ...service,
+                  serviceOrder: index + 1,
+                }));
+
+              return {
+                ...day,
+                services: remainingServices,
+              };
+            }),
+          };
+        }),
+      );
+
+      setClearDialog(null);
+      toast.success("Attendance session deleted successfully.");
+    } catch (error) {
+      console.error("Delete attendance error:", error);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete attendance session.",
+      );
+    } finally {
+      setSaving(null);
+    }
+  };
   return (
     <main className="min-h-screen  bg-[#101216]  text-slate-100 ">
       <Sidebar user={user} isOpen={sidebarOpen} onOpenChange={setSidebarOpen} />
@@ -454,7 +462,7 @@ export default function Attendance({ user }: any) {
                   setMinistryId(e.target.value);
                   setPage(1);
                 }}
-                className="bg-transparent text-white w-full"
+                className="bg-transparent text-white w-full  truncate"
               >
                 <NativeSelectOption value="all" className="bg-black text-white">
                   All Ministries
@@ -483,6 +491,7 @@ export default function Attendance({ user }: any) {
             />
 
             <span className="text-xs text-slate-400">
+              and
               {isLoading ? "Loading attendance..." : "Attendance connected"}
             </span>
           </div>
@@ -529,7 +538,7 @@ export default function Attendance({ user }: any) {
           <div className="rounded-xl border border-slate-800 bg-[#17191f] p-4">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs text-slate-400">
-                Volunteers recorded
+                No of volunteers had served today at your ministry.
               </span>
               <LogIn className="h-4 w-4 text-emerald-400" />
             </div>
@@ -541,7 +550,9 @@ export default function Attendance({ user }: any) {
 
           <div className="rounded-xl border border-slate-800 bg-[#17191f] p-4">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-xs text-slate-400">Total sessions</span>
+              <span className="text-xs text-slate-400">
+                Total served today at your ministry.
+              </span>
               <Clock3 className="h-4 w-4 text-violet-400" />
             </div>
 
@@ -860,90 +871,44 @@ export default function Attendance({ user }: any) {
                           {/* SERVICES */}
 
                           <td className="px-5 py-5">
-                            <div className="min-w-[440px] space-y-3">
+                            <div className="min-w-[400px] space-y-3">
                               {services.map((service, index) => (
                                 <div
                                   key={service.id}
-                                  className="flex flex-wrap items-center gap-2"
+                                  className="flex flex-wrap items-center gap-3"
                                 >
                                   <span className="w-20 text-xs font-medium text-slate-500">
                                     Session {index + 1}
                                   </span>
 
-                                  {/* TIME IN */}
-                                  <span className="w-20 text-xs text-slate-300">
-                                    {formatAttendanceTime(service.timeIn)}
-                                  </span>
+                                  <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2">
+                                    <LogIn className="h-3.5 w-3.5 text-emerald-400" />
 
-                                  {!service.timeIn && (
-                                    <button
-                                      disabled={isSaving}
-                                      onClick={() =>
-                                        saveDailyService(
-                                          member,
-                                          index,
-                                          "timeIn",
-                                        )
-                                      }
-                                      className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-300 transition hover:bg-blue-500/20 disabled:opacity-50"
-                                    >
-                                      <LogIn className="h-3.5 w-3.5" />
-                                      Time in
-                                    </button>
-                                  )}
+                                    <span className="text-xs font-medium text-emerald-300">
+                                      {formatAttendanceTime(service.timeIn)}
+                                    </span>
+                                  </div>
 
-                                  {/* TIME OUT */}
-                                  <span className="w-20 text-xs text-slate-300">
-                                    {formatAttendanceTime(service.timeOut)}
-                                  </span>
-
-                                  {service.timeIn && !service.timeOut && (
-                                    <button
-                                      disabled={isSaving}
-                                      onClick={() =>
-                                        saveDailyService(
-                                          member,
-                                          index,
-                                          "timeOut",
-                                        )
-                                      }
-                                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
-                                    >
-                                      <LogOut className="h-3.5 w-3.5" />
-                                      Time out
-                                    </button>
-                                  )}
-
-                                  {/* ONE CLEAR BUTTON */}
-                                  {(service.timeIn || service.timeOut) && (
-                                    <button
-                                      disabled={isSaving}
-                                      onClick={() =>
-                                        setClearDialog({
-                                          member,
-                                          serviceIndex: index,
-                                        })
-                                      }
-                                      className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                      Clear
-                                    </button>
-                                  )}
+                                  <button
+                                    disabled={isSaving}
+                                    onClick={() =>
+                                      setClearDialog({
+                                        member,
+                                        serviceId: service.id,
+                                        serviceIndex: index,
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-300 transition hover:bg-rose-500/20 disabled:opacity-50"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    Delete
+                                  </button>
                                 </div>
                               ))}
 
-                              {/* ADD ANOTHER SESSION */}
                               <button
                                 disabled={isSaving}
-                                onClick={() =>
-                                  saveDailyService(
-                                    member,
-                                    services.length,
-                                    "timeIn",
-                                    true,
-                                  )
-                                }
+                                onClick={() => saveDailyService(member)}
                                 className="inline-flex items-center gap-1.5 rounded-md py-1 text-xs font-medium text-slate-500 transition hover:text-blue-300 disabled:opacity-50"
                               >
                                 <Plus className="h-3.5 w-3.5" />
@@ -963,6 +928,7 @@ export default function Attendance({ user }: any) {
                                   e.target.value as MeetingStatus,
                                 )
                               }
+                              className="w-32 max-w-32 truncate"
                             >
                               <NativeSelectOption
                                 value=""
@@ -1100,9 +1066,8 @@ export default function Attendance({ user }: any) {
         )}
       </div>
       {/* CLEAR SESSION CONFIRMATION DIALOG */}
-
       {clearDialog && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#17191f] p-6 shadow-2xl">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/10">
@@ -1111,7 +1076,7 @@ export default function Attendance({ user }: any) {
 
               <div>
                 <h2 className="text-lg font-semibold text-white">
-                  Clear attendance session?
+                  Delete attendance session?
                 </h2>
 
                 <p className="text-xs text-slate-400">
@@ -1131,8 +1096,8 @@ export default function Attendance({ user }: any) {
               </p>
 
               <p className="mt-3 text-xs leading-relaxed text-slate-400">
-                This will permanently clear both the Time In and Time Out
-                records for this session. Other sessions will remain unchanged.
+                This will permanently delete this attendance session. Other
+                sessions will remain unchanged.
               </p>
             </div>
 
@@ -1147,17 +1112,16 @@ export default function Attendance({ user }: any) {
 
               <button
                 disabled={saving !== null}
-                onClick={async () => {
-                  const { member, serviceIndex } = clearDialog;
-
-                  await saveDailyService(member, serviceIndex, "clear");
-
-                  setClearDialog(null);
-                }}
+                onClick={() =>
+                  deleteAttendanceSession(
+                    clearDialog.member,
+                    clearDialog.serviceId,
+                  )
+                }
                 className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
-                Yes, clear session
+                Delete session
               </button>
             </div>
           </div>
